@@ -32,6 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# Supabase local stack
+supabase/.branches/
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +46,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Local tooling cache
+.openvisio/

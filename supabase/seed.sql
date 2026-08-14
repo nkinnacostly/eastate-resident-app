@@ -1,0 +1,26 @@
+-- Estate Access Platform — local development seed
+--
+-- Applied automatically by `npm run db:reset`.
+--
+-- Auth users are NOT seeded here. Create them through the Auth API so that
+-- password hashing, identities, and the on_auth_user_created trigger all run
+-- the way they will in production:
+--
+--   curl -s http://127.0.0.1:54321/auth/v1/signup \
+--     -H "apikey: <anon key from `supabase status`>" \
+--     -H "Content-Type: application/json" \
+--     -d '{"email":"resident@example.test","password":"password123",
+--          "data":{"full_name":"Ada Resident"}}'
+--
+-- Then wire the relational side up with the real RPCs, which is also a decent
+-- smoke test of the grants:
+--
+--   insert into public.platform_admins (user_id) values ('<owner uuid>');
+--   select public.create_estate('Test Estate');
+--   select public.grant_membership('<estate uuid>', '<user uuid>', 'resident');
+--   select public.grant_membership('<estate uuid>', '<user uuid>', 'guard');
+--
+-- Seeding auth.users directly with raw INSERTs is possible but couples the seed
+-- to GoTrue's internal schema, which moves. Don't.
+
+-- Nothing to seed unconditionally yet.

@@ -1,0 +1,41 @@
+# Keeps the Supabase Free-plan project from auto-pausing.
+#
+# A free project with no API requests, database queries, or Edge Function
+# invocations for 7 days is PAUSED — and a paused project does not wake on the
+# next request. It stays offline until someone resumes it from the dashboard.
+#
+# For a gate, that is the wrong failure: a quiet week and the estate arrives at
+# a dead app. Any single request resets the timer, so this runs well inside the
+# window. Whether internal pg_cron activity alone would count is not something
+# to bet the gate on — see Technical Design §6.3 and §11.
+#
+# Remove this once the project moves to a paid plan.
+
+name: supabase-keepalive
+
+on:
+  schedule:
+    # 06:00 UTC every Monday and Thursday — two chances to miss before the
+    # 7-day deadline, since GitHub's scheduler can skip runs under load.
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping PostgREST
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/")
+          echo "PostgREST responded ${code}"
+          # 2xx/4xx both prove the project is awake; only a hang or 5xx is a problem.
+          case "$code" in
+            2*|4*) exit 0 ;;
+            *) echo "::error::Project may be paused (HTTP ${code})"; exit 1 ;;
+          esac

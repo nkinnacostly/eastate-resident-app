@@ -1,50 +1,66 @@
-# Welcome to your Expo app 👋
+# Estate Access Platform
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Multi-tenant visitor access for residential estates. A resident generates a
+short one-time code, forwards it to their visitor, and the guard verifies it at
+the gate — **offline if the network is down**, syncing when it returns.
 
-## Get started
+Codes are single-use and expire after 6 hours.
 
-1. Install dependencies
+**Read first:** [CLAUDE.md](CLAUDE.md) (locked design decisions),
+[estate-access-prd.md](estate-access-prd.md) (product),
+[estate-access-technical-design.md](estate-access-technical-design.md)
+(architecture — the source of truth for everything below).
 
-   ```bash
-   npm install
-   ```
+## Layout
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+apps/
+  resident/     Expo SDK 54 — generate codes
+  guard/        (not yet scaffolded) Expo + expo-sqlite offline pool
+  web/          (not yet scaffolded) React — admin + platform owner, role-gated
+packages/
+  core/         domain constants + RPC contract types
+  db/           generated Supabase types — DO NOT hand-edit src/types.ts
+supabase/
+  migrations/   schema, RLS policies, RPCs
+  seed.sql
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+`apps/guard` and `apps/web` get scaffolded at their build step (5 and 7) with
+`create-expo-app` / Vite respectively — see the build order in the technical
+design. Scaffold them properly rather than hand-rolling; `create-expo-app`
+generates its own per-app `CLAUDE.md` that should be kept alongside the root one.
 
-## Learn more
+## Getting started
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npm run db:push         # apply migrations to the linked remote project
+npm run db:types        # regenerate packages/db/src/types.ts from the remote
+npm run resident        # Expo dev server
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+With Docker available you can work against a local stack instead —
+`npm run db:start`, `npm run db:reset`, `npm run db:types:local`.
 
-## Join the community
+Client env vars live in the **app** directory, not the workspace root, and need
+the framework's prefix: `apps/resident/.env.local` with `EXPO_PUBLIC_*`. The
+anon key is meant to be public — RLS is what protects the data. The service
+role key must never appear in any client env file.
 
-Join our community of developers creating universal apps.
+**Regenerate types after every migration.** There is no API layer, so the RPC
+signatures and the generated types are the entire contract — a stale
+`types.ts` silently removes the only compile-time check on it.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Things that will bite you
+
+- **Never `npm install` an Expo/RN dependency.** Use `npx expo install <pkg>`
+  from inside the app directory so the version matches the SDK.
+- **`access_codes` and `verification_events` have no client write policy.**
+  That is deliberate and load-bearing — it's what stops a code being burned
+  outside the atomic path. Don't add one.
+- **Every RPC derives identity from `auth.uid()`.** Never add a
+  `p_membership_id` parameter to a `SECURITY DEFINER` function.
+- **Free plan pauses after 7 idle days** and needs a manual dashboard resume.
+  `.github/workflows/keepalive.yml` prevents it; set `SUPABASE_URL` and
+  `SUPABASE_ANON_KEY` as repository secrets.
