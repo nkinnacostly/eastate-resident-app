@@ -17,6 +17,12 @@ export interface Membership {
   estate_id: string;
   role: MembershipRole;
   estate_name: string;
+  /**
+   * Set by an estate admin when granting membership, so it is null between
+   * sign-up and approval. Per-membership, not per-user: the same person can
+   * hold different units at different estates.
+   */
+  unit: string | null;
 }
 
 interface AuthState {
@@ -28,7 +34,21 @@ interface AuthState {
   setActiveEstateId: (estateId: string) => void;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (input: SignUpInput) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+}
+
+export interface SignUpInput {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  /**
+   * The unit the applicant claims, captured for whoever approves them. It is
+   * stored as `requested_unit` in user_metadata and is NOT authoritative — the
+   * real value is `memberships.unit`, which only an estate admin can set.
+   */
+  unit: string;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -66,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // RLS scopes this to the caller's own rows — no client-side filter needed.
       const { data, error } = await supabase
         .from('memberships')
-        .select('id, estate_id, role, estates(name)')
+        .select('id, estate_id, role, unit, estates(name)')
         .eq('role', 'resident')
         .eq('is_active', true);
 
@@ -81,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: m.id,
         estate_id: m.estate_id,
         role: m.role,
+        unit: m.unit,
         estate_name: (m.estates as { name: string } | null)?.name ?? 'Unknown estate',
       }));
 
@@ -98,6 +119,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const signUp = useCallback(async (input: SignUpInput) => {
+    const { error } = await supabase.auth.signUp({
+      email: input.email,
+      password: input.password,
+      options: {
+        // `unit` here is the unit the applicant CLAIMS, kept so the admin has
+        // something to check against when approving. The authoritative value is
+        // memberships.unit, which only an admin can set — never read this one
+        // back as if it were confirmed.
+        data: { full_name: input.fullName, phone: input.phone, requested_unit: input.unit },
+      },
+    });
+    // Signing up creates the account only. Access to an estate comes from a
+    // membership, which an admin grants — so a new user lands signed in with
+    // zero memberships and cannot mint anything yet. That is intended (PRD §7).
+    return { error: error?.message ?? null };
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
@@ -110,9 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveEstateId,
       loading,
       signIn,
+      signUp,
       signOut,
     }),
-    [session, memberships, activeEstateId, loading, signIn, signOut],
+    [session, memberships, activeEstateId, loading, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

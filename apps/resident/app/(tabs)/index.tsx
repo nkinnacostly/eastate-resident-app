@@ -1,122 +1,38 @@
 import { MAX_ACTIVE_CODES_PER_RESIDENT } from '@estate/core';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Button,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { listMyCodes, mintCode, type CodeRow } from '@/lib/api';
+import { Card, Chip, CodeText, Eyebrow, PrimaryButton, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { useCodes } from '@/lib/codes';
+import { madeAt, timeLeft } from '@/lib/format';
 
-export default function ResidentHome() {
-  const { session, loading, signIn, signOut, memberships, activeEstateId } = useAuth();
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
-
-  return session ? (
-    <CodesScreen
-      estateId={activeEstateId}
-      estateName={memberships.find((m) => m.estate_id === activeEstateId)?.estate_name}
-      onSignOut={signOut}
-    />
-  ) : (
-    <SignInScreen onSignIn={signIn} />
-  );
-}
-
-function SignInScreen({
-  onSignIn,
-}: {
-  onSignIn: (email: string, password: string) => Promise<{ error: string | null }>;
-}) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function Home() {
+  const { session, memberships, activeEstateId } = useAuth();
+  const { live, loading, refresh, mint } = useCodes();
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
-  const submit = async () => {
-    setBusy(true);
-    const { error } = await onSignIn(email.trim(), password);
-    setBusy(false);
-    if (error) Alert.alert('Sign in failed', error);
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Estate Access</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <Button title={busy ? 'Signing in…' : 'Sign in'} onPress={submit} disabled={busy} />
-    </SafeAreaView>
-  );
-}
-
-function CodesScreen({
-  estateId,
-  estateName,
-  onSignOut,
-}: {
-  estateId: string | null;
-  estateName?: string;
-  onSignOut: () => Promise<void>;
-}) {
-  const [codes, setCodes] = useState<CodeRow[]>([]);
-  const [busy, setBusy] = useState(false);
-
-  const refresh = useCallback(async () => {
-    try {
-      setCodes(await listMyCodes());
-    } catch (e) {
-      Alert.alert('Could not load codes', (e as Error).message);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const estate = memberships.find((m) => m.estate_id === activeEstateId);
+  const fullName = (session?.user.user_metadata?.full_name as string | undefined) ?? '';
+  const firstName = fullName.split(' ')[0] || 'there';
 
   const generate = async () => {
-    if (!estateId) return;
+    if (!activeEstateId) return;
     setBusy(true);
     try {
-      const res = await mintCode(estateId);
+      const res = await mint();
+      if (!res) return;
       // These are RESULTS, not errors — the function deliberately does not
       // raise for expected outcomes (Technical Design §3.1).
       switch (res.result) {
         case 'ok':
-          Alert.alert('New code', res.code, [{ text: 'OK' }]);
+          router.push({ pathname: '/code/[code]', params: { code: res.code } });
           break;
         case 'code_limit_reached':
-          Alert.alert(
-            'Code limit reached',
-            `You can hold ${MAX_ACTIVE_CODES_PER_RESIDENT} live codes at once. ` +
-              'Wait for one to be used or to expire.',
-          );
+          router.push('/(tabs)/codes');
           break;
         case 'rate_limited':
           Alert.alert('Slow down', 'Too many requests just now. Try again in a minute.');
@@ -127,7 +43,6 @@ function CodesScreen({
         default:
           Alert.alert('Could not generate a code', 'Please try again.');
       }
-      await refresh();
     } catch (e) {
       Alert.alert('Could not generate a code', (e as Error).message);
     } finally {
@@ -135,54 +50,82 @@ function CodesScreen({
     }
   };
 
-  const live = codes.filter((c) => c.status === 'live').length;
-
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{estateName ?? 'Estate Access'}</Text>
-        <Button title="Sign out" onPress={onSignOut} />
-      </View>
-
-      <Text style={styles.subtle}>
-        {live} of {MAX_ACTIVE_CODES_PER_RESIDENT} live codes
-      </Text>
-
-      <Button
-        title={busy ? 'Generating…' : 'Generate visitor code'}
-        onPress={generate}
-        disabled={busy || !estateId}
-      />
-
-      <FlatList
-        style={styles.list}
-        data={codes}
-        keyExtractor={(c) => c.id}
-        onRefresh={refresh}
-        refreshing={false}
-        ListEmptyComponent={<Text style={styles.subtle}>No codes yet.</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.code}>{item.code}</Text>
-            <Text style={styles.subtle}>
-              {item.status}
-              {item.used_at ? ` · used ${new Date(item.used_at).toLocaleString()}` : ''}
+    <Screen>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="pb-28"
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
+      >
+        <View className="mt-2 flex-row items-center justify-between">
+          <View>
+            <Eyebrow className="text-muted">{(estate?.estate_name ?? '').toUpperCase()}</Eyebrow>
+            <Text className="mt-1 font-jk-xb text-[26px] tracking-tight text-ink">
+              Hi, {firstName}
             </Text>
           </View>
+          <View className="h-11 w-11 rounded-full bg-hair" />
+        </View>
+
+        <Card className="mt-6 bg-ink p-5">
+          <Eyebrow className="text-lime">EXPECTING SOMEONE?</Eyebrow>
+          {/* `leading-[1.15]` was unitless — a CSS multiplier that has no
+              meaning as a React Native lineHeight. The scale carries leading. */}
+          <Text className="mt-3 font-jk-xb text-[25px] leading-[30px] tracking-tight text-canvas">
+            Make a code in one tap
+          </Text>
+          <PrimaryButton
+            title={busy ? 'Generating…' : 'Generate code'}
+            onPress={generate}
+            disabled={busy || !activeEstateId}
+            className="mt-5"
+          />
+        </Card>
+
+        <View className="mt-7 flex-row items-center justify-between">
+          <Text className="font-jk-b text-title text-ink">Live codes</Text>
+          <Text className="font-jk-sb text-sub text-muted">
+            {live.length} of {MAX_ACTIVE_CODES_PER_RESIDENT}
+          </Text>
+        </View>
+
+        {live.length === 0 ? (
+          <Card className="mt-3 p-4">
+            <Text className="font-jk text-sub text-muted">
+              No live codes. Generate one when a visitor is on the way — it lasts six hours.
+            </Text>
+          </Card>
+        ) : (
+          <View className="mt-3 gap-2.5">
+            {live.map((c) => (
+              // A freshly minted code drops into the list instead of blinking
+              // into existence; the rest slide down to make room.
+              <Animated.View
+                key={c.id}
+                entering={FadeInDown.duration(260)}
+                exiting={FadeOut.duration(160)}
+                layout={LinearTransition.springify().damping(18)}
+              >
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/code/[code]', params: { code: c.code } })
+                }
+              >
+                <Card className="flex-row items-center justify-between p-4">
+                  <View>
+                    <CodeText code={c.code} className="text-[23px]" />
+                    <Text className="mt-1.5 font-jk text-micro text-muted">
+                      {madeAt(c.created_at)}
+                    </Text>
+                  </View>
+                  <Chip label={timeLeft(c.expires_at)} />
+                </Card>
+              </Pressable>
+              </Animated.View>
+            ))}
+          </View>
         )}
-      />
-    </SafeAreaView>
+      </ScrollView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, gap: 12 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 24, fontWeight: '600' },
-  subtle: { opacity: 0.6 },
-  input: { borderWidth: 1, borderColor: '#8883', borderRadius: 8, padding: 12 },
-  list: { marginTop: 8 },
-  row: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#8883' },
-  code: { fontSize: 22, letterSpacing: 4, fontVariant: ['tabular-nums'] },
-});

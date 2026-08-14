@@ -180,6 +180,7 @@ export type Database = {
           id: string
           is_active: boolean
           role: Database["public"]["Enums"]["membership_role"]
+          unit: string | null
           user_id: string
         }
         Insert: {
@@ -189,6 +190,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           role: Database["public"]["Enums"]["membership_role"]
+          unit?: string | null
           user_id: string
         }
         Update: {
@@ -198,6 +200,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           role?: Database["public"]["Enums"]["membership_role"]
+          unit?: string | null
           user_id?: string
         }
         Relationships: [
@@ -399,7 +402,12 @@ export type Database = {
       }
       generate_code: { Args: { p_len?: number }; Returns: string }
       grant_membership: {
-        Args: { p_estate_id: string; p_role: string; p_user_id: string }
+        Args: {
+          p_estate_id: string
+          p_role: string
+          p_unit?: string
+          p_user_id: string
+        }
         Returns: string
       }
       has_membership: {

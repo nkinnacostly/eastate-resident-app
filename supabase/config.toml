@@ -102,7 +102,14 @@ openai_api_key = "env(OPENAI_API_KEY)"
 
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
-[local_smtp]
+#
+# `[inbucket]`, not `[local_smtp]`, despite `supabase init` (CLI >= 2.108)
+# emitting the latter: the HOSTED config parser still rejects local_smtp, so any
+# --linked command (db query, db advisors, and therefore `npm run test:db`)
+# fails with `'config.config' has invalid keys: local_smtp`. The local CLI
+# accepts [inbucket] with a deprecation warning, so this works both ways.
+# Revert once supabase/cli#5801 ships. Verified against CLI 2.114.0.
+[inbucket]
 enabled = true
 # Port to use for the email testing server web interface.
 port = 54324

@@ -18,10 +18,16 @@
     "db:types": "supabase gen types typescript --linked > packages/db/src/types.ts",
     "db:types:local": "supabase gen types typescript --local > packages/db/src/types.ts",
     "resident": "npm run start --workspace @estate/resident",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "supabase": "^2.114.0",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-test-renderer": "19.1.0"
   }
 }

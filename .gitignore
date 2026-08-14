@@ -49,3 +49,8 @@ app-example
 
 # Local tooling cache
 .openvisio/
+
+CLAUDE.md
+estate-access-prd.md
+estate-access-technical-design.md
+
