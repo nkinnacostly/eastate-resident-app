@@ -3,11 +3,11 @@ import { useRouter } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { Card, Chip, CodeText, Eyebrow, Screen } from '@/components/ui';
-import { useCodes } from '@/lib/codes';
+import { useCodesOnFocus } from '@/lib/codes';
 import { madeAt, timeLeft } from '@/lib/format';
 
 export default function Codes() {
-  const { live, loading, refresh } = useCodes();
+  const { live, loading, refresh } = useCodesOnFocus();
   const router = useRouter();
   const atCap = live.length >= MAX_ACTIVE_CODES_PER_RESIDENT;
 

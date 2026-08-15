@@ -1,5 +1,7 @@
 import type { MintResult } from '@estate/core';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 
 import { listMyCodes, mintCode, type CodeRow } from './api';
 import { useAuth } from './auth';
@@ -26,24 +28,59 @@ export function CodesProvider({ children }: { children: ReactNode }) {
   const [codes, setCodes] = useState<CodeRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Keyed on the user ID, not the session OBJECT. `refresh` is a dependency of
+  // both the focus effect and the foreground listener, so if its identity
+  // changed on every render each fetch would trigger the next one — an
+  // unbounded request loop against the database. A primitive cannot do that.
+  const userId = session?.user.id ?? null;
+
+  // Shares one request between overlapping callers. Mount, tab focus and
+  // returning to the foreground can all fire at once — without this the app
+  // issues three identical queries and the last to land wins, which is not
+  // necessarily the freshest.
+  const inFlight = useRef<Promise<void> | null>(null);
+
   const refresh = useCallback(async () => {
-    if (!session) {
+    if (!userId) {
       setCodes([]);
       return;
     }
+    if (inFlight.current) return inFlight.current;
+
     setLoading(true);
-    try {
-      setCodes(await listMyCodes());
-    } catch {
-      // Leave the last known list in place; a transient network failure should
-      // not blank out codes the resident may be reading aloud right now.
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
+    const run = (async () => {
+      try {
+        setCodes(await listMyCodes());
+      } catch {
+        // Leave the last known list in place; a transient network failure should
+        // not blank out codes the resident may be reading aloud right now.
+      } finally {
+        setLoading(false);
+        inFlight.current = null;
+      }
+    })();
+    inFlight.current = run;
+    return run;
+  }, [userId]);
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  /**
+   * Refetch when the app comes back to the foreground.
+   *
+   * This is the case that actually bites: the resident forwards a code, pockets
+   * the phone, a guard burns it at the gate, and the resident reopens the app.
+   * Without this the list still says "live" — the app misreporting the one fact
+   * it exists to tell them. Notifications (§6.1) are the real fix for a code
+   * burned while the app is OPEN; this covers everything else.
+   */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refresh();
+    });
+    return () => sub.remove();
   }, [refresh]);
 
   const mint = useCallback(async () => {
@@ -69,4 +106,23 @@ export function useCodes(): CodesState {
   const ctx = useContext(CodesContext);
   if (!ctx) throw new Error('useCodes must be used inside <CodesProvider>');
   return ctx;
+}
+
+/**
+ * Refetch whenever a screen is opened.
+ *
+ * Tab screens stay MOUNTED, so a mount-only effect never runs again — switching
+ * tabs would show whatever the list held when the tab first rendered. The
+ * provider cannot do this itself: it is not a screen, so it has no focus of its
+ * own to react to.
+ */
+export function useCodesOnFocus(): CodesState {
+  const codes = useCodes();
+  const { refresh } = codes;
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+  return codes;
 }

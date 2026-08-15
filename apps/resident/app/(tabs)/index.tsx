@@ -6,12 +6,12 @@ import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-re
 
 import { Card, Chip, CodeText, Eyebrow, PrimaryButton, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { useCodes } from '@/lib/codes';
+import { useCodesOnFocus } from '@/lib/codes';
 import { madeAt, timeLeft } from '@/lib/format';
 
 export default function Home() {
   const { session, memberships, activeEstateId } = useAuth();
-  const { live, loading, refresh, mint } = useCodes();
+  const { live, loading, refresh, mint } = useCodesOnFocus();
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 

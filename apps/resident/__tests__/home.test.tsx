@@ -19,8 +19,16 @@ jest.mock('@/lib/auth', () => ({
   }),
 }));
 
+const mockCodesState = () => ({
+  live: mockLive,
+  loading: false,
+  refresh: jest.fn(),
+  mint: mockMint,
+});
 jest.mock('@/lib/codes', () => ({
-  useCodes: () => ({ live: mockLive, loading: false, refresh: jest.fn(), mint: mockMint }),
+  useCodes: () => mockCodesState(),
+  // Screens read through the focus-aware wrapper so switching tabs refetches.
+  useCodesOnFocus: () => mockCodesState(),
 }));
 
 beforeEach(() => {

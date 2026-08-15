@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { Card, Chip, CodeText, Screen } from '@/components/ui';
-import { useCodes } from '@/lib/codes';
+import { useCodesOnFocus } from '@/lib/codes';
 import { clock } from '@/lib/format';
 import type { CodeRow } from '@/lib/api';
 
@@ -23,7 +23,7 @@ function subtitle(c: CodeRow): string {
 }
 
 export default function History() {
-  const { codes, loading, refresh } = useCodes();
+  const { codes, loading, refresh } = useCodesOnFocus();
   const [filter, setFilter] = useState<Filter>('All');
 
   const rows = useMemo(() => {

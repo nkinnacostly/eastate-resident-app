@@ -4,6 +4,9 @@ jest.mock('expo-router', () => ({
   useRouter: () => global.__router,
   useLocalSearchParams: () => global.__params ?? {},
   useSegments: () => [],
+  // Screens under test render outside a navigator, so there is no focus event
+  // to wait for — run the effect on mount.
+  useFocusEffect: (cb) => require('react').useEffect(cb, [cb]),
   Stack: Object.assign(() => null, { Screen: () => null }),
   Tabs: Object.assign(() => null, { Screen: () => null }),
 }));

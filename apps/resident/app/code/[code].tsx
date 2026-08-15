@@ -98,17 +98,10 @@ export default function CodeIssued() {
           <Text className="mt-3 font-jk-sb text-sub text-ink/70">{validUntil(expires)}</Text>
         </Card>
 
-        {/* Not backed by the schema yet — shown as the design specifies. */}
-        <View className="mt-3.5 flex-row gap-2.5">
-          <Card className="flex-1 p-3.5">
-            <Text className="font-jk-b text-label tracking-label text-muted">VISITOR</Text>
-            <Text className="mt-1.5 font-jk-b text-sub text-ink">Not set</Text>
-          </Card>
-          <Card className="flex-1 p-3.5">
-            <Text className="font-jk-b text-label tracking-label text-muted">GATE</Text>
-            <Text className="mt-1.5 font-jk-b text-sub text-ink">Main</Text>
-          </Card>
-        </View>
+        {/* A VISITOR / GATE pair sat here reading "Not set" and "Main". Neither
+            is backed by a column: "Main" was invented, so the screen stated a
+            gate the estate may not have. Restore it when visitors and gates are
+            modelled — until then the code and its expiry are what we know. */}
 
         <View className="flex-1" />
 
