@@ -18,6 +18,7 @@
     "db:types": "supabase gen types typescript --linked > packages/db/src/types.ts",
     "db:types:local": "supabase gen types typescript --local > packages/db/src/types.ts",
     "resident": "npm run start --workspace @estate/resident",
+    "guard": "npm run start --workspace @estate/guard",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },

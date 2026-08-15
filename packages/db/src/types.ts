@@ -465,24 +465,15 @@ export type Database = {
         Args: { p_client_event_id: string; p_code: string; p_estate_id: string }
         Returns: {
           client_event_id: string
-          code_id: string | null
+          code_id: string
           collision: boolean
-          estate_id: string
+          host_name: string
+          host_unit: string
           id: string
           outcome: Database["public"]["Enums"]["event_outcome"]
-          pool_age_seconds: number | null
-          reject_reason: Database["public"]["Enums"]["reject_reason"] | null
-          source: Database["public"]["Enums"]["event_source"]
-          synced_at: string
+          reject_reason: Database["public"]["Enums"]["reject_reason"]
           verified_at: string
-          verified_by_membership_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "verification_events"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        }[]
       }
     }
     Enums: {
