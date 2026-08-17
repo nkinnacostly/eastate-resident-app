@@ -13,7 +13,8 @@ const membership = (over: Record<string, unknown> = {}) => ({
   estate_id: 'estate-1',
   role: 'resident',
   estate_name: 'Demo Estate',
-  unit: 'B12',
+  house_number: 'B12',
+  house_code: 'LUX5',
   ...over,
 });
 
@@ -34,38 +35,52 @@ beforeEach(() => {
 });
 
 describe('You', () => {
-  it('shows the unit the admin assigned on the membership', () => {
+  it('shows the house the admin approved them into', () => {
     render(<You />);
     // Twice, deliberately: once in the header beside the email, once on the
     // estate row it belongs to.
-    expect(screen.getByText(/rita@example\.com · Unit B12/)).toBeTruthy();
-    expect(screen.getByText(/resident · Unit B12/)).toBeTruthy();
+    expect(screen.getByText(/rita@example\.com · House B12/)).toBeTruthy();
+    expect(screen.getByText(/resident · House B12/)).toBeTruthy();
   });
 
-  // The whole reason unit moved out of user_metadata: metadata is
+  // The whole reason the address moved out of user_metadata: metadata is
   // self-asserted, so rendering it would tell a resident they live somewhere
   // the estate has no record of.
   it('never shows the self-asserted unit from user_metadata', () => {
-    mockAuth.memberships = [membership({ unit: null })];
+    mockAuth.memberships = [membership({ house_number: null, house_code: null })];
     render(<You />);
 
     expect(screen.queryByText(/Z99/)).toBeNull();
-    expect(screen.queryByText(/Unit/)).toBeNull();
+    expect(screen.queryByText(/Unit|House B12|Z99/)).toBeNull();
   });
 
-  it('shows each estate its own unit, not the active one', () => {
+  // Several residents share one house, each on their own phone. The second
+  // person needs this code, so it must be visible to someone already approved.
+  it('shows the house code so a housemate can be invited', () => {
+    render(<You />);
+    expect(screen.getByText('LUX5')).toBeTruthy();
+    expect(screen.getByText(/SOMEONE ELSE IN YOUR HOUSE/)).toBeTruthy();
+  });
+
+  it('hides the housemate card when there is no house on file', () => {
+    mockAuth.memberships = [membership({ house_number: null, house_code: null })];
+    render(<You />);
+    expect(screen.queryByText(/SOMEONE ELSE IN YOUR HOUSE/)).toBeNull();
+  });
+
+  it('shows each estate its own house, not the active one', () => {
     mockAuth.memberships = [
       membership(),
-      membership({ id: 'm2', estate_id: 'estate-2', estate_name: 'Kelvin Grove', unit: 'A4' }),
+      membership({ id: 'm2', estate_id: 'estate-2', estate_name: 'Kelvin Grove', house_number: 'A4', house_code: 'QQ11' }),
     ];
     render(<You />);
 
-    expect(screen.getByText(/resident · Unit B12/)).toBeTruthy();
-    expect(screen.getByText(/resident · Unit A4/)).toBeTruthy();
+    expect(screen.getByText(/resident · House B12/)).toBeTruthy();
+    expect(screen.getByText(/resident · House A4/)).toBeTruthy();
   });
 
   it('omits the unit for a membership that has none', () => {
-    mockAuth.memberships = [membership({ unit: null })];
+    mockAuth.memberships = [membership({ house_number: null, house_code: null })];
     render(<You />);
 
     expect(screen.getByText('resident')).toBeTruthy();

@@ -88,6 +88,12 @@ const PEOPLE = [
   { role: 'admin', email: 'admin@estate-access-qa.com', name: 'Ada Admin' },
 ];
 
+// The platform owner is NOT a membership — they belong to no estate. A row in
+// platform_admins is what the operator dashboard checks, and keeping it a
+// separate table is deliberate: a client-updatable flag on profiles would be a
+// privilege-escalation vector (see core_tables.sql).
+const OWNER = { email: 'owner@estate-access-qa.com', name: 'Olu Owner' };
+
 async function findUserByEmail(email) {
   const { body } = await api(`/auth/v1/admin/users?per_page=200`, { method: 'GET' });
   return (body?.users ?? []).find((u) => u.email === email) ?? null;
@@ -99,10 +105,25 @@ async function reset() {
     await api(`/rest/v1/${t}?estate_id=eq.${ESTATE_ID}`, { method: 'DELETE' });
   }
   await api(`/rest/v1/estates?id=eq.${ESTATE_ID}`, { method: 'DELETE' });
-  for (const p of PEOPLE) {
+  for (const p of [...PEOPLE, OWNER]) {
     const u = await findUserByEmail(p.email);
     if (u) await api(`/auth/v1/admin/users/${u.id}`, { method: 'DELETE' });
   }
+}
+
+/** Creates the user if absent, returns it either way. */
+async function upsertUser(email, name) {
+  const created = await api('/auth/v1/admin/users', {
+    body: {
+      email,
+      password: PASSWORD,
+      email_confirm: true, // no confirmation mail — the built-in SMTP is rate limited
+      user_metadata: { full_name: name },
+    },
+  });
+  const user = created.body?.id ? created.body : await findUserByEmail(email);
+  if (!user?.id) die(`Creating ${email} failed: ${created.status} ${JSON.stringify(created.body)}`);
+  return user;
 }
 
 async function main() {
@@ -116,16 +137,7 @@ async function main() {
   console.log(`✔ estate  ${ESTATE_NAME} (${ESTATE_ID})`);
 
   for (const p of PEOPLE) {
-    let created = await api('/auth/v1/admin/users', {
-      body: {
-        email: p.email,
-        password: PASSWORD,
-        email_confirm: true, // no confirmation mail — the built-in SMTP is rate limited
-        user_metadata: { full_name: p.name },
-      },
-    });
-    let user = created.body?.id ? created.body : await findUserByEmail(p.email);
-    if (!user?.id) die(`Creating ${p.email} failed: ${created.status} ${JSON.stringify(created.body)}`);
+    const user = await upsertUser(p.email, p.name);
 
     // `on_conflict` is required, not optional: merge-duplicates alone only
     // resolves against the PRIMARY KEY, so re-running the seed collided with
@@ -139,7 +151,15 @@ async function main() {
     console.log(`✔ ${p.role.padEnd(8)} ${p.email}`);
   }
 
-  console.log(`\nPassword for all three: ${PASSWORD}\n`);
+  const owner = await upsertUser(OWNER.email, OWNER.name);
+  const pa = await api('/rest/v1/platform_admins?on_conflict=user_id', {
+    body: { user_id: owner.id },
+    headers: { Prefer: 'resolution=merge-duplicates' },
+  });
+  if (pa.status >= 300) die(`Platform admin failed: ${pa.status} ${JSON.stringify(pa.body)}`);
+  console.log(`✔ owner    ${OWNER.email}  (operator dashboard)`);
+
+  console.log(`\nPassword for all four: ${PASSWORD}\n`);
 }
 
 main();

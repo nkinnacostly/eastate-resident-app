@@ -25,16 +25,34 @@ import { CodesProvider } from '@/lib/codes';
  * before the persisted session finishes decrypting.
  */
 function Gate() {
-  const { session, loading } = useAuth();
+  const { session, loading, memberships, membershipsLoaded } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
     const inAuth = segments[0] === '(auth)';
-    if (!session && !inAuth) router.replace('/(auth)/onboarding');
-    if (session && inAuth) router.replace('/(tabs)');
-  }, [session, loading, segments, router]);
+    const onJoin = segments[0] === 'join';
+
+    if (!session) {
+      if (!inAuth) router.replace('/(auth)/onboarding');
+      return;
+    }
+
+    // Signed in, but the membership query has not answered yet. Waiting is not
+    // optional: routing on an empty list would send an approved resident to the
+    // join screen on every cold start.
+    if (!membershipsLoaded) return;
+
+    // Signed in with no estate. Sign-up creates an account; a MEMBERSHIP is what
+    // an admin grants, so this is the normal state between the two.
+    if (memberships.length === 0) {
+      if (!onJoin) router.replace('/join');
+      return;
+    }
+
+    if (inAuth || onJoin) router.replace('/(tabs)');
+  }, [session, loading, memberships, membershipsLoaded, segments, router]);
 
   if (loading) {
     return (
@@ -60,6 +78,7 @@ function Gate() {
           hard cut. */}
       <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+      <Stack.Screen name="join" options={{ animation: 'fade' }} />
       {/* Modal, not card: the screen already closes with a ✕ rather than a
           back arrow, and modal presentation brings swipe-down-to-dismiss with
           it for free. */}

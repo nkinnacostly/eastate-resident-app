@@ -152,6 +152,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          join_code: string
           name: string
         }
         Insert: {
@@ -160,6 +161,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          join_code?: string
           name: string
         }
         Update: {
@@ -168,15 +170,150 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          join_code?: string
           name?: string
         }
         Relationships: []
+      }
+      houses: {
+        Row: {
+          created_at: string
+          deactivated_at: string | null
+          estate_id: string
+          house_code: string
+          house_number: string
+          id: string
+          is_active: boolean
+          landlord_email: string | null
+          landlord_name: string | null
+          landlord_phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          deactivated_at?: string | null
+          estate_id: string
+          house_code?: string
+          house_number: string
+          id?: string
+          is_active?: boolean
+          landlord_email?: string | null
+          landlord_name?: string | null
+          landlord_phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          deactivated_at?: string | null
+          estate_id?: string
+          house_code?: string
+          house_number?: string
+          id?: string
+          is_active?: boolean
+          landlord_email?: string | null
+          landlord_name?: string | null
+          landlord_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "houses_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      join_attempts: {
+        Row: {
+          hits: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          hits?: number
+          user_id: string
+          window_start: string
+        }
+        Update: {
+          hits?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      join_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by_membership_id: string | null
+          decline_reason: string | null
+          estate_id: string
+          house_id: string | null
+          id: string
+          requested_unit: string | null
+          status: Database["public"]["Enums"]["join_request_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by_membership_id?: string | null
+          decline_reason?: string | null
+          estate_id: string
+          house_id?: string | null
+          id?: string
+          requested_unit?: string | null
+          status?: Database["public"]["Enums"]["join_request_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by_membership_id?: string | null
+          decline_reason?: string | null
+          estate_id?: string
+          house_id?: string | null
+          id?: string
+          requested_unit?: string | null
+          status?: Database["public"]["Enums"]["join_request_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_requests_decided_by_membership_id_fkey"
+            columns: ["decided_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       memberships: {
         Row: {
           created_at: string
           deactivated_at: string | null
           estate_id: string
+          house_id: string | null
           id: string
           is_active: boolean
           role: Database["public"]["Enums"]["membership_role"]
@@ -187,6 +324,7 @@ export type Database = {
           created_at?: string
           deactivated_at?: string | null
           estate_id: string
+          house_id?: string | null
           id?: string
           is_active?: boolean
           role: Database["public"]["Enums"]["membership_role"]
@@ -197,6 +335,7 @@ export type Database = {
           created_at?: string
           deactivated_at?: string | null
           estate_id?: string
+          house_id?: string | null
           id?: string
           is_active?: boolean
           role?: Database["public"]["Enums"]["membership_role"]
@@ -209,6 +348,20 @@ export type Database = {
             columns: ["estate_id"]
             isOneToOne: false
             referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -233,18 +386,21 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          must_change_password: boolean
           phone: string | null
         }
         Insert: {
           created_at?: string
           full_name?: string | null
           id: string
+          must_change_password?: boolean
           phone?: string | null
         }
         Update: {
           created_at?: string
           full_name?: string | null
           id?: string
+          must_change_password?: boolean
           phone?: string | null
         }
         Relationships: []
@@ -287,6 +443,7 @@ export type Database = {
       verification_events: {
         Row: {
           client_event_id: string
+          code_attempted: string | null
           code_id: string | null
           collision: boolean
           estate_id: string
@@ -301,6 +458,7 @@ export type Database = {
         }
         Insert: {
           client_event_id: string
+          code_attempted?: string | null
           code_id?: string | null
           collision?: boolean
           estate_id: string
@@ -315,6 +473,7 @@ export type Database = {
         }
         Update: {
           client_event_id?: string
+          code_attempted?: string | null
           code_id?: string | null
           collision?: boolean
           estate_id?: string
@@ -369,6 +528,7 @@ export type Database = {
         }
         Returns: {
           client_event_id: string
+          code_attempted: string | null
           code_id: string | null
           collision: boolean
           estate_id: string
@@ -388,9 +548,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_join_request: { Args: { p_request_id: string }; Returns: string }
+      clear_must_change_password: { Args: never; Returns: undefined }
       create_estate: {
         Args: { p_address?: string; p_contact_info?: string; p_name: string }
         Returns: string
+      }
+      create_house: {
+        Args: {
+          p_estate_id: string
+          p_house_number: string
+          p_landlord_email?: string
+          p_landlord_name?: string
+          p_landlord_phone?: string
+        }
+        Returns: {
+          house_code: string
+          house_number: string
+          id: string
+        }[]
       }
       current_membership: {
         Args: { p_estate_id: string; p_role: string }
@@ -398,6 +574,10 @@ export type Database = {
       }
       deactivate_membership: {
         Args: { p_membership_id: string }
+        Returns: undefined
+      }
+      decline_join_request: {
+        Args: { p_reason?: string; p_request_id: string }
         Returns: undefined
       }
       generate_code: { Args: { p_len?: number }; Returns: string }
@@ -418,6 +598,7 @@ export type Database = {
         Args: { p_estate_id: string; p_events: Json }
         Returns: {
           client_event_id: string
+          code_attempted: string | null
           code_id: string | null
           collision: boolean
           estate_id: string
@@ -446,6 +627,105 @@ export type Database = {
           result: string
         }[]
       }
+      my_pending_join_requests: {
+        Args: never
+        Returns: {
+          created_at: string
+          estate_id: string
+          estate_name: string
+          house_number: string
+        }[]
+      }
+      operator_admins: {
+        Args: never
+        Returns: {
+          email: string
+          estate_id: string
+          estate_name: string
+          full_name: string
+          granted_at: string
+          is_active: boolean
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
+      operator_daily_volume: {
+        Args: { p_days?: number }
+        Returns: {
+          admitted: number
+          day: string
+          offline: number
+          verifications: number
+        }[]
+      }
+      operator_estates: {
+        Args: never
+        Returns: {
+          address: string
+          admin_count: number
+          admin_email: string
+          admin_name: string
+          created_at: string
+          flagged_30d: number
+          guards: number
+          houses: number
+          id: string
+          is_active: boolean
+          join_code: string
+          last_activity: string
+          name: string
+          residents: number
+          verifications_30d: number
+        }[]
+      }
+      operator_find_user_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
+      operator_health: {
+        Args: never
+        Returns: {
+          estate_id: string
+          estate_name: string
+          flagged_30d: number
+          median_lag_seconds: number
+          offline_30d: number
+          offline_share: number
+          stale_pool_worst_age: number
+          verifications_30d: number
+          worst_lag_seconds: number
+        }[]
+      }
+      operator_platform_team: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
+      operator_portfolio: {
+        Args: never
+        Returns: {
+          admins_total: number
+          admitted_30d: number
+          estates_live: number
+          estates_onboarding: number
+          estates_total: number
+          flagged_30d: number
+          guards_total: number
+          houses_total: number
+          offline_30d: number
+          rejected_30d: number
+          residents_total: number
+          verifications_30d: number
+        }[]
+      }
       register_push_token: {
         Args: {
           p_device_id?: string
@@ -455,6 +735,27 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_house_access: {
+        Args: { p_estate_code: string; p_house_code: string }
+        Returns: {
+          estate_id: string
+          estate_name: string
+          house_id: string
+          house_number: string
+          result: string
+        }[]
+      }
+      revoke_access_code: {
+        Args: { p_code_id: string; p_reason?: string }
+        Returns: {
+          result: string
+        }[]
+      }
+      rotate_estate_join_code: {
+        Args: { p_estate_id: string }
+        Returns: string
+      }
+      rotate_house_code: { Args: { p_house_id: string }; Returns: string }
       sweep_expired_codes: { Args: never; Returns: number }
       sweep_mint_attempts: { Args: never; Returns: number }
       sync_pull: {
@@ -480,6 +781,7 @@ export type Database = {
       code_status: "active" | "used" | "revoked"
       event_outcome: "pending" | "admitted" | "collision" | "rejected"
       event_source: "online" | "offline_replay"
+      join_request_status: "pending" | "approved" | "declined"
       membership_role: "resident" | "guard" | "admin"
       reject_reason: "unknown_code" | "expired" | "already_used" | "revoked"
       revoked_reason:
@@ -619,6 +921,7 @@ export const Constants = {
       code_status: ["active", "used", "revoked"],
       event_outcome: ["pending", "admitted", "collision", "rejected"],
       event_source: ["online", "offline_replay"],
+      join_request_status: ["pending", "approved", "declined"],
       membership_role: ["resident", "guard", "admin"],
       reject_reason: ["unknown_code", "expired", "already_used", "revoked"],
       revoked_reason: [

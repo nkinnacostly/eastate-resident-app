@@ -22,7 +22,8 @@ export default function SignUp() {
     fullName: '',
     email: '',
     phone: '',
-    unit: '',
+    estateCode: '',
+    houseCode: '',
     password: '',
   });
   const [busy, setBusy] = useState(false);
@@ -33,26 +34,45 @@ export default function SignUp() {
       Alert.alert('Missing details', 'Email and password are required.');
       return;
     }
+    // Both codes, up front. A house code alone cannot place anyone — it is only
+    // unique within its estate — and an account with no request attached just
+    // becomes a stranded user an admin never sees.
+    if (!form.estateCode.trim() || !form.houseCode.trim()) {
+      Alert.alert(
+        'Both codes needed',
+        'Your estate gives you one; your landlord gives you the other. Together they place you in the right house.',
+      );
+      return;
+    }
     setBusy(true);
-    const { error } = await signUp({
+    const res = await signUp({
       email: form.email.trim(),
       password: form.password,
       fullName: form.fullName.trim(),
       phone: form.phone.trim(),
-      unit: form.unit.trim(),
+      estateCode: form.estateCode.trim(),
+      houseCode: form.houseCode.trim(),
     });
     setBusy(false);
-    if (error) {
-      Alert.alert('Could not request access', error);
+
+    if (res.status === 'error') {
+      Alert.alert('Could not create your account', res.message);
       return;
     }
-    // The copy says "you can sign in now", so take them there rather than
-    // leaving them on a filled-in form with no obvious next step.
-    Alert.alert(
-      'Request sent',
-      'Your estate admin has to approve you before codes work. You can sign in now — codes appear once you are approved.',
-      [{ text: 'Sign in', onPress: () => router.dismissTo('/(auth)/sign-in') }],
-    );
+    if (res.status === 'confirm_email') {
+      // No session, so the request could not be made as them. Say so plainly
+      // rather than implying an admin is already looking at it.
+      Alert.alert(
+        'Confirm your email',
+        'Check your inbox, then sign in. We will ask for your two codes once more to finish joining.',
+        [{ text: 'Sign in', onPress: () => router.dismissTo('/(auth)/sign-in') }],
+      );
+      return;
+    }
+    // status === 'requested': the account exists and they are signed in, so the
+    // gate is already moving them to /join. That screen reports how the codes
+    // landed — good or bad — via takeSignUpJoinResult. Navigating here too
+    // would race it.
   };
 
   return (
@@ -110,13 +130,39 @@ export default function SignUp() {
               value={form.phone}
               onChangeText={set('phone')}
             />
-            <Input placeholder="Unit number" value={form.unit} onChangeText={set('unit')} />
             <Input
               placeholder="Create password"
               secureTextEntry
               autoComplete="new-password"
               value={form.password}
               onChangeText={set('password')}
+            />
+          </View>
+
+          <Text className="mt-7 font-jk-xb text-label tracking-label text-muted">
+            WHERE YOU LIVE
+          </Text>
+          <Text className="mt-2 max-w-measure font-jk text-sub text-muted">
+            Two codes: one from your estate, one from your landlord. Neither works alone — a house
+            code is only unique inside its own estate.
+          </Text>
+
+          <View className="mt-3 gap-3">
+            {/* autoCapitalize + autoCorrect off: the codes are stored upper-case
+                and autocorrect happily rewrites a 4-glyph code into a word. */}
+            <Input
+              placeholder="Estate code"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              value={form.estateCode}
+              onChangeText={set('estateCode')}
+            />
+            <Input
+              placeholder="House code"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              value={form.houseCode}
+              onChangeText={set('houseCode')}
             />
           </View>
 
@@ -129,7 +175,8 @@ export default function SignUp() {
 
           <Card className="mt-6 p-4">
             <Text className="font-jk text-sub text-muted">
-              Estate admins see your name and unit only. Guards see neither until you issue a code.
+              Estate admins see your name and house only. Guards see neither until you issue a
+              code.
             </Text>
           </Card>
 
