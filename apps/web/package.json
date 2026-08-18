@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "prebuild": "node ../../scripts/check-deps.mjs",
     "dev": "vite --port 5173",
     "build": "tsc -b && vite build",
     "//typecheck": "tsc -b, NOT tsc --noEmit: tsconfig.json here is a solution file with files:[] and only references, so --noEmit type-checks zero files and always passes.",
