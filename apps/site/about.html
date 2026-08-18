@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>About myestateaccess — Why We Rebuilt the Gate Register</title>
+<meta name="description" content="Why myestateaccess built the offline case first: visitor codes that expire on their own, gate verification that survives an outage, and privacy enforced in the database.">
+<link rel="canonical" href="https://myestateaccess.com/about.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#16181c">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="myestateaccess">
+<meta property="og:url" content="https://myestateaccess.com/about.html">
+<meta property="og:title" content="About myestateaccess — Why We Rebuilt the Gate Register">
+<meta property="og:description" content="The gate loses signal. Everything about how this product works follows from taking that seriously.">
+<meta property="og:image" content="https://images.unsplash.com/photo-1758304480344-f8d0de5f4f25?auto=format&fit=crop&w=1200&h=630&q=70">
+<meta property="og:image:alt" content="Aerial view of a suburban neighbourhood">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="About myestateaccess">
+<meta name="twitter:description" content="The gate loses signal. Everything about how this product works follows from taking that seriously.">
+<meta name="twitter:image" content="https://images.unsplash.com/photo-1758304480344-f8d0de5f4f25?auto=format&fit=crop&w=1200&h=630&q=70">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://images.unsplash.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "AboutPage",
+      "url": "https://myestateaccess.com/about.html",
+      "name": "About myestateaccess",
+      "description": "Why myestateaccess was built, and the principles behind how it verifies visitors at the gate.",
+      "publisher": { "@type": "Organization", "name": "myestateaccess", "url": "https://myestateaccess.com/" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://myestateaccess.com/" },
+        { "@type": "ListItem", "position": 2, "name": "About", "item": "https://myestateaccess.com/about.html" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16181c" stroke-width="2.1" stroke-linecap="round"><circle cx="9" cy="12" r="4"/><path d="M13 12h8M17.6 12v3.2M20.2 12v2.4"/></svg>
+      </span>
+      myestateaccess
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/about.html" aria-current="page">About</a>
+      <a href="/contact.html">Contact</a>
+      <a class="btn btn-dark" style="height:42px;padding:0 20px;font-size:14px" href="/contact.html#demo">Book a demo</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">About us</p>
+        <h1>We started with the part everyone else designs around.</h1>
+        <p class="lede">Most access control is designed as though the gate has a reliable connection. It does not. It sits behind a wall, at the bottom of a driveway, on a line that drops when it rains — and when the system fails, the queue backs up onto a public road at six in the evening.</p>
+        <p class="lede" style="margin-top:18px">So we built the offline case first and treated the online case as the easy one. Everything else in the product follows from that decision.</p>
+      </div>
+      <figure class="hero-figure" style="margin:0">
+        <img src="https://images.unsplash.com/photo-1758304480344-f8d0de5f4f25?auto=format&fit=crop&w=1100&q=70"
+             srcset="https://images.unsplash.com/photo-1758304480344-f8d0de5f4f25?auto=format&fit=crop&w=700&q=70 700w,
+                     https://images.unsplash.com/photo-1758304480344-f8d0de5f4f25?auto=format&fit=crop&w=1100&q=70 1100w"
+             sizes="(max-width: 940px) 100vw, 46vw" width="1100" height="935" fetchpriority="high"
+             alt="An aerial view of a suburban neighbourhood with tree-lined streets.">
+      </figure>
+    </div>
+  </section>
+
+  <section class="tight">
+    <div class="wrap">
+      <p class="eyebrow">What we believe</p>
+      <h2>Four opinions, held firmly.</h2>
+      <div class="grid grid-2" style="margin-top:36px">
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">01</div>
+          <h3>An outage must not close the gate</h3>
+          <p>A guard with a stale list still admits, and the entry is flagged for review. Refusing to verify because the server is unreachable turns a connectivity problem into a security incident and a traffic jam. We would rather admit and tell you about it.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">02</div>
+          <h3>Access should expire on its own</h3>
+          <p>Anything that has to be revoked by hand eventually is not. A code that stops working after six hours needs no cleanup, no policy and no reminder — the estate cannot accumulate access it has forgotten about.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">03</div>
+          <h3>Rules belong in the database</h3>
+          <p>Single use, the three-code limit, and who may read what are enforced where the data lives, not in the app. An interface can be bypassed. A constraint cannot, which means the rule holds even for code we have not written yet.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">04</div>
+          <h3>Log the refusals too</h3>
+          <p>Most systems record who came in. The interesting record is who tried and was turned away — a code that had already been used, or one that expired last week. That is the part worth reading on a Monday morning.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="band">
+        <div>
+          <p class="eyebrow on-dark">The trade-off we made on purpose</p>
+          <h2>Revocation is not instant at an offline gate.</h2>
+          <p>If a resident cancels a code while the guard's phone is offline, that phone will not know until it reconnects. We could have hidden this. Instead we bounded it: the delay can never exceed the code's own six-hour life, and usually it is minutes.</p>
+          <p style="margin-top:16px">The alternative — refusing to verify anything on a phone that has not synced recently — would mean an estate's gate stops working every time its uplink does. We think a bounded, visible delay is the better failure, and we would rather tell you about it than let you discover it.</p>
+        </div>
+        <img src="https://images.unsplash.com/photo-1784767348409-2b530cfcb161?auto=format&fit=crop&w=900&q=70"
+             srcset="https://images.unsplash.com/photo-1784767348409-2b530cfcb161?auto=format&fit=crop&w=600&q=70 600w,
+                     https://images.unsplash.com/photo-1784767348409-2b530cfcb161?auto=format&fit=crop&w=900&q=70 900w"
+             sizes="(max-width: 940px) 100vw, 38vw" width="900" height="675" loading="lazy"
+             alt="Aerial view of residential streets and buildings lit at night.">
+      </div>
+    </div>
+  </section>
+
+  <section class="tight">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Who it is for</p>
+        <h2>Estates that outgrew the register but do not want a turnstile.</h2>
+        <p class="lede" style="margin-top:16px">Residential estates, security complexes, cluster developments and gated communities — anywhere with a manned boom, a few hundred homes, and a book that nobody reads.</p>
+        <p style="margin-top:18px;color:var(--muted)">We are deliberately not building number-plate recognition, biometrics or turnstiles. Those are expensive, they fail in ways a guard cannot work around, and they solve a problem most estates do not have. A code you can read down a phone line covers the overwhelming majority of visits.</p>
+      </div>
+      <img src="https://images.unsplash.com/photo-1762474293029-6a7f3698312c?auto=format&fit=crop&w=900&q=70"
+           srcset="https://images.unsplash.com/photo-1762474293029-6a7f3698312c?auto=format&fit=crop&w=600&q=70 600w,
+                   https://images.unsplash.com/photo-1762474293029-6a7f3698312c?auto=format&fit=crop&w=900&q=70 900w"
+           sizes="(max-width: 940px) 100vw, 46vw" width="900" height="720" loading="lazy"
+           alt="A security guard standing near the entrance of a residential building.">
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">How we build</p>
+      <h2>Slowly, in the boring places.</h2>
+      <p class="lede" style="margin-top:16px">Access control is not a product where a clever feature makes up for a subtle mistake. The work that matters is unglamorous: making sure two people generating a code at the same instant cannot both slip past a limit, that a retried sync after a dropped connection does not report a phantom double entry, and that a phone with the wrong date cannot corrupt the order of an audit trail.</p>
+      <p class="lede" style="margin-top:18px">Those are the bugs that are invisible in a demo and expensive at three in the morning. We test for them against a real database rather than reading the code and hoping.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="/contact.html#demo">Book a demo</a>
+        <a class="btn btn-ghost" href="/contact.html">Ask us something</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="/">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16181c" stroke-width="2.1" stroke-linecap="round"><circle cx="9" cy="12" r="4"/><path d="M13 12h8M17.6 12v3.2M20.2 12v2.4"/></svg>
+          </span>
+          myestateaccess
+        </a>
+        <p>Visitor access control for gated residential estates. One-time codes that expire, verified at the boom whether or not the network is up.</p>
+      </div>
+      <div>
+        <h2 class="foot-h">Product</h2>
+        <ul>
+          <li><a href="/#how">How it works</a></li>
+          <li><a href="/#faq">Questions</a></li>
+          <li><a href="/contact.html#demo">Book a demo</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="foot-h">Company</h2>
+        <ul>
+          <li><a href="/about.html">About</a></li>
+          <li><a href="/contact.html">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="foot-h">Get in touch</h2>
+        <ul>
+          <li><a href="mailto:hello@myestateaccess.com">hello@myestateaccess.com</a></li>
+          <li><a href="/contact.html">Support</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>&copy; 2026 myestateaccess. All rights reserved.</span>
+      <span class="credits">
+        Photographs by
+        <a href="https://unsplash.com/@chungj07">Long Chung</a>,
+        <a href="https://unsplash.com/@priscilladupreez">Priscilla Du Preez</a>,
+        <a href="https://unsplash.com/@asreynolds">Alex Reynolds</a>,
+        <a href="https://unsplash.com/@declansun">Declan Sun</a>,
+        <a href="https://unsplash.com/@vclong2003">Cong Long Vu</a> and
+        <a href="https://unsplash.com/@chadnathan">Chad Nathan</a> and
+        <a href="https://unsplash.com/@pete_2112">Pete F</a> on
+        <a href="https://unsplash.com">Unsplash</a>.
+      </span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>myestateaccess — Visitor Access Control for Gated Estates</title>
+<meta name="description" content="Replace the gate visitor book with one-time codes that expire in six hours. Residents generate a code in seconds; guards verify it at the boom without signal.">
+<link rel="canonical" href="https://myestateaccess.com/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#16181c">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="myestateaccess">
+<meta property="og:url" content="https://myestateaccess.com/">
+<meta property="og:title" content="myestateaccess — Visitor Access Control for Gated Estates">
+<meta property="og:description" content="One-time visitor codes that expire in six hours and work at the gate even when the network does not. Built for residential estates, complexes and gated communities.">
+<meta property="og:image" content="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1200&h=630&q=70">
+<meta property="og:image:alt" content="A gated community entrance with a security booth">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="myestateaccess — Visitor Access Control for Gated Estates">
+<meta name="twitter:description" content="One-time visitor codes that expire in six hours and work at the gate even when the network does not.">
+<meta name="twitter:image" content="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1200&h=630&q=70">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://images.unsplash.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://myestateaccess.com/#org",
+      "name": "myestateaccess",
+      "url": "https://myestateaccess.com/",
+      "logo": "https://myestateaccess.com/favicon.svg",
+      "description": "Visitor access control software for gated residential estates.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "sales",
+        "email": "hello@myestateaccess.com",
+        "availableLanguage": "English"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "myestateaccess",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "iOS, Android, Web",
+      "url": "https://myestateaccess.com/",
+      "publisher": { "@id": "https://myestateaccess.com/#org" },
+      "featureList": [
+        "One-time visitor codes with a six-hour expiry",
+        "Offline verification at the gate",
+        "Per-house resident onboarding",
+        "Complete entry audit trail",
+        "Multi-estate management"
+      ],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ZAR", "description": "Pilot pricing on request" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How does a visitor code work?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A resident opens the app and generates a short code. They forward it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types the code in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if the gate has no internet?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The guard app keeps a local copy of the estate's live codes on the phone, so verification carries on with no signal at all. Entries are queued and synced the moment the connection returns. A network outage never becomes a gate outage." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can a code be used twice?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Codes are single use. The moment one is accepted it is spent, and a second attempt is refused and recorded as a double-entry attempt for the estate manager to review." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do residents join an estate?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Every estate has a code and every house within it has its own code. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated." }
+        },
+        {
+          "@type": "Question",
+          "name": "Who can see a resident's visitor codes?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Only the resident who created the code. Guards see a code only when it is presented at the gate. Estate administrators see that an entry happened, not the code itself, and platform operators can never see codes at all." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do visitors need to install anything?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Visitors receive a short code by whatever messaging app the resident already uses. There is nothing to download and no account to create." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16181c" stroke-width="2.1" stroke-linecap="round"><circle cx="9" cy="12" r="4"/><path d="M13 12h8M17.6 12v3.2M20.2 12v2.4"/></svg>
+      </span>
+      myestateaccess
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="/" aria-current="page">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a class="btn btn-dark" style="height:42px;padding:0 20px;font-size:14px" href="/contact.html#demo">Book a demo</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ── hero ─────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Visitor access control for gated estates</p>
+        <h1>The gate book, replaced by a code that expires.</h1>
+        <p class="lede">Residents generate a one-time code and forward it to their visitor. The guard verifies it at the boom in seconds — even with no signal. Every entry is recorded, so the estate finally has an access trail worth reading.</p>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="/contact.html#demo">Book a demo</a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+        <ul class="trust">
+          <li><span class="tick" aria-hidden="true">&checkmark;</span> Single-use codes</li>
+          <li><span class="tick" aria-hidden="true">&checkmark;</span> Six-hour expiry</li>
+          <li><span class="tick" aria-hidden="true">&checkmark;</span> Works offline at the gate</li>
+        </ul>
+      </div>
+      <figure class="hero-figure" style="margin:0">
+        <img src="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1100&q=70"
+             srcset="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=700&q=70 700w,
+                     https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1100&q=70 1100w,
+                     https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1600&q=70 1600w"
+             sizes="(max-width: 940px) 100vw, 46vw"
+             width="1100" height="935" fetchpriority="high"
+             alt="The entrance to a gated residential community, with a security booth beside the boom.">
+        <div class="badge-float">
+          <span class="code">D7DH77</span>
+          <span class="meta">Expires in 5h 42m · one use</span>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ── problem ──────────────────────────────────────────────── -->
+  <section class="tight">
+    <div class="wrap">
+      <h2>A paper book at the boom is not access control.</h2>
+      <p class="lede" style="margin-top:16px">It is a queue, an illegible name and a phone number nobody will ever call. When something goes wrong at three in the morning, the estate has a page of handwriting and no way to tell who actually came through.</p>
+      <div class="grid grid-3" style="margin-top:36px">
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">01</div>
+          <h3>Nobody verifies the name</h3>
+          <p>A visitor writes anything they like. There is no link between the person at the boom and the resident they claim to be visiting.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">02</div>
+          <h3>Access never expires</h3>
+          <p>A gate code shared once on a residents' group chat keeps working for months, for everyone who ever saw it.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon" aria-hidden="true">03</div>
+          <h3>The record is unusable</h3>
+          <p>Reconstructing one evening means leafing through pages. Nobody does it, so the book is written but never read.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── how it works ─────────────────────────────────────────── -->
+  <section id="how">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2>Three steps, about twenty seconds.</h2>
+      <div class="steps" style="margin-top:36px">
+        <div class="step">
+          <h3>The resident makes a code</h3>
+          <p>They open the app and tap once. A short code appears — no ambiguous letters, so it survives being read aloud down a phone line. They forward it however they already talk to their visitor.</p>
+        </div>
+        <div class="step">
+          <h3>The visitor arrives</h3>
+          <p>They give the code at the boom. Nothing to install, no account, no app. The code is the whole interaction.</p>
+        </div>
+        <div class="step">
+          <h3>The guard verifies</h3>
+          <p>The guard types it in and gets a clear answer with the house name: admit, or refuse with the reason. The code is spent the moment it is accepted.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── offline band ─────────────────────────────────────────── -->
+  <section class="tight">
+    <div class="wrap">
+      <div class="band">
+        <div>
+          <p class="eyebrow on-dark">Built for the real world</p>
+          <h2>The gate keeps working when the internet does not.</h2>
+          <p>Estate gates sit behind concrete walls, in dead spots, on ADSL lines that drop. Most access systems fail closed and the queue backs up onto the road.</p>
+          <ul class="band-list">
+            <li><b>&rarr;</b><span>The guard's phone keeps a local copy of the estate's live codes, so verification carries on with no signal at all.</span></li>
+            <li><b>&rarr;</b><span>Entries are queued on the device and sync the moment the connection returns.</span></li>
+            <li><b>&rarr;</b><span>If a code was already used elsewhere, the double entry is flagged for the estate manager rather than quietly dropped.</span></li>
+          </ul>
+        </div>
+        <img src="https://images.unsplash.com/photo-1644785103175-e454b0a82845?auto=format&fit=crop&w=900&q=70"
+             srcset="https://images.unsplash.com/photo-1644785103175-e454b0a82845?auto=format&fit=crop&w=600&q=70 600w,
+                     https://images.unsplash.com/photo-1644785103175-e454b0a82845?auto=format&fit=crop&w=900&q=70 900w"
+             sizes="(max-width: 940px) 100vw, 38vw" width="900" height="675" loading="lazy"
+             alt="A residential street gate standing closed under a lamp at night.">
+      </div>
+    </div>
+  </section>
+
+  <!-- ── houses ───────────────────────────────────────────────── -->
+  <section>
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Estates, houses, residents</p>
+        <h2>Every house has its own code, so people land in the right home.</h2>
+        <p class="lede" style="margin-top:16px">An estate manager adds a house and its landlord once. The house gets a code of its own. A resident signs up with the estate code and their house code together, and an administrator approves them before anything can be generated.</p>
+        <p style="margin-top:18px;color:var(--muted)">Several people share one home — partners, adult children, a tenant — each on their own phone. The second person joins with the same house code, and the guard sees the house name on every verification.</p>
+        <div class="btn-row">
+          <a class="btn btn-dark" href="/about.html">Why we built it this way</a>
+        </div>
+      </div>
+      <img src="https://images.unsplash.com/photo-1778996370066-a9262aa7b0e8?auto=format&fit=crop&w=900&q=70"
+           srcset="https://images.unsplash.com/photo-1778996370066-a9262aa7b0e8?auto=format&fit=crop&w=600&q=70 600w,
+                   https://images.unsplash.com/photo-1778996370066-a9262aa7b0e8?auto=format&fit=crop&w=900&q=70 900w"
+           sizes="(max-width: 940px) 100vw, 46vw" width="900" height="720" loading="lazy"
+           alt="A modern house behind a closed metal gate with trimmed hedges.">
+    </div>
+  </section>
+
+  <!-- ── roles ────────────────────────────────────────────────── -->
+  <section class="tight">
+    <div class="wrap">
+      <p class="eyebrow">One platform, four jobs</p>
+      <h2>Everybody sees exactly what they need, and nothing else.</h2>
+      <div class="grid grid-2" style="margin-top:36px">
+        <div class="card">
+          <h3>Residents</h3>
+          <p>Generate up to three live codes at a time, watch them count down, and cancel one early if plans change. Their code history is theirs alone.</p>
+        </div>
+        <div class="card">
+          <h3>Guards</h3>
+          <p>One screen, one input. Type the code, get an answer with the house name. The shift log shows every check made on that phone.</p>
+        </div>
+        <div class="card">
+          <h3>Estate managers</h3>
+          <p>Add houses and landlords, approve residents, manage guards, and read a searchable trail of every entry and every refusal.</p>
+        </div>
+        <div class="card">
+          <h3>Platform operators</h3>
+          <p>Onboard estates and watch platform health across all of them — without the ability to see a single resident's address or code.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── privacy ──────────────────────────────────────────────── -->
+  <section>
+    <div class="wrap split">
+      <img src="https://images.unsplash.com/photo-1488509082528-cefbba5ad692?auto=format&fit=crop&w=900&q=70"
+           srcset="https://images.unsplash.com/photo-1488509082528-cefbba5ad692?auto=format&fit=crop&w=600&q=70 600w,
+                   https://images.unsplash.com/photo-1488509082528-cefbba5ad692?auto=format&fit=crop&w=900&q=70 900w"
+           sizes="(max-width: 940px) 100vw, 46vw" width="900" height="720" loading="lazy"
+           alt="A person sending a message on a smartphone.">
+      <div>
+        <p class="eyebrow">Privacy by construction</p>
+        <h2>A resident's code is not the estate's business.</h2>
+        <p class="lede" style="margin-top:16px">The estate needs to know that somebody was admitted, at which gate and when. It does not need the characters a resident sent to their sister.</p>
+        <p style="margin-top:18px;color:var(--muted)">That separation is enforced in the database rather than in the interface. There is no screen anywhere in the product that shows a live code to anyone but the resident who made it — not because it is hidden, but because nothing on the server will return one.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── stats ────────────────────────────────────────────────── -->
+  <section class="tight">
+    <div class="wrap">
+      <div class="stats">
+        <div class="stat"><span class="n">6h</span><span class="l">Code lifetime, then it stops working</span></div>
+        <div class="stat"><span class="n">1</span><span class="l">Use per code, enforced at the database</span></div>
+        <div class="stat"><span class="n">3</span><span class="l">Live codes per resident at a time</span></div>
+        <div class="stat"><span class="n">0</span><span class="l">Signal needed to verify at the gate</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ────────────────────────────────────────────────── -->
+  <section id="faq">
+    <div class="wrap">
+      <p class="eyebrow">Questions</p>
+      <h2>Frequently asked</h2>
+      <div class="faq" style="margin-top:32px">
+        <details open>
+          <summary>How does a visitor code work?</summary>
+          <p>A resident opens the app and generates a short code, then forwards it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types it in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours.</p>
+        </details>
+        <details>
+          <summary>What happens if the gate has no internet?</summary>
+          <p>The guard app keeps a local copy of the estate's live codes on the phone, so verification carries on with no signal at all. Entries are queued and synced the moment the connection returns. A network outage never becomes a gate outage.</p>
+        </details>
+        <details>
+          <summary>Can a code be used twice?</summary>
+          <p>No. Codes are single use. The moment one is accepted it is spent, and a second attempt is refused and recorded as a double-entry attempt for the estate manager to review.</p>
+        </details>
+        <details>
+          <summary>How do residents join an estate?</summary>
+          <p>Every estate has a code and every house within it has its own. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated. Nobody adds themselves to an estate.</p>
+        </details>
+        <details>
+          <summary>Who can see a resident's visitor codes?</summary>
+          <p>Only the resident who created them. Guards see a code when it is presented at the gate. Estate administrators see that an entry happened, not the code itself. Platform operators cannot see codes at all.</p>
+        </details>
+        <details>
+          <summary>Do visitors need to install anything?</summary>
+          <p>No. Visitors receive a short code through whatever messaging app the resident already uses. There is nothing to download and no account to create.</p>
+        </details>
+        <details>
+          <summary>What happens when a resident moves out?</summary>
+          <p>The estate manager deactivates their membership. Their account stays intact — people move between estates — but they can no longer generate codes for the home they left, and any live codes are revoked.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ──────────────────────────────────────────────────── -->
+  <section class="tight">
+    <div class="wrap">
+      <div class="cta">
+        <h2>See it running at your gate.</h2>
+        <p class="lede" style="max-width:56ch">A demo takes twenty minutes. We will set up your estate with a house and a guard phone so you can watch a code go out and come back in.</p>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="/contact.html#demo">Book a demo</a>
+          <a class="btn btn-ghost" style="color:var(--canvas);box-shadow:inset 0 0 0 1.5px #4a4f57" href="/about.html">Read about us</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="/">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16181c" stroke-width="2.1" stroke-linecap="round"><circle cx="9" cy="12" r="4"/><path d="M13 12h8M17.6 12v3.2M20.2 12v2.4"/></svg>
+          </span>
+          myestateaccess
+        </a>
+        <p>Visitor access control for gated residential estates. One-time codes that expire, verified at the boom whether or not the network is up.</p>
+      </div>
+      <div>
+        <h2 class="foot-h">Product</h2>
+        <ul>
+          <li><a href="/#how">How it works</a></li>
+          <li><a href="/#faq">Questions</a></li>
+          <li><a href="/contact.html#demo">Book a demo</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="foot-h">Company</h2>
+        <ul>
+          <li><a href="/about.html">About</a></li>
+          <li><a href="/contact.html">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="foot-h">Get in touch</h2>
+        <ul>
+          <li><a href="mailto:hello@myestateaccess.com">hello@myestateaccess.com</a></li>
+          <li><a href="/contact.html">Support</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>&copy; 2026 myestateaccess. All rights reserved.</span>
+      <span class="credits">
+        Photographs by
+        <a href="https://unsplash.com/@chungj07">Long Chung</a>,
+        <a href="https://unsplash.com/@priscilladupreez">Priscilla Du Preez</a>,
+        <a href="https://unsplash.com/@asreynolds">Alex Reynolds</a>,
+        <a href="https://unsplash.com/@declansun">Declan Sun</a>,
+        <a href="https://unsplash.com/@vclong2003">Cong Long Vu</a> and
+        <a href="https://unsplash.com/@chadnathan">Chad Nathan</a> and
+        <a href="https://unsplash.com/@pete_2112">Pete F</a> on
+        <a href="https://unsplash.com">Unsplash</a>.
+      </span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

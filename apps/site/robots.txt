@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://myestateaccess.com/sitemap.xml

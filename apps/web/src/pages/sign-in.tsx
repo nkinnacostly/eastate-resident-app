@@ -24,7 +24,7 @@ export function SignIn() {
         onSubmit={submit}
         className="w-full max-w-[380px] rounded-pane bg-canvas p-8"
       >
-        <h1 className="text-[27px] font-extrabold tracking-tight">Estate Access</h1>
+        <h1 className="text-[27px] font-extrabold tracking-tight">myestateaccess</h1>
         <p className="mt-1.5 text-[13px] text-muted">
           Sign in with your estate admin account.
         </p>

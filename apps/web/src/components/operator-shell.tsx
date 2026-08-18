@@ -36,7 +36,7 @@ export function OperatorShell() {
             <Brand />
           </div>
           <div>
-            <div className="text-[14px] font-extrabold tracking-tight text-canvas">Estate Access</div>
+            <div className="text-[14px] font-extrabold tracking-tight text-canvas">myestateaccess</div>
             <div className="mt-0.5 text-[10px] font-bold tracking-[0.1em] text-lime">OPERATOR</div>
           </div>
         </div>

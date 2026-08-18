@@ -46,7 +46,7 @@ export function ChangePassword() {
           <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] bg-lime">
             <Brand />
           </div>
-          <div className="text-[15px] font-extrabold tracking-tight">Estate Access</div>
+          <div className="text-[15px] font-extrabold tracking-tight">myestateaccess</div>
         </div>
 
         <h1 className="mt-7 text-[24px] font-extrabold tracking-tight">Choose your own password</h1>

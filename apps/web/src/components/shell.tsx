@@ -63,7 +63,7 @@ export function Shell({ base = '' }: { base?: string }) {
           <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] bg-lime">
             <Brand />
           </div>
-          <div className="text-[15px] font-extrabold tracking-tight text-canvas">Estate Access</div>
+          <div className="text-[15px] font-extrabold tracking-tight text-canvas">myestateaccess</div>
         </div>
 
         <nav className="flex flex-col">
