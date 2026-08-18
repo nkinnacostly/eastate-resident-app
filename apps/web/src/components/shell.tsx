@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import type { NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../lib/auth';
 import {
@@ -90,7 +91,7 @@ export function Shell({ base = '' }: { base?: string }) {
                         key={c.to}
                         to={href(c.to)}
                         end={c.end}
-                        className={({ isActive }) =>
+                        className={({ isActive }: NavLinkRenderProps) =>
                           `flex h-[30px] items-center gap-2.5 pl-11 text-[12.5px] font-medium transition ${
                             isActive ? 'text-lime' : 'text-muted-2 hover:text-canvas'
                           }`

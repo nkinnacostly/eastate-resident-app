@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import type { NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../lib/auth';
 import { Brand, EstatesIcon, GridIcon, GuardsIcon, HealthIcon, SettingsIcon } from './icons';
@@ -47,7 +48,7 @@ export function OperatorShell() {
               key={to}
               to={to}
               end={end}
-              className={({ isActive }) =>
+              className={({ isActive }: NavLinkRenderProps) =>
                 `flex h-[42px] items-center gap-3 rounded-[14px] px-3.5 text-[13.5px] font-semibold transition ${
                   isActive ? 'bg-ink-2 text-canvas' : 'text-muted-2 hover:text-canvas'
                 }`

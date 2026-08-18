@@ -1,5 +1,11 @@
 {
   "compilerOptions": {
+    /* Pinned, not inherited: TypeScript 6 defaults `strict` to true while the
+       repo root still runs TS 5.9, where it defaults to false. Leaving it
+       unset means the compiler version silently decides how strictly this app
+       is checked. */
+    "strict": true,
+
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "es2023",
     "lib": ["ES2023"],

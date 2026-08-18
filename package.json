@@ -20,7 +20,8 @@
     "resident": "npm run start --workspace @estate/resident",
     "guard": "npm run start --workspace @estate/guard",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "check:deps": "node scripts/check-deps.mjs"
   },
   "devDependencies": {
     "supabase": "^2.114.0",
