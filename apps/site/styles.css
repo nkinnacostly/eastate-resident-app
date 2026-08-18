@@ -261,10 +261,18 @@ p { margin: 0; max-width: var(--measure); text-wrap: pretty; }
      is the one to drop: it repeats the hero's primary button, which is the
      next thing on the page. */
   .nav .btn { display: none; }
+  /* Sign in puts a fourth item back in that row. The brand mark is itself a
+     link to "/", so Home is now the redundant one to drop — Sign in is how an
+     admin actually gets into the product and has to stay reachable. */
+  .nav a[href="/"] { display: none; }
   .brand span:last-child, .brand { font-size: 15px; }
 }
 @media (max-width: 400px) {
   .nav a { padding: 8px 7px; font-size: 13.5px; }
+  /* At 320px the wordmark plus three nav items overflow by 45px. The mark is
+     still a link to "/" and still identifies the site, so the word is what
+     gives way — dropping a nav item would cost an actual destination. */
+  .site-head .brand-word { display: none; }
 }
 
 /* `.nav a` is more specific than `.btn-*`, so without this the header CTA
@@ -273,6 +281,11 @@ p { margin: 0; max-width: var(--measure); text-wrap: pretty; }
 .nav a.btn-dark { color: var(--canvas); }
 .nav a.btn-dark:hover { color: var(--canvas); background: var(--ink); }
 .nav a.btn-primary { color: var(--ink); }
+
+/* Sign in leaves the marketing site for the dashboard, so it reads as an
+   action rather than another page: full-strength ink against the muted nav. */
+.nav a.nav-signin { color: var(--ink); font-weight: 700; }
+.nav a.nav-signin:hover { background: var(--field); }
 
 /* Footer section headings are h2 for correct document outline; this keeps the
    small visual size they had as h4. */
