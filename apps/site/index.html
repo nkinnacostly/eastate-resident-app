@@ -1,106 +1,159 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-ZA">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>myestateaccess — Visitor Access Control for Gated Estates</title>
-<meta name="description" content="Replace the gate visitor book with one-time codes that expire in six hours. Residents generate a code in seconds; guards verify it at the boom without signal.">
+<title>Visitor Management System for Gated Estates | myestateaccess</title>
+<meta name="description" content="Visitor management for gated estates in South Africa. Residents issue one-time codes that expire in six hours; guards verify them at the boom, offline.">
 <link rel="canonical" href="https://myestateaccess.com/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#16181c">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="myestateaccess">
+<meta property="og:locale" content="en_ZA">
+  <meta property="og:site_name" content="myestateaccess">
 <meta property="og:url" content="https://myestateaccess.com/">
-<meta property="og:title" content="myestateaccess — Visitor Access Control for Gated Estates">
+<meta property="og:title" content="Visitor Management System for Gated Estates | myestateaccess">
 <meta property="og:description" content="One-time visitor codes that expire in six hours and work at the gate even when the network does not. Built for residential estates, complexes and gated communities.">
-<meta property="og:image" content="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1200&h=630&q=70">
-<meta property="og:image:alt" content="A gated community entrance with a security booth">
+<meta property="og:image" content="https://myestateaccess.com/og.png">
+<meta property="og:image:alt" content="myestateaccess — visitor management for gated estates, with one-time codes that expire in six hours.">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="myestateaccess — Visitor Access Control for Gated Estates">
+<meta name="twitter:title" content="Visitor Management for Gated Estates | myestateaccess">
 <meta name="twitter:description" content="One-time visitor codes that expire in six hours and work at the gate even when the network does not.">
-<meta name="twitter:image" content="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1200&h=630&q=70">
+<meta name="twitter:image" content="https://myestateaccess.com/og.png">
+  <meta name="twitter:image:alt" content="myestateaccess — visitor management for gated estates, with one-time codes that expire in six hours.">
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css">
+<link rel="preload" as="image" href="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1100&q=70" fetchpriority="high"
+        imagesrcset="https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=700&q=70 700w, https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1100&q=70 1100w, https://images.unsplash.com/photo-1775112077888-8fa36e9bbc51?auto=format&fit=crop&w=1600&q=70 1600w"
+        imagesizes="(max-width: 940px) 100vw, 46vw">
+  <link rel="stylesheet" href="/styles.css">
 
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://myestateaccess.com/#org",
-      "name": "myestateaccess",
-      "url": "https://myestateaccess.com/",
-      "logo": "https://myestateaccess.com/favicon.svg",
-      "description": "Visitor access control software for gated residential estates.",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "sales",
-        "email": "hello@myestateaccess.com",
-        "availableLanguage": "English"
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://myestateaccess.com/#org",
+        "name": "myestateaccess",
+        "url": "https://myestateaccess.com/",
+        "logo": "https://myestateaccess.com/favicon.svg",
+        "description": "Visitor management software for gated and security estates in South Africa.",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "sales",
+          "email": "hello@myestateaccess.com",
+          "availableLanguage": "English"
+        },
+        "areaServed": {
+          "@type": "Country",
+          "name": "South Africa"
+        },
+        "knowsLanguage": "en-ZA"
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://myestateaccess.com/#website",
+        "url": "https://myestateaccess.com/",
+        "name": "myestateaccess",
+        "description": "Visitor management system for gated residential estates.",
+        "publisher": {
+          "@id": "https://myestateaccess.com/#org"
+        },
+        "inLanguage": "en-ZA"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "myestateaccess",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "iOS, Android, Web",
+        "url": "https://myestateaccess.com/",
+        "publisher": {
+          "@id": "https://myestateaccess.com/#org"
+        },
+        "featureList": [
+          "One-time visitor codes with a six-hour expiry",
+          "Offline verification at the gate",
+          "Per-house resident onboarding",
+          "Complete entry audit trail",
+          "Multi-estate management"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "ZAR",
+          "description": "Pilot pricing on request"
+        },
+        "isPartOf": {
+          "@id": "https://myestateaccess.com/#website"
+        },
+        "inLanguage": "en-ZA"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does a visitor code work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A resident opens the app and generates a short code. They forward it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types the code in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens if the gate has no internet?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The guard app keeps a local copy of the estate's live codes on the phone, so verification carries on with no signal at all. Entries are queued and synced the moment the connection returns. A network outage never becomes a gate outage."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can a code be used twice?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Codes are single use. The moment one is accepted it is spent, and a second attempt is refused and recorded as a double-entry attempt for the estate manager to review."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do residents join an estate?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Every estate has a code and every house within it has its own code. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Who can see a resident's visitor codes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Only the resident who created the code. Guards see a code only when it is presented at the gate. Estate administrators see that an entry happened, not the code itself, and platform operators can never see codes at all."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do visitors need to install anything?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Visitors receive a short code by whatever messaging app the resident already uses. There is nothing to download and no account to create."
+            }
+          }
+        ]
       }
-    },
-    {
-      "@type": "SoftwareApplication",
-      "name": "myestateaccess",
-      "applicationCategory": "SecurityApplication",
-      "operatingSystem": "iOS, Android, Web",
-      "url": "https://myestateaccess.com/",
-      "publisher": { "@id": "https://myestateaccess.com/#org" },
-      "featureList": [
-        "One-time visitor codes with a six-hour expiry",
-        "Offline verification at the gate",
-        "Per-house resident onboarding",
-        "Complete entry audit trail",
-        "Multi-estate management"
-      ],
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ZAR", "description": "Pilot pricing on request" }
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How does a visitor code work?",
-          "acceptedAnswer": { "@type": "Answer", "text": "A resident opens the app and generates a short code. They forward it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types the code in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours." }
-        },
-        {
-          "@type": "Question",
-          "name": "What happens if the gate has no internet?",
-          "acceptedAnswer": { "@type": "Answer", "text": "The guard app keeps a local copy of the estate's live codes on the phone, so verification carries on with no signal at all. Entries are queued and synced the moment the connection returns. A network outage never becomes a gate outage." }
-        },
-        {
-          "@type": "Question",
-          "name": "Can a code be used twice?",
-          "acceptedAnswer": { "@type": "Answer", "text": "No. Codes are single use. The moment one is accepted it is spent, and a second attempt is refused and recorded as a double-entry attempt for the estate manager to review." }
-        },
-        {
-          "@type": "Question",
-          "name": "How do residents join an estate?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Every estate has a code and every house within it has its own code. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated." }
-        },
-        {
-          "@type": "Question",
-          "name": "Who can see a resident's visitor codes?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Only the resident who created the code. Guards see a code only when it is presented at the gate. Estate administrators see that an entry happened, not the code itself, and platform operators can never see codes at all." }
-        },
-        {
-          "@type": "Question",
-          "name": "Do visitors need to install anything?",
-          "acceptedAnswer": { "@type": "Answer", "text": "No. Visitors receive a short code by whatever messaging app the resident already uses. There is nothing to download and no account to create." }
-        }
-      ]
-    }
-  ]
-}
-</script>
+    ]
+  }
+  </script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -115,10 +168,10 @@
     </a>
     <nav class="nav" aria-label="Primary">
       <a href="/" aria-current="page">Home</a>
-      <a href="/about.html">About</a>
-      <a href="/contact.html">Contact</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
         <a class="nav-signin" href="https://app.myestateaccess.com/">Sign in</a>
-      <a class="btn btn-dark" style="height:42px;padding:0 20px;font-size:14px" href="/contact.html#demo">Book a demo</a>
+      <a class="btn btn-dark" style="height:42px;padding:0 20px;font-size:14px" href="/contact#demo">Book a demo</a>
     </nav>
   </div>
 </header>
@@ -129,11 +182,11 @@
   <section class="hero">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">Visitor access control for gated estates</p>
+        <p class="eyebrow">Visitor management for gated estates in South Africa</p>
         <h1>The gate book, replaced by a code that expires.</h1>
         <p class="lede">Residents generate a one-time code and forward it to their visitor. The guard verifies it at the boom in seconds — even with no signal. Every entry is recorded, so the estate finally has an access trail worth reading.</p>
         <div class="btn-row">
-          <a class="btn btn-primary" href="/contact.html#demo">Book a demo</a>
+          <a class="btn btn-primary" href="/contact#demo">Book a demo</a>
           <a class="btn btn-ghost" href="#how">See how it works</a>
         </div>
         <ul class="trust">
@@ -237,7 +290,7 @@
         <p class="lede" style="margin-top:16px">An estate manager adds a house and its landlord once. The house gets a code of its own. A resident signs up with the estate code and their house code together, and an administrator approves them before anything can be generated.</p>
         <p style="margin-top:18px;color:var(--muted)">Several people share one home — partners, adult children, a tenant — each on their own phone. The second person joins with the same house code, and the guard sees the house name on every verification.</p>
         <div class="btn-row">
-          <a class="btn btn-dark" href="/about.html">Why we built it this way</a>
+          <a class="btn btn-dark" href="/about">Why we built it this way</a>
         </div>
       </div>
       <img src="https://images.unsplash.com/photo-1778996370066-a9262aa7b0e8?auto=format&fit=crop&w=900&q=70"
@@ -348,8 +401,8 @@
         <h2>See it running at your gate.</h2>
         <p class="lede" style="max-width:56ch">A demo takes twenty minutes. We will set up your estate with a house and a guard phone so you can watch a code go out and come back in.</p>
         <div class="btn-row">
-          <a class="btn btn-primary" href="/contact.html#demo">Book a demo</a>
-          <a class="btn btn-ghost" style="color:var(--canvas);box-shadow:inset 0 0 0 1.5px #4a4f57" href="/about.html">Read about us</a>
+          <a class="btn btn-primary" href="/contact#demo">Book a demo</a>
+          <a class="btn btn-ghost" style="color:var(--canvas);box-shadow:inset 0 0 0 1.5px #4a4f57" href="/about">Read about us</a>
         </div>
       </div>
     </div>
@@ -367,29 +420,29 @@
           </span>
           <span class="brand-word">myestateaccess</span>
         </a>
-        <p>Visitor access control for gated residential estates. One-time codes that expire, verified at the boom whether or not the network is up.</p>
+        <p>Visitor management for gated and security estates across South Africa. One-time codes that expire, verified at the boom whether or not the network is up.</p>
       </div>
       <div>
         <h2 class="foot-h">Product</h2>
         <ul>
           <li><a href="/#how">How it works</a></li>
           <li><a href="/#faq">Questions</a></li>
-          <li><a href="/contact.html#demo">Book a demo</a></li>
+          <li><a href="/contact#demo">Book a demo</a></li>
             <li><a href="https://app.myestateaccess.com/">Estate admin sign-in</a></li>
         </ul>
       </div>
       <div>
         <h2 class="foot-h">Company</h2>
         <ul>
-          <li><a href="/about.html">About</a></li>
-          <li><a href="/contact.html">Contact</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
         </ul>
       </div>
       <div>
         <h2 class="foot-h">Get in touch</h2>
         <ul>
           <li><a href="mailto:hello@myestateaccess.com">hello@myestateaccess.com</a></li>
-          <li><a href="/contact.html">Support</a></li>
+          <li><a href="/contact">Support</a></li>
         </ul>
       </div>
     </div>

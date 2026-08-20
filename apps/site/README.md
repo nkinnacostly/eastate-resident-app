@@ -10,7 +10,11 @@ step in exchange for nothing these three pages need.
 
 ## Local preview
 
-    python3 -m http.server 8123 --directory apps/site
+    npx serve apps/site
+
+`npx serve` resolves extensionless URLs the way Vercel's `cleanUrls` does.
+`python3 -m http.server` does not, so `/about` and `/contact` 404 under it even
+though they are correct in production.
 
 ## Deploying
 
