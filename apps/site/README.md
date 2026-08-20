@@ -14,8 +14,11 @@ step in exchange for nothing these three pages need.
 
 ## Deploying
 
-This is a **separate Vercel project** from the dashboard. The repo root
-`vercel.json` builds `apps/web`; this directory has its own.
+This is a **separate Vercel project** from the dashboard. Each app owns its
+own deploy config — `apps/site/vercel.json` here, `apps/web/vercel.json` for the
+dashboard — and Vercel reads whichever one sits in that project's Root
+Directory. There is deliberately no `vercel.json` at the repo root: a project
+rooted there would pick it up and build the wrong app.
 
 1. New Vercel project from the same repository.
 2. **Root Directory:** `apps/site`
