@@ -25,7 +25,12 @@ export default function CodeIssued() {
   const expires = row?.expires_at ?? '';
 
   const estateName = memberships.find((m) => m.estate_id === activeEstateId)?.estate_name ?? 'the estate';
-  const message = shareMessage(code, estateName, expires);
+
+  // Read off the stored row, not from navigation state, so re-sharing this code
+  // later — from the Codes tab, or after the app restarted — carries the same
+  // instructions the rider was originally sent.
+  const deliveryNote = row?.delivery_note ?? null;
+  const message = shareMessage(code, estateName, expires, deliveryNote);
 
   // Held so the "Copied" reset can be cancelled — otherwise leaving the screen
   // within 1.6s sets state on an unmounted component.
@@ -102,6 +107,26 @@ export default function CodeIssued() {
             is backed by a column: "Main" was invented, so the screen stated a
             gate the estate may not have. Restore it when visitors and gates are
             modelled — until then the code and its expiry are what we know. */}
+
+        {row?.is_delivery ? (
+          <Card className="mt-3 p-4">
+            <Eyebrow className="text-muted">DELIVERY</Eyebrow>
+            {deliveryNote ? (
+              <>
+                {/* Shown verbatim so the resident can check what the rider will
+                    actually receive before sending it. */}
+                <Text className="mt-2 font-jk text-sub leading-5 text-ink">{deliveryNote}</Text>
+                <Text className="mt-2.5 font-jk text-micro text-muted">
+                  Sent with the code.
+                </Text>
+              </>
+            ) : (
+              <Text className="mt-2 font-jk text-sub text-muted">
+                No instructions added.
+              </Text>
+            )}
+          </Card>
+        ) : null}
 
         <View className="flex-1" />
 

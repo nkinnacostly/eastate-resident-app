@@ -10,6 +10,16 @@ export interface CodeRow {
   used_at: string | null;
   revoked_reason: string | null;
   status: DisplayStatus;
+  is_delivery: boolean;
+  /** Instructions for a rider. Only ever populated when `is_delivery`. */
+  delivery_note: string | null;
+}
+
+/** What the resident answered in the delivery prompt before the code was minted. */
+export interface DeliveryDetails {
+  isDelivery: boolean;
+  /** Trimmed by the server; whitespace-only is stored as no note at all. */
+  note?: string | null;
 }
 
 /**
@@ -20,9 +30,17 @@ export interface CodeRow {
  * thrown error, so branch on it rather than treating it as a failure. The
  * `error` channel is for genuine faults: network, auth, or a bug.
  */
-export async function mintCode(estateId: string): Promise<MintResult> {
+export async function mintCode(
+  estateId: string,
+  delivery: DeliveryDetails = { isDelivery: false },
+): Promise<MintResult> {
   const { data, error } = await supabase.rpc('mint_access_code', {
     p_estate_id: estateId,
+    p_is_delivery: delivery.isDelivery,
+    // Omitted rather than sent empty. PostgREST leaves out an undefined
+    // argument, so the function's own `default null` applies — and the CHECK
+    // constraint rejects a zero-length note, so '' was never valid anyway.
+    p_delivery_note: delivery.isDelivery ? delivery.note?.trim() || undefined : undefined,
   });
 
   if (error) throw new Error(error.message);
@@ -45,7 +63,9 @@ export async function mintCode(estateId: string): Promise<MintResult> {
 export async function listMyCodes(): Promise<CodeRow[]> {
   const { data, error } = await supabase
     .from('access_codes')
-    .select('id, code, created_at, expires_at, used_at, revoked_reason, status')
+    .select(
+      'id, code, created_at, expires_at, used_at, revoked_reason, status, is_delivery, delivery_note',
+    )
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -60,6 +80,8 @@ export async function listMyCodes(): Promise<CodeRow[]> {
     used_at: r.used_at,
     revoked_reason: r.revoked_reason,
     status: displayStatus({ status: r.status, expires_at: r.expires_at }),
+    is_delivery: r.is_delivery ?? false,
+    delivery_note: r.delivery_note ?? null,
   }));
 }
 

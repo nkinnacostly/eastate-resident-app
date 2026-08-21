@@ -80,16 +80,27 @@ export function Keypad({
   value,
   onChange,
   onSubmit,
+  onBlur,
   busy,
+  canSubmit,
 }: {
   value: string;
   onChange: (next: string) => void;
   onSubmit: () => void;
+  /** Marks the field touched once the guard has entered anything. */
+  onBlur?: () => void;
   busy?: boolean;
+  /**
+   * Whether the schema accepts what is typed. Passed in rather than recomputed
+   * here — the keypad must not hold a second opinion about what a valid code
+   * is, or the two will drift.
+   */
+  canSubmit: boolean;
 }) {
   const full = value.length === CODE_LENGTH;
   const press = (c: string) => {
     if (value.length < CODE_LENGTH) onChange(value + c);
+    onBlur?.();
   };
 
   return (
@@ -118,7 +129,10 @@ export function Keypad({
       <View className="flex-row gap-1.5">
         <Key
           label="Delete"
-          onPress={() => onChange(value.slice(0, -1))}
+          onPress={() => {
+            onChange(value.slice(0, -1));
+            onBlur?.();
+          }}
           disabled={value.length === 0}
           className="flex-1 bg-field"
           textClassName="text-sub text-muted"
@@ -126,9 +140,11 @@ export function Keypad({
         <Key
           label={busy ? 'Checking…' : 'Check'}
           onPress={onSubmit}
-          // Guarded on length: a partial code can only ever come back
-          // unknown_code, and that would write a junk row into the audit log.
-          disabled={!full || busy}
+          // Guarded on the SCHEMA, not on length: a code that is short, or the
+          // right length but carrying a glyph no code can contain, can only
+          // ever come back unknown_code — and that writes a junk row into the
+          // audit log an admin then has to read.
+          disabled={!canSubmit || busy}
           className="flex-1 bg-lime"
           textClassName="text-sub"
         />

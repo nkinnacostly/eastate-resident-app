@@ -101,9 +101,6 @@ export function CodeText({ code, className = '' }: { code: string; className?: s
   );
 }
 
-export function Field({ children }: { children: React.ReactNode }) {
-  return <View className="h-[52px] flex-row items-center rounded-field bg-field px-4">{children}</View>;
-}
 
 /**
  * Text input, defined once so every form shares the same height and value size.
@@ -117,5 +114,57 @@ export function Input({ className = '', ...rest }: TextInputProps & { className?
       className={`h-[52px] rounded-field bg-field px-4 font-jk text-body text-ink ${className}`}
       {...rest}
     />
+  );
+}
+
+/**
+ * An Input plus the one message explaining why it is not accepted yet.
+ *
+ * The message is passed in, never derived here — it is whatever the zod schema
+ * said (see lib/schemas.ts), so the rule and the sentence a resident reads can
+ * never drift apart.
+ *
+ * `error` renders in a fixed-height slot so a field turning invalid does not
+ * shove the rest of the form — and the button being reached for — down the
+ * screen mid-tap.
+ */
+export function Field({
+  error,
+  label,
+  className = '',
+  ...rest
+}: TextInputProps & {
+  error?: string;
+  /** Not rendered: it names the field for a screen reader, and prefixes the error. */
+  label: string;
+  className?: string;
+  /** React 19 passes ref as a plain prop, so no forwardRef wrapper is needed. */
+  ref?: React.Ref<TextInput>;
+}) {
+  const invalid = Boolean(error);
+  return (
+    <View>
+      <Input
+        // The message is folded into the LABEL rather than the accessibility
+        // hint: VoiceOver reads hints last and can be switched off entirely, so
+        // a resident using a screen reader would get a coral border they cannot
+        // see and silence. The label is always read.
+        accessibilityLabel={error ? `${label}. ${error}` : label}
+        className={`${invalid ? 'border border-coral' : ''} ${className}`}
+        {...rest}
+      />
+      <View className="h-5 justify-center px-1">
+        {error ? <Text className="font-jk-md text-micro text-coral-ink">{error}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/** Whole-form failure — a rejected sign-up, a server that said no. */
+export function FormError({ children }: { children: React.ReactNode }) {
+  return (
+    <View className="mt-1 rounded-card bg-coral-wash p-3.5">
+      <Text className="font-jk-md text-sub text-coral-ink">{children}</Text>
+    </View>
   );
 }

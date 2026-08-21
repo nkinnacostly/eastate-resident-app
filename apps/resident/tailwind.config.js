@@ -17,6 +17,12 @@ module.exports = {
         muted: '#8b9096', // secondary text
         lime: '#cdf24a', // "anything that moves you forward"
         hair: '#dfe4ea',
+        // Rejection. Only ever the reason an input is not accepted yet —
+        // nothing in this app is destructive enough to warrant red elsewhere.
+        // Shared with the guard app so one wrong field looks the same in both.
+        coral: '#ff6b57',
+        'coral-ink': '#a33c2b', // the message itself: #ff6b57 on canvas is ~2.9:1
+        'coral-wash': '#fff2ef', // banner background
       },
       // React Native picks a font FILE, not a weight — so each weight is its
       // own family. Using font-<key> keeps that explicit; font-bold (a weight

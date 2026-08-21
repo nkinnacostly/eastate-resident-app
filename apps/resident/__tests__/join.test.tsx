@@ -35,9 +35,21 @@ const renderSettled = async () => {
   await waitFor(() => expect(mockPending).toHaveBeenCalled());
 };
 
+const requestAccess = () => screen.getByRole('button', { name: 'Request access' });
+
 const fill = (estate: string, house = 'H4K2') => {
   fireEvent.changeText(screen.getByPlaceholderText('Estate code'), estate);
   fireEvent.changeText(screen.getByPlaceholderText('House code'), house);
+};
+
+/**
+ * Validation is asynchronous, so the button is the thing to wait on — pressing
+ * a still-disabled Pressable is a no-op and would fail later, somewhere less
+ * informative.
+ */
+const submit = async () => {
+  await waitFor(() => expect(requestAccess()).toBeEnabled());
+  fireEvent.press(requestAccess());
 };
 
 describe('arriving from sign-up', () => {
@@ -113,29 +125,52 @@ describe('arriving from sign-up', () => {
   });
 });
 
-describe('joining by hand', () => {
-  it('refuses to send without both codes', async () => {
+/**
+ * The button is the assertion. This is the last screen before the app is
+ * unusable, so a half-filled request must be impossible to send rather than
+ * merely discouraged.
+ */
+describe('the request button', () => {
+  it('starts disabled — neither code has been typed', async () => {
     await renderSettled();
-    fireEvent.press(screen.getByText('Request access'));
-
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Both codes needed', expect.any(String)),
-    );
-    expect(mockRequest).not.toHaveBeenCalled();
+    expect(requestAccess()).toBeDisabled();
   });
 
   // A house code alone cannot place anyone: it is only unique within an estate.
-  it('refuses when only the estate code is given', async () => {
+  it('stays disabled with only the estate code', async () => {
     await renderSettled();
     fireEvent.changeText(screen.getByPlaceholderText('Estate code'), '9Y9EAEYH');
-    fireEvent.press(screen.getByText('Request access'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Both codes needed', expect.any(String)),
-    );
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
     expect(mockRequest).not.toHaveBeenCalled();
   });
 
+  it('stays disabled with only the house code', async () => {
+    await renderSettled();
+    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'H4K2');
+
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
+    expect(mockRequest).not.toHaveBeenCalled();
+  });
+
+  // Whitespace is not a code. Without the trim in the schema this passes a
+  // presence check and fails at the server as "unknown estate".
+  it('treats a field of spaces as empty', async () => {
+    await renderSettled();
+    fill('   ', '   ');
+
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
+  });
+
+  it('enables once both codes are present', async () => {
+    await renderSettled();
+    fill('9Y9EAEYH');
+
+    await waitFor(() => expect(requestAccess()).toBeEnabled());
+  });
+});
+
+describe('joining by hand', () => {
   it('sends the code and confirms which house it reached', async () => {
     mockRequest.mockResolvedValue({
       result: 'ok', estate_id: 'e1', estate_name: 'Demo Estate',
@@ -144,7 +179,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('  demo-4821  ', '  h4k2  ');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(screen.getByText(/House 27, Demo Estate/)).toBeTruthy());
     // Both trimmed — a stray space would not match either stored code.
@@ -160,7 +195,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('demo4821', 'h4k2');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(mockRequest).toHaveBeenCalled());
     expect(Alert.alert).not.toHaveBeenCalled();
@@ -174,7 +209,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('DEMO4821');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(screen.getByText(/House 27, Demo Estate/)).toBeTruthy());
   });
@@ -189,7 +224,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('DEMO4821');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
     expect(screen.queryByText('Waiting on approval')).toBeNull();
@@ -204,7 +239,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('NOPE1234');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(screen.getByText('Estate code not recognised')).toBeTruthy());
     expect(screen.queryByText('Waiting on approval')).toBeNull();
@@ -218,7 +253,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('9Y9EAEYH', 'ZZZZ');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(screen.getByText('House code not recognised')).toBeTruthy());
     expect(screen.getByText(/Check it with your landlord/)).toBeTruthy();
@@ -231,7 +266,7 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('DEMO4821');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() => expect(screen.getByText('Too many tries')).toBeTruthy());
   });
@@ -241,11 +276,13 @@ describe('joining by hand', () => {
 
     await renderSettled();
     fill('DEMO4821');
-    fireEvent.press(screen.getByText('Request access'));
+    await submit();
 
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith('Could not send the request', 'network down'),
     );
+    // And it stays on screen after the alert is dismissed.
+    await screen.findByText('network down');
   });
 
   it('lets a stranded user sign out', async () => {

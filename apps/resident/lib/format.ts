@@ -47,7 +47,21 @@ export function madeAt(iso: string): string {
   return `Made ${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${clock(iso)}`;
 }
 
-/** The message a resident forwards. Carries the estate so it makes sense alone. */
-export function shareMessage(code: string, estate: string, expiresAt: string): string {
-  return `Your code for ${estate} is ${code}. ${validUntil(expiresAt)}.`;
+/**
+ * The message a resident forwards. Carries the estate so it makes sense alone.
+ *
+ * A delivery note is appended on its own line rather than inlined: the rider is
+ * reading this on a phone while holding a parcel, and the code is the part they
+ * need to find at a glance. Burying it mid-sentence behind instructions is how
+ * a driver ends up phoning to ask what the code was.
+ */
+export function shareMessage(
+  code: string,
+  estate: string,
+  expiresAt: string,
+  deliveryNote?: string | null,
+): string {
+  const base = `Your code for ${estate} is ${code}. ${validUntil(expiresAt)}.`;
+  const note = deliveryNote?.trim();
+  return note ? `${base}\n\nDelivery instructions: ${note}` : base;
 }

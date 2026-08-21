@@ -74,6 +74,9 @@ describe('Home', () => {
     render(<Home />);
 
     fireEvent.press(screen.getByText('Generate code'));
+    // Generating now opens the delivery question first. These cases are about
+    // where each mint RESULT lands, so they take the plain-visitor answer.
+    fireEvent.press(screen.getByText('No, a visitor'));
 
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith({
@@ -90,6 +93,9 @@ describe('Home', () => {
     render(<Home />);
 
     fireEvent.press(screen.getByText('Generate code'));
+    // Generating now opens the delivery question first. These cases are about
+    // where each mint RESULT lands, so they take the plain-visitor answer.
+    fireEvent.press(screen.getByText('No, a visitor'));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/(tabs)/codes'));
     expect(Alert.alert).not.toHaveBeenCalled();
@@ -100,6 +106,9 @@ describe('Home', () => {
     render(<Home />);
 
     fireEvent.press(screen.getByText('Generate code'));
+    // Generating now opens the delivery question first. These cases are about
+    // where each mint RESULT lands, so they take the plain-visitor answer.
+    fireEvent.press(screen.getByText('No, a visitor'));
 
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith('Slow down', expect.any(String)),
@@ -112,6 +121,9 @@ describe('Home', () => {
     render(<Home />);
 
     fireEvent.press(screen.getByText('Generate code'));
+    // Generating now opens the delivery question first. These cases are about
+    // where each mint RESULT lands, so they take the plain-visitor answer.
+    fireEvent.press(screen.getByText('No, a visitor'));
 
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith('Could not generate a code', 'network down'),

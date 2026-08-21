@@ -20,6 +20,16 @@ export const MAX_ACTIVE_CODES_PER_RESIDENT = 3;
 /** Mirrors v_limit in mint_access_code() (§3.2). */
 export const MINT_RATE_LIMIT_PER_MINUTE = 10;
 
+/**
+ * Cap on a delivery code's instructions.
+ *
+ * Enforced in mint_access_code() AND by a CHECK constraint, because the note is
+ * free text a resident types and it ends up inside a forwarded message. The
+ * client caps input at the same number so the server limit is a backstop rather
+ * than something a resident ever meets.
+ */
+export const MAX_DELIVERY_NOTE_LENGTH = 200;
+
 // ─── Offline sync (Technical Design §5.2) ─────────────────────────────────────
 
 /** Past this, the guard's verify screen shows the degraded-mode banner. */
@@ -58,7 +68,8 @@ export type MintResult =
   | { result: 'code_limit_reached'; code: null; expires_at: null }
   | { result: 'rate_limited'; code: null; expires_at: null }
   | { result: 'code_collision'; code: null; expires_at: null }
-  | { result: 'not_a_resident'; code: null; expires_at: null };
+  | { result: 'not_a_resident'; code: null; expires_at: null }
+  | { result: 'note_too_long'; code: null; expires_at: null };
 
 /** One queued offline verification, pushed via rpc('ingest_verification_events'). */
 export interface PendingVerification {

@@ -43,9 +43,11 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          delivery_note: string | null
           estate_id: string
           expires_at: string
           id: string
+          is_delivery: boolean
           membership_id: string
           revoked_at: string | null
           revoked_by_membership_id: string | null
@@ -59,9 +61,11 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          delivery_note?: string | null
           estate_id: string
           expires_at: string
           id?: string
+          is_delivery?: boolean
           membership_id: string
           revoked_at?: string | null
           revoked_by_membership_id?: string | null
@@ -75,9 +79,11 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          delivery_note?: string | null
           estate_id?: string
           expires_at?: string
           id?: string
+          is_delivery?: boolean
           membership_id?: string
           revoked_at?: string | null
           revoked_by_membership_id?: string | null
@@ -620,7 +626,11 @@ export type Database = {
       }
       is_platform_admin: { Args: never; Returns: boolean }
       mint_access_code: {
-        Args: { p_estate_id: string }
+        Args: {
+          p_delivery_note?: string
+          p_estate_id: string
+          p_is_delivery?: boolean
+        }
         Returns: {
           code: string
           expires_at: string

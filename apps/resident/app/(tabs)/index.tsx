@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
+import { DeliveryPrompt } from '@/components/delivery-prompt';
 import { Card, Chip, CodeText, Eyebrow, PrimaryButton, Screen } from '@/components/ui';
+import type { DeliveryDetails } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCodesOnFocus } from '@/lib/codes';
 import { madeAt, timeLeft } from '@/lib/format';
@@ -13,17 +15,29 @@ export default function Home() {
   const { session, memberships, activeEstateId } = useAuth();
   const { live, loading, refresh, mint } = useCodesOnFocus();
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(false);
   const router = useRouter();
 
   const estate = memberships.find((m) => m.estate_id === activeEstateId);
   const fullName = (session?.user.user_metadata?.full_name as string | undefined) ?? '';
   const firstName = fullName.split(' ')[0] || 'there';
 
-  const generate = async () => {
+  /**
+   * The delivery question is asked BEFORE anything is minted.
+   *
+   * It has to be: `is_delivery` and the note are written by mint_access_code in
+   * the same statement that inserts the row, and there is deliberately no
+   * client write path to `access_codes` to go back and amend one afterwards.
+   */
+  const generate = async (delivery: DeliveryDetails) => {
     if (!activeEstateId) return;
     setBusy(true);
     try {
-      const res = await mint();
+      const res = await mint(delivery);
+      // Closed before any Alert. An alert raised while the modal is still up
+      // is presented behind it on iOS, so the resident sees a frozen sheet and
+      // no explanation.
+      setAsking(false);
       if (!res) return;
       // These are RESULTS, not errors — the function deliberately does not
       // raise for expected outcomes (Technical Design §3.1).
@@ -40,10 +54,17 @@ export default function Home() {
         case 'not_a_resident':
           Alert.alert('No access', 'You are not an active resident at this estate.');
           break;
+        case 'note_too_long':
+          Alert.alert(
+            'Instructions too long',
+            'Shorten the delivery instructions and try again.',
+          );
+          break;
         default:
           Alert.alert('Could not generate a code', 'Please try again.');
       }
     } catch (e) {
+      setAsking(false);
       Alert.alert('Could not generate a code', (e as Error).message);
     } finally {
       setBusy(false);
@@ -71,12 +92,15 @@ export default function Home() {
           <Eyebrow className="text-lime">EXPECTING SOMEONE?</Eyebrow>
           {/* `leading-[1.15]` was unitless — a CSS multiplier that has no
               meaning as a React Native lineHeight. The scale carries leading. */}
+          {/* No longer "one tap": a code now starts with the delivery question,
+              and copy that promises otherwise is the kind of small lie a
+              resident notices on their first use. */}
           <Text className="mt-3 font-jk-xb text-[25px] leading-[30px] tracking-tight text-canvas">
-            Make a code in one tap
+            Make a code in seconds
           </Text>
           <PrimaryButton
             title={busy ? 'Generating…' : 'Generate code'}
-            onPress={generate}
+            onPress={() => setAsking(true)}
             disabled={busy || !activeEstateId}
             className="mt-5"
           />
@@ -126,6 +150,13 @@ export default function Home() {
           </View>
         )}
       </ScrollView>
+
+      <DeliveryPrompt
+        visible={asking}
+        busy={busy}
+        onCancel={() => setAsking(false)}
+        onSubmit={generate}
+      />
     </Screen>
   );
 }

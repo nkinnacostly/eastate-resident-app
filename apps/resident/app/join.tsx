@@ -1,10 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Input, PrimaryButton } from '@/components/ui';
+import { Field, FormError, PrimaryButton } from '@/components/ui';
 import { myPendingJoinRequests, requestHouseAccess, type JoinResult } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { joinSchema, type JoinValues } from '@/lib/schemas';
 
 /** Copy for the outcomes that leave someone still outside. */
 const REJECTION: Record<string, { title: string; body: string }> = {
@@ -37,12 +49,21 @@ const REJECTION: Record<string, { title: string; body: string }> = {
  */
 export default function Join() {
   const { signOut, refreshMemberships, takeSignUpJoinResult } = useAuth();
-  const [estateCode, setEstateCode] = useState('');
-  const [houseCode, setHouseCode] = useState('');
-  const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(true);
   const [sent, setSent] = useState<{ estate: string; house: string | null } | null>(null);
   const [rejected, setRejected] = useState<{ title: string; body: string } | null>(null);
+  const houseRef = useRef<TextInput>(null);
+
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors, isValid, isSubmitting },
+  } = useForm<JoinValues>({
+    resolver: zodResolver(joinSchema),
+    mode: 'onTouched',
+    defaultValues: { estateCode: '', houseCode: '' },
+  });
 
   const apply = useCallback(
     async (res: JoinResult) => {
@@ -94,20 +115,20 @@ export default function Join() {
     };
   }, [apply, takeSignUpJoinResult]);
 
-  const submit = async () => {
-    if (!estateCode.trim() || !houseCode.trim()) {
-      Alert.alert('Both codes needed', 'Your estate gives you one; your landlord gives you the other.');
-      return;
-    }
-    setBusy(true);
+  // Both values arrive trimmed by the schema — a stray space would not match
+  // either stored code.
+  const submit = handleSubmit(async ({ estateCode, houseCode }) => {
     try {
-      await apply(await requestHouseAccess(estateCode.trim(), houseCode.trim()));
+      await apply(await requestHouseAccess(estateCode, houseCode));
     } catch (e) {
-      Alert.alert('Could not send the request', (e as Error).message);
-    } finally {
-      setBusy(false);
+      const message = (e as Error).message;
+      // Kept on screen as well as alerted: this is the last screen before the
+      // app is unusable, and an alert dismissed by accident leaves no trace of
+      // why nothing happened.
+      setError('root', { message });
+      Alert.alert('Could not send the request', message);
     }
-  };
+  });
 
   if (checking) {
     return (
@@ -159,27 +180,60 @@ export default function Join() {
               : 'Two codes: one from your estate, one from your landlord. Together they place you in the right house.'}
           </Text>
 
-          <View className="mt-7 gap-3">
-            <Input
-              placeholder="Estate code"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              value={estateCode}
-              onChangeText={setEstateCode}
+          <View className="mt-7 gap-1">
+            {/* Presence is the only rule the client applies. request_house_access
+                normalises case and separators before it looks a code up, so a
+                format rule here would refuse codes the estate actually issued —
+                on the one screen where being wrongly refused leaves someone with
+                no way into the app at all. */}
+            <Controller
+              control={control}
+              name="estateCode"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Field
+                  label="Estate code"
+                  placeholder="Estate code"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => houseRef.current?.focus()}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.estateCode?.message}
+                />
+              )}
             />
-            <Input
-              placeholder="House code"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              value={houseCode}
-              onChangeText={setHouseCode}
+            <Controller
+              control={control}
+              name="houseCode"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Field
+                  ref={houseRef}
+                  label="House code"
+                  placeholder="House code"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  returnKeyType="go"
+                  onSubmitEditing={() => void submit()}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.houseCode?.message}
+                />
+              )}
             />
           </View>
 
+          {errors.root?.message ? <FormError>{errors.root.message}</FormError> : null}
+
           <PrimaryButton
-            title={busy ? 'Sending…' : 'Request access'}
-            onPress={submit}
-            disabled={busy}
+            title={isSubmitting ? 'Sending…' : 'Request access'}
+            onPress={() => void submit()}
+            // A house code alone cannot place anyone — it is only unique within
+            // its estate — so half the pair must never reach the server.
+            disabled={!isValid || isSubmitting}
             className="mt-5"
           />
 

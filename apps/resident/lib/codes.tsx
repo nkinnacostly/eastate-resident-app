@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
-import { listMyCodes, mintCode, type CodeRow } from './api';
+import { listMyCodes, mintCode, type CodeRow, type DeliveryDetails } from './api';
 import { useAuth } from './auth';
 
 interface CodesState {
@@ -11,7 +11,7 @@ interface CodesState {
   live: CodeRow[];
   loading: boolean;
   refresh: () => Promise<void>;
-  mint: () => Promise<MintResult | null>;
+  mint: (delivery?: DeliveryDetails) => Promise<MintResult | null>;
 }
 
 const CodesContext = createContext<CodesState | null>(null);
@@ -83,12 +83,15 @@ export function CodesProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [refresh]);
 
-  const mint = useCallback(async () => {
-    if (!activeEstateId) return null;
-    const res = await mintCode(activeEstateId);
-    await refresh();
-    return res;
-  }, [activeEstateId, refresh]);
+  const mint = useCallback(
+    async (delivery?: DeliveryDetails) => {
+      if (!activeEstateId) return null;
+      const res = await mintCode(activeEstateId, delivery ?? { isDelivery: false });
+      await refresh();
+      return res;
+    },
+    [activeEstateId, refresh],
+  );
 
   // Derived, never read off `status` — an 'active' row past expires_at is
   // expired (Technical Design §2.4).

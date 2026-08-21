@@ -29,12 +29,20 @@ export function Eyebrow({
 export function PrimaryButton({
   title,
   className = '',
+  disabled,
   ...rest
 }: PressableProps & { title: string; className?: string }) {
   return (
     <Pressable
       accessibilityRole="button"
-      className={`h-[54px] items-center justify-center rounded-full bg-lime active:opacity-80 ${className}`}
+      // Announced as dimmed, and dimmed on screen. A button that is inert but
+      // looks tappable reads as a broken app, and a guard with a visitor
+      // waiting will tap it repeatedly rather than look for what is wrong.
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      disabled={disabled}
+      className={`h-[54px] items-center justify-center rounded-full bg-lime active:opacity-80 ${
+        disabled ? 'opacity-40' : ''
+      } ${className}`}
       {...rest}
     >
       <Text className="font-jk-b text-body text-ink">{title}</Text>
@@ -82,6 +90,48 @@ export function Input({ className = '', ...rest }: TextInputProps & { className?
       className={`h-[52px] rounded-field bg-field px-4 font-jk text-body text-ink ${className}`}
       {...rest}
     />
+  );
+}
+
+/**
+ * An Input plus the one message explaining why it is not accepted yet.
+ *
+ * The message is passed in, never derived here — it is whatever the zod schema
+ * said (see lib/schemas.ts), so the rule and the sentence a guard reads can
+ * never drift apart.
+ *
+ * `error` is rendered in a fixed-height slot so a field appearing invalid does
+ * not shove the rest of the form (and the button the guard is reaching for)
+ * down the screen mid-tap.
+ */
+export function Field({
+  error,
+  label,
+  className = '',
+  ...rest
+}: TextInputProps & {
+  error?: string;
+  label: string;
+  className?: string;
+  /** React 19 passes ref as a plain prop, so no forwardRef wrapper is needed. */
+  ref?: React.Ref<TextInput>;
+}) {
+  const invalid = Boolean(error);
+  return (
+    <View>
+      <Input
+        // The message is folded into the LABEL rather than the hint: VoiceOver
+        // reads hints last and can be configured off entirely, so a guard using
+        // a screen reader at a dark gate would get red they cannot see and
+        // silence. The label is always read.
+        accessibilityLabel={error ? `${label}. ${error}` : label}
+        className={`${invalid ? 'border border-coral' : ''} ${className}`}
+        {...rest}
+      />
+      <View className="h-5 justify-center px-1">
+        {error ? <Text className="font-jk-md text-micro text-coral-ink">{error}</Text> : null}
+      </View>
+    </View>
   );
 }
 

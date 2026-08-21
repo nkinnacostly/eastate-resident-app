@@ -23,6 +23,18 @@ beforeEach(() => {
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
+const requestAccess = () => screen.getByRole('button', { name: 'Request access' });
+
+/**
+ * Validation is asynchronous, so the button is the thing to wait on — pressing
+ * a still-disabled Pressable is a no-op and would fail later, somewhere less
+ * informative.
+ */
+const submit = async () => {
+  await waitFor(() => expect(requestAccess()).toBeEnabled());
+  fireEvent.press(requestAccess());
+};
+
 describe('sign-up escape hatches', () => {
   // REGRESSION: the screen had no back control and no route to sign-in, so
   // anyone who already had an account was stranded on it.
@@ -61,75 +73,151 @@ describe('sign-up escape hatches', () => {
   });
 });
 
-const fillAccount = () => {
-  fireEvent.changeText(screen.getByPlaceholderText('Email'), 'rita@example.com');
-  fireEvent.changeText(screen.getByPlaceholderText('Create password'), 'hunter2hunter2');
+const type = (placeholder: string, value: string) =>
+  fireEvent.changeText(screen.getByPlaceholderText(placeholder), value);
+
+/** Everything the schema requires. Phone is deliberately left out — it is optional. */
+const fillEverything = () => {
+  type('Full name', 'Rita Resident');
+  type('Email', 'rita@example.com');
+  type('Create password', 'hunter2hunter2');
+  type('Estate code', 'DEMO4821');
+  type('House code', 'LUX5');
 };
 
-describe('requesting access', () => {
-  it('refuses to submit without an email and password', async () => {
+/**
+ * The button is the assertion.
+ *
+ * A schema that rejects bad input is worth nothing if the button next to it is
+ * still tappable. Creating half an account is the one outcome this screen must
+ * not produce — a user row with no join request attached is invisible to every
+ * admin — so these tests drive the real screen through the real resolver and
+ * assert on the BUTTON, not on schema output.
+ */
+describe('the request button', () => {
+  it('starts disabled — nothing has been typed', () => {
     render(<SignUp />);
-    fireEvent.press(screen.getByText('Request access'));
+    expect(requestAccess()).toBeDisabled();
+  });
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Missing details', expect.any(String)),
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
+  it('stays disabled without an email', async () => {
+    render(<SignUp />);
+    fillEverything();
+    type('Email', '');
+
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
+  });
+
+  it('stays disabled while the email is only half typed', async () => {
+    render(<SignUp />);
+    fillEverything();
+    type('Email', 'rita@');
+
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
   });
 
   // The whole point of collecting the codes here: an account with no request
   // attached is a stranded user no admin ever sees.
-  it('refuses to create an account without both codes', async () => {
+  it('stays disabled when only the estate code is given', async () => {
     render(<SignUp />);
-    fillAccount();
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    type('House code', '');
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Both codes needed', expect.any(String)),
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
   });
 
   // A house code is only unique within its estate, so one alone cannot place
   // anyone — half the pair must not be treated as enough.
-  it('refuses when only the estate code is given', async () => {
+  it('stays disabled when only the house code is given', async () => {
     render(<SignUp />);
-    fillAccount();
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), 'DEMO4821');
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    type('Estate code', '');
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Both codes needed', expect.any(String)),
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
   });
 
-  it('refuses when only the house code is given', async () => {
+  // The admin approval queue shows a name and a house number and nothing else.
+  // A blank name makes the request unapprovable.
+  it('stays disabled without a full name', async () => {
     render(<SignUp />);
-    fillAccount();
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'LUX5');
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    type('Full name', '');
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Both codes needed', expect.any(String)),
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
   });
 
+  // Mirrors minimum_password_length in supabase/config.toml — meeting the rule
+  // in the field beats meeting it in an alert after the account attempt fails.
+  it('stays disabled on a password the server would refuse', async () => {
+    render(<SignUp />);
+    fillEverything();
+    type('Create password', '12345');
+
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
+  });
+
+  it('enables once every required field satisfies the schema', async () => {
+    render(<SignUp />);
+    fillEverything();
+
+    await waitFor(() => expect(requestAccess()).toBeEnabled());
+  });
+
+  // Optional means optional: a blank phone must not hold the form hostage.
+  it('is enabled with no phone number at all', async () => {
+    render(<SignUp />);
+    fillEverything();
+
+    await waitFor(() => expect(requestAccess()).toBeEnabled());
+    expect(screen.queryByText(/complete phone number/i)).toBeNull();
+  });
+
+  it('refuses a phone number that is too short to dial', async () => {
+    render(<SignUp />);
+    fillEverything();
+    type('Phone number (optional)', '0803');
+
+    await waitFor(() => expect(requestAccess()).toBeDisabled());
+  });
+
+  // Residents type the same number half a dozen ways. A strict pattern here
+  // would reject real numbers for cosmetic reasons.
+  it.each(['+234 803 123 4567', '0803-123-4567', '(080) 3123 4567'])(
+    'accepts %s',
+    async (phone) => {
+      render(<SignUp />);
+      fillEverything();
+      type('Phone number (optional)', phone);
+
+      await waitFor(() => expect(requestAccess()).toBeEnabled());
+    },
+  );
+
+  it('shows the schema message on blur rather than while typing', async () => {
+    render(<SignUp />);
+    type('Email', 'not-an-email');
+    expect(screen.queryByText(/does not look like an email/i)).toBeNull();
+
+    fireEvent(screen.getByPlaceholderText('Email'), 'blur');
+    await screen.findByText(/does not look like an email/i);
+  });
+});
+
+describe('requesting access', () => {
   it('sends the account details and both codes', async () => {
     mockSignUp.mockResolvedValue({ status: 'requested', join: { result: 'ok' } });
 
     render(<SignUp />);
-    fireEvent.changeText(screen.getByPlaceholderText('Email'), '  rita@example.com  ');
-    fireEvent.changeText(screen.getByPlaceholderText('Create password'), 'hunter2hunter2');
-    fireEvent.changeText(screen.getByPlaceholderText('Full name'), 'Rita Resident');
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), '  demo-4821  ');
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), '  lux5  ');
-    fireEvent.press(screen.getByText('Request access'));
+    type('Email', '  rita@example.com  ');
+    type('Create password', 'hunter2hunter2');
+    type('Full name', 'Rita Resident');
+    type('Estate code', '  demo-4821  ');
+    type('House code', '  lux5  ');
+    await submit();
 
     await waitFor(() => expect(mockSignUp).toHaveBeenCalled());
-    // Trimmed — a trailing space is a silent auth failure on the email and a
-    // no-match on either code.
+    // Trimmed by the schema — a trailing space is a silent auth failure on the
+    // email and a no-match on either code.
     expect(mockSignUp.mock.calls[0][0]).toEqual({
       email: 'rita@example.com',
       password: 'hunter2hunter2',
@@ -146,10 +234,10 @@ describe('requesting access', () => {
     mockSignUp.mockResolvedValue({ status: 'requested', join: { result: 'ok' } });
 
     render(<SignUp />);
-    fillAccount();
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), 'demo-4821');
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'lux5');
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    type('Estate code', 'demo-4821');
+    type('House code', 'lux5');
+    await submit();
 
     await waitFor(() => expect(mockSignUp).toHaveBeenCalled());
     expect(Alert.alert).not.toHaveBeenCalled();
@@ -161,10 +249,8 @@ describe('requesting access', () => {
     mockSignUp.mockResolvedValue({ status: 'requested', join: { result: 'ok' } });
 
     render(<SignUp />);
-    fillAccount();
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), 'DEMO4821');
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'LUX5');
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    await submit();
 
     await waitFor(() => expect(mockSignUp).toHaveBeenCalled());
     expect(Alert.alert).not.toHaveBeenCalled();
@@ -178,10 +264,8 @@ describe('requesting access', () => {
     mockSignUp.mockResolvedValue({ status: 'confirm_email' });
 
     render(<SignUp />);
-    fillAccount();
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), 'DEMO4821');
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'LUX5');
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    await submit();
 
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -199,10 +283,8 @@ describe('requesting access', () => {
     mockSignUp.mockResolvedValue({ status: 'error', message: 'Email already registered' });
 
     render(<SignUp />);
-    fillAccount();
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), 'DEMO4821');
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'LUX5');
-    fireEvent.press(screen.getByText('Request access'));
+    fillEverything();
+    await submit();
 
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -211,5 +293,18 @@ describe('requesting access', () => {
       ),
     );
     expect(router().dismissTo).not.toHaveBeenCalled();
+  });
+
+  // An alert is gone the moment it is dismissed. The reason has to survive on
+  // screen, or a resident who taps through it is left with a button that did
+  // nothing and no explanation.
+  it('keeps the rejection on screen after the alert is gone', async () => {
+    mockSignUp.mockResolvedValue({ status: 'error', message: 'Email already registered' });
+
+    render(<SignUp />);
+    fillEverything();
+    await submit();
+
+    await screen.findByText('Email already registered');
   });
 });
