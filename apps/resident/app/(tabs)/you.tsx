@@ -1,11 +1,14 @@
-import { ScrollView, Text, View, Pressable } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, View, Pressable } from 'react-native';
 
 import { ChevronRight } from '@/components/icons';
 import { Card, Chip, Screen, SecondaryButton } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 
 export default function You() {
-  const { session, memberships, activeEstateId, setActiveEstateId, signOut } = useAuth();
+  const { session, memberships, activeEstateId, setActiveEstateId, signOut, deleteAccount } =
+    useAuth();
+  const [deleting, setDeleting] = useState(false);
 
   const meta = session?.user.user_metadata ?? {};
   const fullName = (meta.full_name as string | undefined) ?? 'Resident';
@@ -17,6 +20,33 @@ export default function You() {
   // record of.
   const active = memberships.find((m) => m.estate_id === activeEstateId) ?? null;
   const activeHouse = active?.house_number ?? null;
+
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Delete your account?',
+      'This erases your profile, your estate access and every code you have ' +
+        'generated. It cannot be undone.\n\nEntries already recorded at the gate ' +
+        'stay in the estate\u2019s security log, with no link back to you.',
+      [
+        { text: 'Keep my account', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            const result = await deleteAccount();
+            setDeleting(false);
+            // On success the session is already cleared, so the gate sends this
+            // screen back to sign-in on its own — nothing to navigate here.
+            if (result.status === 'error') {
+              Alert.alert('Account not deleted', result.message);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <Screen>
@@ -90,6 +120,32 @@ export default function You() {
         ) : null}
 
         <SecondaryButton title="Sign out" onPress={signOut} className="mt-8" />
+
+        {/* Required in-app by App Store guideline 5.1.1(v) and Google Play's
+            account deletion policy. Both reject a flow that only deactivates,
+            and Apple rejects one that makes you email support, so this has to
+            sit in plain sight rather than behind a menu. */}
+        <Text className="mt-10 font-jk-xb text-label tracking-label text-muted">ACCOUNT</Text>
+        <Card className="mt-3 p-4">
+          <Text className="font-jk text-sub leading-[19px] text-muted">
+            Deleting your account erases your profile, your estate access and every code you
+            have generated. Entries already recorded at the gate stay in the estate&apos;s
+            security log, with no link back to you.
+          </Text>
+          <Pressable
+            onPress={confirmDelete}
+            disabled={deleting}
+            accessibilityRole="button"
+            accessibilityLabel="Delete my account"
+            className="mt-4 h-11 flex-row items-center justify-center rounded-field bg-coral-wash active:opacity-70"
+          >
+            {deleting ? (
+              <ActivityIndicator color="#a33c2b" />
+            ) : (
+              <Text className="font-jk-xb text-body text-coral-ink">Delete my account</Text>
+            )}
+          </Pressable>
+        </Card>
       </ScrollView>
     </Screen>
   );

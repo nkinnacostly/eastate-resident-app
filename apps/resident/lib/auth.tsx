@@ -49,6 +49,12 @@ interface AuthState {
   signUp: (input: SignUpInput) => Promise<SignUpOutcome>;
   signOut: () => Promise<void>;
   /**
+   * Erases the account for good — required in-app by App Store guideline
+   * 5.1.1(v) and Google Play's account deletion policy, neither of which
+   * accepts deactivation or a "contact support" flow.
+   */
+  deleteAccount: () => Promise<DeleteAccountResult>;
+  /**
    * How the join request made during sign-up landed, handed to the join screen.
    *
    * It travels through here rather than through that screen's own state because
@@ -58,6 +64,11 @@ interface AuthState {
    */
   takeSignUpJoinResult: () => JoinResult | null;
 }
+
+/** Outcome of a self-service account deletion. */
+export type DeleteAccountResult =
+  | { status: 'deleted' }
+  | { status: 'error'; message: string };
 
 export interface SignUpInput {
   email: string;
@@ -203,6 +214,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  /**
+   * Deleting the auth user needs the service role, which must never ship in a
+   * client, so the work happens in the delete-account Edge Function. The token
+   * is read fresh rather than from `session` state: this is the one call where
+   * acting on a stale token would leave the account half-deleted.
+   */
+  const deleteAccount = useCallback(async (): Promise<DeleteAccountResult> => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return { status: 'error', message: 'You are not signed in.' };
+
+    try {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`, {
+        method: 'POST',
+        headers: {
+          apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body?.deleted) {
+        // The account is gone; clearing the local session is what returns the
+        // app to the sign-in screen.
+        await supabase.auth.signOut();
+        return { status: 'deleted' };
+      }
+      return {
+        status: 'error',
+        message: body?.message ?? 'Your account could not be deleted. Please try again.',
+      };
+    } catch {
+      return { status: 'error', message: 'No connection. Try again once you are back online.' };
+    }
+  }, []);
+
   const value = useMemo<AuthState>(
     () => ({
       session,
@@ -215,11 +262,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       takeSignUpJoinResult,
     }),
     [
       session, memberships, activeEstateId, loading, membershipsLoaded,
-      refreshMemberships, signIn, signUp, signOut, takeSignUpJoinResult,
+      refreshMemberships, signIn, signUp, signOut, deleteAccount, takeSignUpJoinResult,
     ],
   );
 
