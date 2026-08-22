@@ -1,20 +1,20 @@
 # myestateaccess — marketing site
 
-Three static pages: `index.html`, `about.html`, `contact.html`. No build step and
-no dependencies — the whole thing is HTML, one stylesheet and about forty lines
-of progressive-enhancement JavaScript on the contact form.
+Four static pages: `index.html`, `about.html`, `contact.html`, `privacy.html`.
+No build step and no dependencies — the whole thing is HTML, one stylesheet and
+about forty lines of progressive-enhancement JavaScript on the contact form.
 
 It is deliberately not a Vite app. A marketing site's job is to be crawled and
 to render instantly; a framework would add a build, a bundle and a hydration
-step in exchange for nothing these three pages need.
+step in exchange for nothing these four pages need.
 
 ## Local preview
 
     npx serve apps/site
 
 `npx serve` resolves extensionless URLs the way Vercel's `cleanUrls` does.
-`python3 -m http.server` does not, so `/about` and `/contact` 404 under it even
-though they are correct in production.
+`python3 -m http.server` does not, so `/about`, `/contact` and `/privacy` 404
+under it even though they are correct in production.
 
 ## Deploying
 
@@ -37,8 +37,28 @@ Placeholders that must be replaced:
 
 - `myestateaccess.com` — appears in every canonical URL, `og:url`, the JSON-LD and
   `sitemap.xml`. Search and replace across the directory.
-- `hello@myestateaccess.com` and `support@myestateaccess.com`.
+- `hello@myestateaccess.com`, `support@myestateaccess.com` and
+  `privacy@myestateaccess.com` — the last one is the POPIA contact address and
+  has to reach a real mailbox someone reads, not an alias that bounces.
 - `sitemap.xml` `<lastmod>` dates.
+
+`privacy.html` additionally carries square-bracket placeholders that a search
+for `— to be confirmed]` will find. **It must not go live with any of them
+still in place**, and it has not been reviewed by a lawyer:
+
+| placeholder | where it comes from |
+|---|---|
+| Information Officer's name | POPIA requires one to be designated and registered with the Regulator |
+| Registered company name, registration number, address | CIPC records |
+| Gate-log retention period | a decision, not a lookup — nothing in the schema purges `verification_events` today, so whatever you write here has to be built |
+| Post-closure deletion period | same |
+| Supabase hosting region | Supabase project settings; the section 72 cross-border wording depends on it |
+
+The privacy page also states things that are true of the system *as built* —
+guards cannot see resident names until a code is issued, estates are isolated in
+the database, codes expire in six hours, no analytics anywhere. If any of those
+change, this page becomes a false statement about data handling rather than
+merely a stale one. Treat it as part of the schema's blast radius.
 
 The contact form composes a `mailto:` and opens the visitor's mail client; it
 does **not** post anywhere, and the page says so plainly rather than implying a
