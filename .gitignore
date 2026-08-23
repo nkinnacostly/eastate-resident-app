@@ -50,7 +50,11 @@ app-example
 # Local tooling cache
 .openvisio/
 
-CLAUDE.md
-estate-access-prd.md
-estate-access-technical-design.md
+# Markdown stays local, never in the repo.
+#
+# Supersedes the individual CLAUDE.md / PRD / technical-design entries that
+# used to live here — `*.md` already covers them. Note that ignoring a file
+# does nothing once it is tracked, which is why CLAUDE.md sat in this list and
+# in git at the same time; anything added here also needs `git rm --cached`.
+*.md
 
