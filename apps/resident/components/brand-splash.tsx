@@ -67,11 +67,11 @@ export function BrandSplash({ onLayout }: { onLayout?: (e: LayoutChangeEvent) =>
         >
           <Text
             className="font-jk-xb text-canvas"
-            style={{ fontSize: 20, letterSpacing: 3.5 }}
+            style={{ fontSize: 20, letterSpacing: 3 }}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            MYESTATEACCESS
+            MY ESTATE ACCESS
           </Text>
         </View>
       </View>
