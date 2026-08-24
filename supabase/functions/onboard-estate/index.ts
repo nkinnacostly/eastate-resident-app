@@ -162,6 +162,46 @@ Deno.serve(async (req) => {
     .eq('id', estateId)
     .single();
 
+  // ─── 5. tell the admin, by email ──────────────────────────────────────────
+  //
+  // Deliberately does NOT contain the password. Mail sits in inboxes for years,
+  // is forwarded, and is read on shared screens; a credential that travels that
+  // way is a credential you no longer control. Instead the admin gets a
+  // one-time recovery link and chooses their own password, which also means the
+  // operator never has to relay anything.
+  //
+  // The generated password above is kept for now so the operator UI keeps
+  // working as an in-person fallback for an admin whose email never arrives.
+  //
+  // Enqueued rather than sent inline: the send belongs on the same cron-driven
+  // path as everything else, and a Resend hiccup must not fail an onboarding
+  // that has already created an estate, a user and a membership.
+  let setPasswordUrl: string | null = null;
+  if (password) {
+    const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email: adminEmail,
+    });
+    if (linkErr) console.error('could not generate set-password link:', linkErr.message);
+    else setPasswordUrl = link?.properties?.action_link ?? null;
+  }
+
+  const { error: mailErr } = await admin.rpc('enqueue_email', {
+    p_kind: 'estate_admin_welcome',
+    p_payload: {
+      to: adminEmail,
+      admin_name: adminName || null,
+      estate_name: estate?.name ?? estateName,
+      estate_join_code: estate?.join_code ?? null,
+      estate_id: estateId,
+      set_password_url: setPasswordUrl,
+    },
+  });
+  // Not fatal. The estate exists and works; the operator still has the password
+  // on screen. Failing the request here would roll a successful onboarding back
+  // to the caller over an email that can be resent.
+  if (mailErr) console.error('could not enqueue admin welcome email:', mailErr.message);
+
   return json({
     estate_id: estateId,
     estate_name: estate?.name ?? estateName,
@@ -172,5 +212,8 @@ Deno.serve(async (req) => {
     // show a blank box that looks like a bug.
     password,
     reused_existing_account: password === null,
+    // So the operator UI can say "we've emailed them" rather than implying the
+    // password must be handed over in person.
+    welcome_email_queued: !mailErr,
   });
 });
