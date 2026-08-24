@@ -13,6 +13,7 @@ import {
 import { AppState } from 'react-native';
 
 import { clearPool, countLivePool, countUnsynced, getMeta } from './db';
+import { registerForPush } from './push';
 import { supabase } from './supabase';
 import { syncNow } from './sync';
 
@@ -167,6 +168,45 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  /**
+   * Open the shift once we know which gate this is.
+   *
+   * This is what tells every resident on the estate that someone is on duty —
+   * `start_shift` queues that notification, ONCE. Calling it again returns
+   * `already_on_shift` and queues nothing, which is why it is safe to run on
+   * every launch and resume rather than only on a fresh sign-in.
+   *
+   * Not awaited by anything and never surfaced: a guard whose shift row failed
+   * to open must still be able to verify codes. The gate is the job; the
+   * bookkeeping is not allowed to block it.
+   */
+  useEffect(() => {
+    if (!post) return;
+    void supabase
+      .rpc('start_shift', { p_estate_id: post.estate_id })
+      .then(({ data, error }) => {
+        if (error) console.warn('[shift] start_shift failed', error.message);
+        else console.log('[shift] start_shift ->', data?.[0]?.result);
+      });
+  }, [post]);
+
+  /**
+   * Register this device to receive `forced_pull` wake-ups.
+   *
+   * Keyed on the post rather than the session because the token is stored
+   * against a MEMBERSHIP, so there is nothing to register until we know which
+   * estate this guard is on. Re-running on every post change is harmless —
+   * `register_push_token` upserts on (membership, token).
+   *
+   * Deliberately not awaited and never surfaced. A guard who declined
+   * notifications still verifies codes normally; they just fall back to the
+   * periodic pull for pool freshness instead of being woken early.
+   */
+  useEffect(() => {
+    if (!post) return;
+    void registerForPush(post.estate_id);
+  }, [post]);
+
   const endShift = useCallback(async () => {
     // Push whatever is queued BEFORE dropping the session — otherwise the
     // outbox survives on disk but nobody is authenticated to replay it.
@@ -175,6 +215,14 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
         await syncNow(post.estate_id);
       } catch {
         // Still sign out. The outbox persists and replays on the next shift.
+      }
+      try {
+        // Close the shift while still authenticated. Deliberately sends no
+        // notification — residents are told when the gate is manned, not when
+        // it is left, which is both alarming and an invitation.
+        await supabase.rpc('end_shift', { p_estate_id: post.estate_id });
+      } catch {
+        // A shift left open is tidied by the next guard's handover.
       }
     }
     await clearPool(); // cache, not ledger

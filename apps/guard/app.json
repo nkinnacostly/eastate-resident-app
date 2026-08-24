@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "myestateaccess Guard",
+    "name": "My Estate Access Guard",
     "slug": "estate-guard",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -67,7 +67,8 @@
     "android": {
       "package": "com.myestateaccess.guard",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
@@ -88,7 +89,10 @@
           "android": {
             "compileSdkVersion": 36,
             "targetSdkVersion": 36,
-            "buildToolsVersion": "36.0.0"
+            "buildToolsVersion": "36.0.0",
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -99,6 +103,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e18b71ab-51a1-4dbb-94d2-6deb6b42ced1"
+      }
+    },
+    "owner": "heiscostly"
   }
 }

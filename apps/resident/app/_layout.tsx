@@ -20,6 +20,7 @@ import { BrandSplash } from '@/components/brand-splash';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { CodesProvider } from '@/lib/codes';
 import { loadOnboardingSeen } from '@/lib/onboarding';
+import { registerForPush } from '@/lib/push';
 
 // Held until we know which stack to show. Without this the splash hands over to
 // whatever the router mounts first, which is the very flash this is here to
@@ -41,7 +42,14 @@ void SplashScreen.preventAutoHideAsync();
  * true for any (session, membershipsLoaded, memberships) triple.
  */
 function Gate() {
-  const { session, memberships, membershipsLoaded } = useAuth();
+  const { session, memberships, membershipsLoaded, activeEstateId } = useAuth();
+
+  // Register for push once we know which estate this person is acting as.
+  // Keyed on the estate: someone who lives at two estates needs a token
+  // against each membership, or notifications for one of them go nowhere.
+  useEffect(() => {
+    if (activeEstateId) void registerForPush(activeEstateId);
+  }, [activeEstateId]);
 
   const signedIn = !!session;
   // Until the membership query answers, a signed-in resident belongs to neither

@@ -181,6 +181,48 @@ export type Database = {
         }
         Relationships: []
       }
+      guard_shifts: {
+        Row: {
+          ended_at: string | null
+          ended_by_handover: boolean
+          estate_id: string
+          id: string
+          membership_id: string
+          started_at: string
+        }
+        Insert: {
+          ended_at?: string | null
+          ended_by_handover?: boolean
+          estate_id: string
+          id?: string
+          membership_id: string
+          started_at?: string
+        }
+        Update: {
+          ended_at?: string | null
+          ended_by_handover?: boolean
+          estate_id?: string
+          id?: string
+          membership_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_shifts_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_shifts_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       houses: {
         Row: {
           created_at: string
@@ -578,6 +620,14 @@ export type Database = {
         Args: { p_estate_id: string; p_role: string }
         Returns: string
       }
+      current_shift: {
+        Args: { p_estate_id: string }
+        Returns: {
+          guard_name: string
+          shift_id: string
+          started_at: string
+        }[]
+      }
       deactivate_membership: {
         Args: { p_membership_id: string }
         Returns: undefined
@@ -585,6 +635,22 @@ export type Database = {
       decline_join_request: {
         Args: { p_reason?: string; p_request_id: string }
         Returns: undefined
+      }
+      delete_my_account: {
+        Args: never
+        Returns: {
+          detail: string
+          status: string
+        }[]
+      }
+      dispatch_notifications_tick: { Args: never; Returns: undefined }
+      end_shift: {
+        Args: { p_estate_id: string }
+        Returns: {
+          ended_at: string
+          result: string
+          shift_id: string
+        }[]
       }
       generate_code: { Args: { p_len?: number }; Returns: string }
       grant_membership: {
@@ -644,6 +710,14 @@ export type Database = {
           estate_id: string
           estate_name: string
           house_number: string
+        }[]
+      }
+      notifications_archive: { Args: { p_msg_id: number }; Returns: boolean }
+      notifications_read: {
+        Args: { p_qty: number; p_vt: number }
+        Returns: {
+          message: Json
+          msg_id: number
         }[]
       }
       operator_admins: {
@@ -766,6 +840,14 @@ export type Database = {
         Returns: string
       }
       rotate_house_code: { Args: { p_house_id: string }; Returns: string }
+      start_shift: {
+        Args: { p_estate_id: string }
+        Returns: {
+          result: string
+          shift_id: string
+          started_at: string
+        }[]
+      }
       sweep_expired_codes: { Args: never; Returns: number }
       sweep_mint_attempts: { Args: never; Returns: number }
       sync_pull: {

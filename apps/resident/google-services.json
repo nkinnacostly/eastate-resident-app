@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "364848144320",
+    "project_id": "my-estate-access",
+    "storage_bucket": "my-estate-access.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364848144320:android:c9cf8add689fd9527d3225",
+        "android_client_info": {
+          "package_name": "com.myestateaccess.guard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDP4mDdAASYWykdWuYE60AZKKp95-oSBRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364848144320:android:e616bf971f6f8db67d3225",
+        "android_client_info": {
+          "package_name": "com.myestateaccess.resident"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDP4mDdAASYWykdWuYE60AZKKp95-oSBRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

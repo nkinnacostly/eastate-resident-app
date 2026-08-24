@@ -58,3 +58,20 @@ app-example
 # in git at the same time; anything added here also needs `git rm --cached`.
 *.md
 
+
+# Firebase / FCM push credentials.
+#
+# `google-services.json` is NOT here on purpose: its API key is package-
+# restricted and the file ships inside the APK, so it is config, not a secret,
+# and a fresh clone needs it to build.
+#
+# The FCM V1 *service account key* is the opposite — a private key that can
+# send to every device on the project. It is uploaded to EAS (`eas
+# credentials`) and must never enter the repo. Firebase names the download
+# `<project>-firebase-adminsdk-<hash>.json`; the patterns below cover that and
+# the names people rename it to.
+*firebase-adminsdk*.json
+*service-account*.json
+*serviceAccount*.json
+google-service-account*.json
+fcm-v1*.json
