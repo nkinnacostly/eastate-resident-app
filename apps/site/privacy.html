@@ -73,6 +73,16 @@
     ]
   }
   </script>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-4RTZECJW42"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-4RTZECJW42');
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -177,7 +187,7 @@
           <li><strong>No location tracking.</strong> Not for residents, not for visitors, and not for guards. The app never asks for your location and would have nothing to do with it.</li>
           <li><strong>No number plates, faces or fingerprints.</strong> There is no automatic number-plate recognition and no biometrics anywhere in the platform. A code read down a phone line covers the overwhelming majority of visits, and the alternatives fail in ways a guard cannot work around.</li>
           <li><strong>No access to your contacts, photos or messages.</strong> You forward a code using your own messaging app; we are not in that conversation and cannot see it.</li>
-          <li><strong>No advertising, no tracking pixels, no profiling.</strong> There are no third-party advertising or analytics scripts on this website or in either mobile app.</li>
+          <li><strong>No advertising, no tracking pixels, no profiling.</strong> There are no advertising or profiling scripts on this website or in either mobile app. This marketing site does use Google Analytics to count visits — described in <a href="#website">section 11</a>, along with how to opt out. Neither mobile app contains any analytics whatsoever, and nothing from your estate account or the gate log is ever sent to it.</li>
           <li><strong>We do not sell personal information, and we never will.</strong> There is no arrangement under which anyone's data is shared with a third party for marketing, credit scoring, or any other commercial purpose.</li>
         </ul>
 
@@ -236,6 +246,10 @@
                 <th scope="row">Vercel</th>
                 <td>Hosts this website and the estate dashboard, and keeps standard server logs including IP addresses.</td>
               </tr>
+              <tr>
+                <th scope="row">Google Analytics</th>
+                <td>Counts visits to this marketing site and tells us which pages are read. It sees the page you opened, an approximate location derived from a truncated IP address, and where you arrived from. It receives nothing from the estate platform — no account, no code, no gate log entry — and it does not run in either mobile app. <a href="#website">Section 11</a> explains how to opt out.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -252,7 +266,10 @@
         <p>No system is perfectly secure. If a breach affects your personal information, POPIA requires us to notify both the Information Regulator and you, and we will do so as soon as we reasonably can.</p>
 
         <h2 id="website">This website</h2>
-        <p>This site sets <strong>no cookies</strong> and runs no analytics, no tracking pixels and no advertising scripts. We do not know who you are while you read this page.</p>
+        <p>This site uses <strong>Google Analytics</strong> to count visits and see which pages are read — how many people arrive, which pages they open, roughly where in the world they are, and whether they came from a search or a link. It sets cookies in your browser to recognise a return visit. We use it to understand whether the site is doing its job; we do not use it to advertise to you, and there are no advertising or profiling scripts here.</p>
+        <p>It does not tell us who you are. Google Analytics 4 discards the last part of your IP address before storing it, so we see a country and a city rather than a person, and nothing it collects is joined to your estate account or to anything in the gate log — those live in a different system entirely and are never sent to Google.</p>
+        <p>If you would rather not be counted, any of these works: turn on “Do Not Track” or your browser’s tracking protection, use a content blocker, or install Google’s official <a href="https://tools.google.com/dlpage/gaoptout" rel="nofollow noopener" target="_blank">opt-out add-on</a>. Nothing on this site behaves differently if you do.</p>
+        <p>No advertising, tracking pixels or profiling scripts run on this site or in either mobile app.</p>
         <p>Two things are worth mentioning because your browser fetches them from elsewhere, and those services will therefore see your IP address: our typeface is served by <strong>Google Fonts</strong>, and the photographs are served by <strong>Unsplash</strong>. Neither is used to identify you, and we receive nothing from either about your visit.</p>
         <p>The contact form does not send anything to us over the internet. It opens a message in your own email program, already filled in, which you then choose to send or discard — so what reaches us is an ordinary email, and only if you send it.</p>
 
