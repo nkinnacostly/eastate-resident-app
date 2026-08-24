@@ -15,8 +15,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeOut } from 'react-native-reanimated';
 
+import { BiometricLock } from '@/components/biometric-lock';
 import { BrandSplash } from '@/components/brand-splash';
 
+import { useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { CodesProvider } from '@/lib/codes';
 import { loadOnboardingSeen } from '@/lib/onboarding';
@@ -99,8 +101,13 @@ function Gate() {
  * land — the splash is a better place to spend those milliseconds.
  */
 function Shell() {
-  const { loading } = useAuth();
+  const { loading, session, signOut } = useAuth();
   const [onboardingResolved, setOnboardingResolved] = useState(false);
+
+  // The biometric lock. Resolved alongside onboarding and fonts so the splash
+  // covers the decision — see useAppLock for why it must not land after the
+  // first paint.
+  const lock = useAppLock(!!session, loading);
 
   const [fontsLoaded] = useFonts({
     PlusJakartaSans_400Regular,
@@ -129,7 +136,7 @@ function Shell() {
     return () => clearTimeout(t);
   }, []);
 
-  const ready = fontsLoaded && !loading && onboardingResolved && minElapsed;
+  const ready = fontsLoaded && !loading && onboardingResolved && lock.resolved && minElapsed;
 
   // Hand over from the native splash as soon as OUR splash has been laid out,
   // not when the app is ready. Waiting for `ready` would leave the bare system
@@ -149,6 +156,18 @@ function Shell() {
         <CodesProvider>
           <Gate />
         </CodesProvider>
+      ) : null}
+
+      {/* The lock sits ABOVE the router and BELOW the splash. Above the router
+          because the app must stay mounted underneath — unmounting it on every
+          background trip would throw away the code list and refetch it on each
+          unlock. Below the splash because on a cold start the branded splash
+          should still be the first thing seen, with the prompt arriving as it
+          fades rather than fighting it. */}
+      {ready && lock.locked ? (
+        <View style={StyleSheet.absoluteFill}>
+          <BiometricLock onUnlock={lock.unlock} onSignOut={() => void signOut()} />
+        </View>
       ) : null}
 
       {/* Sits ON TOP and fades out, rather than being swapped for the app. A

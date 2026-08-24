@@ -1,14 +1,68 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, View, Pressable } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Switch, Text, View, Pressable } from 'react-native';
 
 import { ChevronRight } from '@/components/icons';
 import { Card, Chip, Screen, SecondaryButton } from '@/components/ui';
+import { applyLockPreference, lockEnabledNow } from '@/lib/app-lock';
 import { useAuth } from '@/lib/auth';
+import {
+  authenticate,
+  getCapability,
+  methodLabel,
+  type BiometricCapability,
+} from '@/lib/biometrics';
 
 export default function You() {
   const { session, memberships, activeEstateId, setActiveEstateId, signOut, deleteAccount } =
     useAuth();
   const [deleting, setDeleting] = useState(false);
+
+  // Biometric app lock. `cap` is null until we know what the device offers —
+  // the row stays hidden until then rather than flashing a control that may
+  // not apply to this phone.
+  const [cap, setCap] = useState<BiometricCapability | null>(null);
+  const [lockOn, setLockOn] = useState(lockEnabledNow());
+  const [lockBusy, setLockBusy] = useState(false);
+
+  useEffect(() => {
+    void getCapability().then(setCap);
+  }, []);
+
+  /**
+   * Turning the lock ON requires passing it first.
+   *
+   * Otherwise someone could enable a lock they cannot themselves open — an
+   * enrolled face that is not theirs, a sensor that no longer reads their
+   * finger — and hand the next launch a barrier nobody can clear. Proving it
+   * works once, here, is the cheapest possible moment to find that out.
+   *
+   * Turning it OFF deliberately does NOT require a prompt: the app is already
+   * unlocked and in their hands, so demanding proof to REMOVE a lock only
+   * punishes the person whose biometrics have stopped working — exactly the
+   * person who most needs to switch it off.
+   */
+  const toggleLock = async (next: boolean) => {
+    if (lockBusy) return;
+    setLockBusy(true);
+    try {
+      if (next) {
+        const res = await authenticate('Confirm to turn on app lock');
+        if (!res.success) {
+          if (!res.cancelled) {
+            Alert.alert(
+              'Could not turn on app lock',
+              'That did not verify, so the lock has been left off. Nothing has changed.',
+            );
+          }
+          return;
+        }
+      }
+      await applyLockPreference(next);
+      setLockOn(next);
+    } finally {
+      setLockBusy(false);
+    }
+  };
 
   const meta = session?.user.user_metadata ?? {};
   const fullName = (meta.full_name as string | undefined) ?? 'Resident';
@@ -125,6 +179,38 @@ export default function You() {
             account deletion policy. Both reject a flow that only deactivates,
             and Apple rejects one that makes you email support, so this has to
             sit in plain sight rather than behind a menu. */}
+        {cap?.available ? (
+          <>
+            <Text className="mt-10 font-jk-xb text-label tracking-label text-muted">SECURITY</Text>
+            <Card className="mt-3 p-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1 pr-4">
+                  <Text className="font-jk-xb text-body capitalize text-ink">
+                    {methodLabel(cap)} lock
+                  </Text>
+                  <Text className="mt-1.5 font-jk text-sub leading-[19px] text-muted">
+                    Ask for {methodLabel(cap)} before showing your codes, when you open the app
+                    and after it has been in the background for a minute.
+                  </Text>
+                </View>
+                <Switch
+                  value={lockOn}
+                  onValueChange={(v) => void toggleLock(v)}
+                  disabled={lockBusy}
+                  accessibilityLabel={`${methodLabel(cap)} lock`}
+                  trackColor={{ false: '#e2e8ef', true: '#cdf24a' }}
+                  thumbColor="#ffffff"
+                />
+              </View>
+              <Text className="mt-3 font-jk text-micro leading-[17px] text-muted">
+                Your phone passcode still works if {methodLabel(cap)} does not, and you can
+                always sign out from the lock screen. This protects the app on this device — it
+                is not a second password on your account.
+              </Text>
+            </Card>
+          </>
+        ) : null}
+
         <Text className="mt-10 font-jk-xb text-label tracking-label text-muted">ACCOUNT</Text>
         <Card className="mt-3 p-4">
           <Text className="font-jk text-sub leading-[19px] text-muted">
