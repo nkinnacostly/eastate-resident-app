@@ -55,6 +55,30 @@ interface AuthState {
    */
   deleteAccount: () => Promise<DeleteAccountResult>;
   /**
+   * Ask for a reset code by email.
+   *
+   * Deliberately returns nothing but "the request was made". The endpoint
+   * behind it answers identically for an address with an account and one
+   * without, so there is no outcome here to branch on — reporting "no such
+   * account" would turn the screen into a membership oracle for anyone who
+   * wanted to know who lives on the estate.
+   */
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  /**
+   * Redeem the code and set the new password, as one step.
+   *
+   * One step because redeeming a recovery code SIGNS THE USER IN, and the gate
+   * in app/_layout unmounts the whole (auth) group the moment a session
+   * appears. Split across two screens, the second one would be torn off the
+   * navigator mid-flow and the password would never be set — see the note on
+   * `suppressSession` in the provider.
+   */
+  completePasswordReset: (
+    email: string,
+    code: string,
+    password: string,
+  ) => Promise<PasswordResetResult>;
+  /**
    * How the join request made during sign-up landed, handed to the join screen.
    *
    * It travels through here rather than through that screen's own state because
@@ -68,6 +92,19 @@ interface AuthState {
 /** Outcome of a self-service account deletion. */
 export type DeleteAccountResult =
   | { status: 'deleted' }
+  | { status: 'error'; message: string };
+
+/**
+ * Outcome of redeeming a reset code.
+ *
+ * `bad_code` is its own case rather than an error string because it is the one
+ * outcome that is the resident's to fix, and the screen says something
+ * different for it — it keeps them on the form with the code field focused,
+ * instead of showing a failure that reads as "start again".
+ */
+export type PasswordResetResult =
+  | { status: 'ok' }
+  | { status: 'bad_code' }
   | { status: 'error'; message: string };
 
 export interface SignUpInput {
@@ -109,6 +146,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // re-rendering everything under the provider to deliver it would be noise.
   const signUpJoin = useRef<JoinResult | null>(null);
 
+  /**
+   * Holds the gate still while a password reset finishes.
+   *
+   * Redeeming a recovery code is a SIGN-IN: verifyOtp returns a real session
+   * and supabase-js broadcasts it immediately. Without this flag that broadcast
+   * lands in `setSession` between redeeming the code and setting the new
+   * password, `Stack.Protected guard={!signedIn}` drops the entire (auth)
+   * group, and the reset screen is unmounted with its own work still in
+   * flight — so the resident is thrown into the app and their password is
+   * whatever it was before.
+   *
+   * A ref rather than state because it must take effect synchronously, before
+   * the next auth event arrives; a re-render would be a frame too late. The
+   * provider applies the final session itself once the password is actually
+   * changed, so the gate moves exactly once, at the right moment.
+   */
+  const suppressSession = useRef(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -116,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (suppressSession.current) return;
       setSession(next);
     });
     return () => sub.subscription.unsubscribe();
@@ -204,6 +260,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { status: 'requested', join };
   }, []);
 
+  /**
+   * Goes to our own Edge Function, NOT supabase.auth.resetPasswordForEmail.
+   *
+   * The built-in call mints a perfectly good token and then hands it to
+   * Supabase's fallback mail service, which sends a template containing no code
+   * and a link built from the project's Site URL — still `localhost:3000`, and
+   * therefore dead on a phone. request-password-reset mints the same token and
+   * sends it through Resend on the verified domain, code-first.
+   */
+  const requestPasswordReset = useCallback(async (email: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/request-password-reset`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string,
+            Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        },
+      );
+      // A non-2xx here is a malformed address or the platform being down —
+      // never "no such account", which the function answers 200 to on purpose.
+      if (!res.ok) {
+        return { error: 'We could not send a code just now. Please try again.' };
+      }
+      return { error: null };
+    } catch {
+      return { error: 'No connection. Try again once you are back online.' };
+    }
+  }, []);
+
+  const completePasswordReset = useCallback(
+    async (email: string, code: string, password: string): Promise<PasswordResetResult> => {
+      // Raised BEFORE verifyOtp, because verifyOtp is what emits the session.
+      suppressSession.current = true;
+      try {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: code,
+          type: 'recovery',
+        });
+
+        // Wrong, expired, or already used — all indistinguishable to the
+        // resident and all fixed the same way, by asking for another code.
+        if (verifyError) return { status: 'bad_code' };
+
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+
+        if (updateError) {
+          // The code was spent and a session exists, but the password is still
+          // the old one. Signing out is the honest end state: leaving them
+          // inside the app would tell them the reset worked when the next
+          // sign-in would prove otherwise.
+          await supabase.auth.signOut();
+          return { status: 'error', message: updateError.message };
+        }
+
+        // Only now is it safe to let the gate move. Read fresh rather than
+        // reusing verifyOtp's session: updateUser reissues the tokens, and the
+        // one from before the change is already stale.
+        const { data } = await supabase.auth.getSession();
+        suppressSession.current = false;
+        setSession(data.session);
+        return { status: 'ok' };
+      } catch {
+        return { status: 'error', message: 'No connection. Try again once you are back online.' };
+      } finally {
+        // Covers every path that returned without handing the session over —
+        // a stuck flag here would leave the app unable to notice a sign-in for
+        // the rest of the process's life.
+        suppressSession.current = false;
+      }
+    },
+    [],
+  );
+
   const takeSignUpJoinResult = useCallback(() => {
     const v = signUpJoin.current;
     signUpJoin.current = null;
@@ -263,11 +398,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       deleteAccount,
+      requestPasswordReset,
+      completePasswordReset,
       takeSignUpJoinResult,
     }),
     [
       session, memberships, activeEstateId, loading, membershipsLoaded,
-      refreshMemberships, signIn, signUp, signOut, deleteAccount, takeSignUpJoinResult,
+      refreshMemberships, signIn, signUp, signOut, deleteAccount,
+      requestPasswordReset, completePasswordReset, takeSignUpJoinResult,
     ],
   );
 

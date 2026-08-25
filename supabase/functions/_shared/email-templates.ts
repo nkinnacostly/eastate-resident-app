@@ -392,3 +392,63 @@ export function resetPassword(v: { confirmUrl: string; otp: string }): RenderedE
     ].join('\n'),
   };
 }
+
+// ─── Password reset, code only (the mobile apps) ─────────────────────────────
+//
+// A SECOND reset template, deliberately, rather than a flag on the one above.
+// The difference is not cosmetic — it is which artefact the reader is meant to
+// act on, and the two cannot share a layout without one of them lying.
+//
+// `resetPassword` is what the Send Email Hook renders: it leads with a button,
+// because a browser is on the other end and a click is the shortest path.
+//
+// This one leads with the code and has NO link at all, for three reasons that
+// all apply on a phone:
+//
+//   1. There is nowhere for a link to go. The project's Site URL is still the
+//      CLI default, and the apps register no universal/app link, so an emailed
+//      link resolves to localhost — a dead address on a handset.
+//   2. The mail is very often opened on a different device from the one being
+//      reset. A code crosses that gap; a deep link does not.
+//   3. Corporate and consumer link scanners fetch URLs in incoming mail to
+//      check them. A one-time recovery link is CONSUMED by that fetch, so the
+//      reset dies before the recipient touches it. A code is not clickable and
+//      survives.
+//
+// Keep both. Deleting the linked version would break the hook the moment it is
+// enabled; folding them together would put a dead button in this one.
+
+export function resetPasswordCode(v: { otp: string }): RenderedEmail {
+  const body =
+    p('Someone asked to reset the password for this myestateaccess account.') +
+    p('If it was you, enter this code in the app to choose a new password.') +
+    codeBlock('Your reset code', v.otp) +
+    muted('The code expires in 60 minutes and can only be used once.');
+
+  return {
+    subject: 'Your password reset code',
+    html: shell({
+      preheader: 'Your reset code expires in 60 minutes.',
+      heading: 'Reset your password',
+      body,
+      // No cta on purpose — see the note above.
+      footnote:
+        'If you did not ask for this, ignore this message and your password stays as it is. Nobody can change it without the code above, and we will never ask you for it.',
+    }),
+    text: [
+      'Someone asked to reset the password for this myestateaccess account.',
+      'If it was you, enter this code in the app to choose a new password.',
+      '',
+      `Your reset code: ${v.otp}`,
+      '',
+      'The code expires in 60 minutes and can only be used once.',
+      '',
+      'If you did not ask for this, ignore this message and your password stays as it is.',
+      'Nobody can change it without the code above, and we will never ask you for it.',
+      '',
+      '—',
+      'Privacy policy: https://myestateaccess.com/privacy',
+      'Questions: hello@myestateaccess.com',
+    ].join('\n'),
+  };
+}

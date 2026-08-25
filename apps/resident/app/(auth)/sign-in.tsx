@@ -123,17 +123,15 @@ export default function SignIn() {
 
           {errors.root?.message ? <FormError>{errors.root.message}</FormError> : null}
 
-          {/* Was a bare <Text>: it looked tappable and did nothing. Left visible
-              but honest until password reset is wired — completing a reset needs
-              a deep-link redirect target, which this app does not have yet. */}
+          {/* Now wired. The deep-link redirect target this used to wait for was
+              never built, and deliberately so: the reset is driven by an emailed
+              CODE rather than a link, which needs no redirect target, survives
+              the mail being opened on a different device, and cannot be consumed
+              by a link scanner before the resident gets to it. See
+              supabase/functions/_shared/email-templates.ts. */}
           <Pressable
             accessibilityRole="button"
-            onPress={() =>
-              Alert.alert(
-                'Password reset',
-                'Not available yet — ask your estate admin to reset it for you.',
-              )
-            }
+            onPress={() => router.push('/(auth)/forgot-password')}
             className="mt-3 h-9 justify-center self-end"
           >
             <Text className="font-jk-sb text-sub text-muted">Forgot password?</Text>

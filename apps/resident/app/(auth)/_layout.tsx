@@ -28,6 +28,10 @@ export default function AuthLayout() {
       </Stack.Protected>
       <Stack.Screen name="sign-in" />
       <Stack.Screen name="sign-up" />
+      {/* Both reset screens live in this stack, not behind the gate, because
+          the whole point is that the person using them cannot sign in. */}
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="reset-password" />
     </Stack>
   );
 }

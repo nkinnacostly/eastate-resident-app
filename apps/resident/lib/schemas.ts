@@ -177,3 +177,42 @@ export const deliveryNoteSchema = z.object({
 });
 
 export type DeliveryNoteValues = z.infer<typeof deliveryNoteSchema>;
+
+// ─── Password reset ───────────────────────────────────────────────────────────
+
+export const forgotPasswordSchema = z.object({ email: emailField });
+
+export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * The emailed code.
+ *
+ * A RANGE rather than a fixed length, and that is not laziness. Supabase mints
+ * this code, and its length is project configuration: `otp_length` reads 6 in
+ * supabase/config.toml while the hosted project currently issues 8. Pinning the
+ * client to either number means a config change silently refuses codes the
+ * server considers valid, on the one screen whose entire job is letting someone
+ * back in. The server is the only thing that can judge a code — this rule
+ * exists to catch a half-typed one, nothing more.
+ */
+const resetCodeField = z
+  .string()
+  .trim()
+  .min(1, 'Enter the code from your email.')
+  .regex(/^\d{6,10}$/, 'The code is the row of digits in your email.');
+
+export const resetPasswordSchema = z.object({
+  code: resetCodeField,
+
+  /**
+   * The same rule as sign-up, for the same reason: this is a screen where a
+   * password is CHOSEN, so the minimum belongs in the field rather than in an
+   * error after the round trip. See signUpSchema.
+   */
+  password: z
+    .string()
+    .min(SUPABASE_PASSWORD_MIN, `Use at least ${SUPABASE_PASSWORD_MIN} characters.`)
+    .max(SUPABASE_PASSWORD_MAX, `A password is at most ${SUPABASE_PASSWORD_MAX} characters.`),
+});
+
+export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
