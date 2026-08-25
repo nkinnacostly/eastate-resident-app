@@ -7,7 +7,7 @@
 <title>Visitor Management System for Gated Estates | myestateaccess</title>
 <meta name="description" content="Visitor management for gated estates in South Africa. Residents issue one-time codes that expire in six hours; guards verify them at the boom, offline.">
 <link rel="canonical" href="https://myestateaccess.com/">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#16181c">
 
 <meta property="og:type" content="website">
@@ -37,6 +37,20 @@
         imagesizes="(max-width: 940px) 100vw, 46vw">
   <link rel="stylesheet" href="/styles.css">
 
+<!--
+  TODO — add "sameAs" to the Organization node below once social profiles exist:
+
+      "sameAs": [
+        "https://www.linkedin.com/company/…",
+        "https://www.facebook.com/…"
+      ],
+
+  It is left out rather than guessed because sameAs is how a search engine and
+  an AI assistant confirm that this site, that LinkedIn page and that Facebook
+  page are one company. Pointing it at a profile we do not control, or one that
+  does not exist, actively breaks that link instead of leaving it unmade —
+  which is worse than the current silence.
+-->
 <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -89,9 +103,10 @@
         ],
         "offers": {
           "@type": "Offer",
-          "price": "0",
           "priceCurrency": "ZAR",
-          "description": "Pilot pricing on request"
+          "availability": "https://schema.org/InStock",
+          "url": "https://myestateaccess.com/contact",
+          "description": "Priced per home, scaled to the size of the estate. Quoted after a demo."
         },
         "isPartOf": {
           "@id": "https://myestateaccess.com/#website"

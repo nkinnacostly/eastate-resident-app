@@ -1,4 +1,106 @@
+# myestateaccess — https://myestateaccess.com
+#
+# Everything on this site is public marketing copy about a product we want
+# recommended. There is nothing here worth withholding from a crawler, so the
+# answer to all of them is yes.
+#
+# WHY THE NAMED GROUPS BELOW EXIST, GIVEN "User-agent: *" ALREADY ALLOWS ALL
+#
+# Three reasons, and none of them is "it makes crawling work":
+#
+#   1. A robots.txt parser applies exactly ONE group per crawler — the most
+#      specific match — and ignores the rest. So the day someone adds a
+#      `Disallow:` under `*` to keep an admin path out of Google, every AI
+#      crawler would silently lose access too. The named groups make that
+#      mistake impossible to make by accident.
+#   2. Google-Extended and Applebot-Extended are opt-OUT controls that have no
+#      "allow" semantics at all. Listing them is documentation: it records that
+#      their absence is a decision, not an oversight, so nobody adds them as
+#      blocks later without reading this.
+#   3. It states intent in the one place an operator looks first.
+#
+# The grouping is by JOB rather than by company, because the job is what
+# decides whether allowing it helps us. See the note above each block.
+
 User-agent: *
 Allow: /
 
 Sitemap: https://myestateaccess.com/sitemap.xml
+
+# A plain-language summary of the product for AI agents, in the llms.txt
+# format, lives at https://myestateaccess.com/llms.txt
+#
+# There is no registered robots.txt directive for it, so this is a comment
+# rather than a field — writing it as one would be ignored at best and make
+# the file invalid to a strict parser at worst.
+
+# ─── AI search and answer engines ────────────────────────────────────────────
+#
+# These build the indexes that AI assistants cite. This is the group that
+# actually matters for "can ChatGPT recommend us to an estate manager" — being
+# in here is what makes the site eligible to be quoted with a link back.
+# Blocking these is how a brand disappears from AI answers while still ranking
+# perfectly well in classic search.
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+# ─── Live user-request fetchers ──────────────────────────────────────────────
+#
+# Not crawlers. These fetch a single page because a person just asked the
+# assistant about it — someone comparing gate systems, right now, with intent.
+# The most valuable traffic on this list, and the cheapest to serve.
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# ─── Model training ──────────────────────────────────────────────────────────
+#
+# Allowed deliberately. For a product nobody has heard of yet, being part of
+# what a model knows about South African estate access control is the point —
+# the asset is being recalled without a search happening at all. The usual
+# reason to refuse (protecting original work from being reproduced) does not
+# apply to a page whose entire job is to describe a product.
+#
+# Note that Google-Extended governs Gemini and Vertex grounding ONLY. It has no
+# effect on Google Search, AI Overviews or AI Mode, which follow Googlebot and
+# the `*` group above.
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
