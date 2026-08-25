@@ -378,6 +378,33 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# ─── Per-function settings ───────────────────────────────────────────────────
+#
+# auth-emails is the Supabase Auth "Send Email Hook". It is the ONE function
+# here that must not sit behind the platform's JWT gate.
+#
+# Every other function in this project is called by something holding a JWT —
+# the apps send the anon key, pg_net sends the service role key — so the default
+# verify_jwt = true is right for them and is doing real work.
+#
+# Auth is different: it calls this hook SERVER-SIDE, with no user and no JWT.
+# It authenticates with a StandardWebhooks signature instead, which the function
+# verifies itself against SEND_EMAIL_HOOK_SECRET. Leaving the JWT gate on means
+# the platform rejects Auth's request with 401 before a line of our code runs —
+# and because that failure happens outside the function, it produces no function
+# log, so it looks like the hook was simply never called.
+#
+# This is NOT a loosening of security: the signature check in the function is
+# strictly stronger than the anon-key check it replaces, since the anon key is
+# public and compiled into every client.
+#
+# NOTE: supabase/cli#4059 — this file is ignored when UPDATING a function that
+# already exists, so deploy it explicitly:
+#     npx supabase functions deploy auth-emails --no-verify-jwt
+[functions.auth-emails]
+enabled = true
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -32,6 +32,9 @@ export default function AuthLayout() {
           the whole point is that the person using them cannot sign in. */}
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="reset-password" />
+      {/* Same reasoning: an unconfirmed account has no session, so this belongs
+          on the signed-out side even though it is the tail of sign-up. */}
+      <Stack.Screen name="verify-email" />
     </Stack>
   );
 }

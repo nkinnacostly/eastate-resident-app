@@ -258,25 +258,40 @@ describe('requesting access', () => {
     expect(router().replace).not.toHaveBeenCalled();
   });
 
-  // No session means the request could not be made as them, so say that rather
-  // than implying an admin is already looking at it.
-  it('sends them to sign in when the email needs confirming', async () => {
-    mockSignUp.mockResolvedValue({ status: 'confirm_email' });
+  // Carries straight on to the code screen. The join codes are held in the
+  // provider and spent the moment verification succeeds, so this is the next
+  // step of sign-up rather than a restart — no alert, and nothing that tells
+  // them to enter their codes a second time.
+  it('carries on to email verification when confirmation is required', async () => {
+    mockSignUp.mockResolvedValue({ status: 'verify_email' });
 
     render(<SignUp />);
     fillEverything();
     await submit();
 
     await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Confirm your email',
-        expect.any(String),
-        expect.any(Array),
-      ),
+      expect(router().replace).toHaveBeenCalledWith({
+        pathname: '/(auth)/verify-email',
+        params: { email: 'rita@example.com' },
+      }),
     );
-    const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0];
-    buttons[0].onPress();
-    expect(router().dismissTo).toHaveBeenCalledWith('/(auth)/sign-in');
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  /**
+   * REGRESSION GUARD. `replace`, not `push`: the account now exists, so going
+   * back to the sign-up form would submit the same address and be refused as
+   * already registered — a dead end that reads as a broken app.
+   */
+  it('leaves no way back to a sign-up form that would now be refused', async () => {
+    mockSignUp.mockResolvedValue({ status: 'verify_email' });
+
+    render(<SignUp />);
+    fillEverything();
+    await submit();
+
+    await waitFor(() => expect(router().replace).toHaveBeenCalled());
+    expect(router().push).not.toHaveBeenCalled();
   });
 
   it('surfaces a rejected account and stays put', async () => {

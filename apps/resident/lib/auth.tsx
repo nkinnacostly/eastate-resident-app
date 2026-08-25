@@ -79,6 +79,16 @@ interface AuthState {
     password: string,
   ) => Promise<PasswordResetResult>;
   /**
+   * Confirm a sign-up with the emailed code, then spend the held join codes.
+   *
+   * Both halves belong here rather than on the screen: confirming signs the
+   * resident in, which unmounts the (auth) group the screen lives in, so the
+   * join request has to be submitted by something that outlives it.
+   */
+  completeSignUpVerification: (email: string, code: string) => Promise<VerifyEmailResult>;
+  /** Send another sign-up code to the same address, invalidating the last. */
+  resendSignUpCode: (email: string) => Promise<{ error: string | null }>;
+  /**
    * How the join request made during sign-up landed, handed to the join screen.
    *
    * It travels through here rather than through that screen's own state because
@@ -130,9 +140,24 @@ export type SignUpOutcome =
   | { status: 'error'; message: string }
   /** Account created and the join request submitted — `join` says how it landed. */
   | { status: 'requested'; join: JoinResult }
-  /** Account created, but no session yet (email confirmation is on), so the
-   *  request could not be made under their identity. They finish at /join. */
-  | { status: 'confirm_email' };
+  /**
+   * Account created, but email confirmation is on so there is no session yet.
+   * The join codes are held in the provider; the resident finishes on the
+   * verify-email screen, which spends them once a code produces a session.
+   */
+  | { status: 'verify_email' };
+
+/**
+ * Outcome of confirming an emailed sign-up code.
+ *
+ * `bad_code` is separate for the same reason it is on password reset: it is the
+ * one failure the resident can fix themselves, and the screen keeps them on the
+ * form for it rather than showing something that reads as "start over".
+ */
+export type VerifyEmailResult =
+  | { status: 'ok' }
+  | { status: 'bad_code' }
+  | { status: 'error'; message: string };
 
 const AuthContext = createContext<AuthState | null>(null);
 
@@ -145,6 +170,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // A ref, not state: this is a one-shot handoff to the next screen, and
   // re-rendering everything under the provider to deliver it would be noise.
   const signUpJoin = useRef<JoinResult | null>(null);
+
+  /**
+   * The two join codes, held between sign-up and email verification.
+   *
+   * A ref, and deliberately NOT route params: these travel across a screen
+   * change, and putting a house code in a URL writes it into navigation state
+   * and anything that logs it. It is not a password, but it is the token that
+   * lets someone ask to be let into a specific house, and it has no business
+   * being in a link.
+   *
+   * In memory only, so it does not survive the app being killed mid-flow. That
+   * is the honest trade: persisting it would mean writing house codes to disk
+   * to save one screen of typing. If it is gone, the resident lands on /join
+   * and enters them there, which is exactly what that screen is for.
+   */
+  const pendingJoin = useRef<{ estateCode: string; houseCode: string } | null>(null);
 
   /**
    * Holds the gate still while a password reset finishes.
@@ -246,9 +287,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { status: 'error', message: error.message };
 
     // request_house_access derives the applicant from auth.uid(), so it needs a
-    // session. signUp returns one only when email confirmation is off; with it
-    // on there is nobody to make the request AS yet.
-    if (!data.session) return { status: 'confirm_email' };
+    // session. signUp returns one only when the project auto-confirms; with
+    // email confirmation ON there is nobody to make the request AS yet.
+    //
+    // BOTH BRANCHES ARE LIVE, and the app must keep working either way. Whether
+    // a session comes back is a DASHBOARD setting (`mailer_autoconfirm`) that
+    // can be flipped without a deploy, so this cannot be written against one of
+    // them. With confirmation off, sign-up completes here as it always has;
+    // with it on, the resident finishes on the verify-email screen.
+    //
+    // The codes are stashed rather than discarded. They are the whole reason
+    // this path exists: they arrived in a message from a landlord days ago, and
+    // making someone find them a second time after confirming their email is
+    // how a sign-up gets abandoned. completeSignUpVerification spends them the
+    // moment verification produces a session.
+    if (!data.session) {
+      pendingJoin.current = { estateCode: input.estateCode, houseCode: input.houseCode };
+      return { status: 'verify_email' };
+    }
 
     const join = await requestHouseAccess(input.estateCode, input.houseCode);
     signUpJoin.current = join;
@@ -339,6 +395,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /**
+   * Confirm the address, then immediately spend the held join codes.
+   *
+   * The session is suppressed across BOTH steps for the same reason the reset
+   * flow suppresses it: verifyOtp emits a session, and the gate would tear this
+   * screen — and the (auth) group it sits in — off the navigator before the
+   * join request had been made. Releasing it only at the end means the gate
+   * moves once, to a /join that already has an answer to show.
+   */
+  const completeSignUpVerification = useCallback(
+    async (email: string, code: string): Promise<VerifyEmailResult> => {
+      suppressSession.current = true;
+      try {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: code,
+          type: 'signup',
+        });
+
+        if (verifyError) return { status: 'bad_code' };
+
+        // Now there is an identity to submit under. A failure here is NOT a
+        // failed verification — the account is confirmed either way — so it
+        // must not be reported as one. /join handles an absent result by
+        // showing its own form.
+        const codes = pendingJoin.current;
+        pendingJoin.current = null;
+        if (codes) {
+          try {
+            signUpJoin.current = await requestHouseAccess(codes.estateCode, codes.houseCode);
+          } catch {
+            signUpJoin.current = null;
+          }
+        }
+
+        const { data } = await supabase.auth.getSession();
+        suppressSession.current = false;
+        setSession(data.session);
+        return { status: 'ok' };
+      } catch {
+        return { status: 'error', message: 'No connection. Try again once you are back online.' };
+      } finally {
+        suppressSession.current = false;
+      }
+    },
+    [],
+  );
+
+  const resendSignUpCode = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    // Supabase enforces its own cooldown between sends; surface that rather
+    // than a generic failure, since waiting is the actual remedy.
+    return { error: error?.message ?? null };
+  }, []);
+
   const takeSignUpJoinResult = useCallback(() => {
     const v = signUpJoin.current;
     signUpJoin.current = null;
@@ -400,12 +511,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteAccount,
       requestPasswordReset,
       completePasswordReset,
+      completeSignUpVerification,
+      resendSignUpCode,
       takeSignUpJoinResult,
     }),
     [
       session, memberships, activeEstateId, loading, membershipsLoaded,
       refreshMemberships, signIn, signUp, signOut, deleteAccount,
-      requestPasswordReset, completePasswordReset, takeSignUpJoinResult,
+      requestPasswordReset, completePasswordReset, completeSignUpVerification,
+      resendSignUpCode, takeSignUpJoinResult,
     ],
   );
 

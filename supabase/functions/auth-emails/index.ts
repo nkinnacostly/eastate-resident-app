@@ -23,7 +23,12 @@
 
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
 
-import { resetPassword, verifyEmail, type RenderedEmail } from '../_shared/email-templates.ts';
+import {
+  resetPassword,
+  verifyEmail,
+  verifyEmailCode,
+  type RenderedEmail,
+} from '../_shared/email-templates.ts';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 
@@ -120,7 +125,20 @@ Deno.serve(async (req) => {
 
   try {
     switch (d.email_action_type) {
+      // Sign-up is code-ONLY, unlike the others below.
+      //
+      // The resident is finishing this inside the app, holding an estate code
+      // and a house code that can only be spent once they have a session. A
+      // link would confirm them in a browser, burn the one-time token, and
+      // strand those two codes — so there is deliberately no link to click.
+      // See verifyEmailCode.
       case 'signup':
+        await send(user.email, verifyEmailCode({ otp: d.token }));
+        break;
+
+      // An email CHANGE is not the same journey: there are no join codes in
+      // flight, and the person may well be doing it from a desktop, so the
+      // link is still the shortest path.
       case 'email_change':
         await send(user.email, verifyEmail({ confirmUrl: url, otp: d.token }));
         break;

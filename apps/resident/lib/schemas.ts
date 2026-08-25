@@ -195,14 +195,14 @@ export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
  * back in. The server is the only thing that can judge a code — this rule
  * exists to catch a half-typed one, nothing more.
  */
-const resetCodeField = z
+const emailedCodeField = z
   .string()
   .trim()
   .min(1, 'Enter the code from your email.')
   .regex(/^\d{6,10}$/, 'The code is the row of digits in your email.');
 
 export const resetPasswordSchema = z.object({
-  code: resetCodeField,
+  code: emailedCodeField,
 
   /**
    * The same rule as sign-up, for the same reason: this is a screen where a
@@ -216,3 +216,17 @@ export const resetPasswordSchema = z.object({
 });
 
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
+
+// ─── Sign-up email verification ───────────────────────────────────────────────
+
+/**
+ * Shares `emailedCodeField` with the reset form on purpose.
+ *
+ * Both codes are minted by the same Supabase setting (`otp_length`), so a rule
+ * that lived in only one of them would drift the moment that setting changed —
+ * and the drift would show up as one of the two screens refusing perfectly
+ * valid codes, on a screen someone is stuck behind.
+ */
+export const verifyEmailSchema = z.object({ code: emailedCodeField });
+
+export type VerifyEmailValues = z.infer<typeof verifyEmailSchema>;

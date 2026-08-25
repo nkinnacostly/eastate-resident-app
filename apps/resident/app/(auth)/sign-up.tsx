@@ -61,14 +61,15 @@ export default function SignUp() {
       Alert.alert('Could not create your account', res.message);
       return;
     }
-    if (res.status === 'confirm_email') {
-      // No session, so the request could not be made as them. Say so plainly
-      // rather than implying an admin is already looking at it.
-      Alert.alert(
-        'Confirm your email',
-        'Check your inbox, then sign in. We will ask for your two codes once more to finish joining.',
-        [{ text: 'Sign in', onPress: () => router.dismissTo('/(auth)/sign-in') }],
-      );
+    if (res.status === 'verify_email') {
+      // The account exists but is unconfirmed. Their two join codes are held in
+      // the provider and spent the moment the emailed code lands, so this is a
+      // continuation of sign-up rather than a restart — no alert, no "we will
+      // ask for your codes again", just the next step.
+      //
+      // replace, not push: going back to a sign-up form that would now refuse
+      // this address is a dead end, so the form is taken out of the history.
+      router.replace({ pathname: '/(auth)/verify-email', params: { email: values.email } });
       return;
     }
     // status === 'requested': the account exists and they are signed in, so the

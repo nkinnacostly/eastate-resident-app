@@ -452,3 +452,58 @@ export function resetPasswordCode(v: { otp: string }): RenderedEmail {
     ].join('\n'),
   };
 }
+
+// ─── Sign-up verification, code only (the mobile apps) ───────────────────────
+//
+// The signup counterpart to resetPasswordCode, and it exists for one extra
+// reason beyond that one's three.
+//
+// A resident signing up has ALREADY typed their estate code and house code into
+// the app. Those two values only become a join request once there is a session
+// to submit them under, so the app holds them in memory and submits them the
+// moment verification succeeds. That only works if verification happens IN THE
+// APP.
+//
+// A link breaks it. Clicking one confirms the account in a browser, consumes
+// the one-time token, and leaves the app sitting on a code screen whose code
+// will now be refused — with the two join codes still stranded in memory and no
+// way to spend them. The person then lands on /join and has to find codes their
+// landlord sent them days ago.
+//
+// So this template has no link at all. There is exactly one way to finish, and
+// it is the way that keeps their codes.
+
+export function verifyEmailCode(v: { otp: string }): RenderedEmail {
+  const body =
+    p('Welcome to myestateaccess.') +
+    p('Enter this code in the app to confirm your email address and finish setting up your account.') +
+    codeBlock('Your confirmation code', v.otp) +
+    muted('The code expires in 60 minutes and can only be used once.');
+
+  return {
+    subject: 'Confirm your email address',
+    html: shell({
+      preheader: 'Your confirmation code expires in 60 minutes.',
+      heading: 'Confirm your email',
+      body,
+      // No cta on purpose — see the note above.
+      footnote:
+        'If you did not create an account, ignore this message and nothing further will happen. We will never ask you for this code.',
+    }),
+    text: [
+      'Welcome to myestateaccess.',
+      'Enter this code in the app to confirm your email address and finish setting up your account.',
+      '',
+      `Your confirmation code: ${v.otp}`,
+      '',
+      'The code expires in 60 minutes and can only be used once.',
+      '',
+      'If you did not create an account, ignore this message and nothing further will happen.',
+      'We will never ask you for this code.',
+      '',
+      '—',
+      'Privacy policy: https://myestateaccess.com/privacy',
+      'Questions: hello@myestateaccess.com',
+    ].join('\n'),
+  };
+}
