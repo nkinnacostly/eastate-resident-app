@@ -4,7 +4,7 @@
     "slug": "estate-guard",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app-icon.png",
     "scheme": "estateguard",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -68,7 +68,11 @@
       "package": "com.myestateaccess.guard",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#16181c",
+        "foregroundImage": "./assets/images/app-icon-foreground.png"
+      }
     },
     "plugins": [
       "expo-router",
