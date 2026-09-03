@@ -76,3 +76,8 @@ app-example
 google-service-account*.json
 fcm-v1*.json
 
+
+# EAS local signing credentials — holds keystore and key passwords in
+# plaintext. The keystores themselves are already covered by *.jks above;
+# this is the file that would leak the passwords to open them.
+credentials.json
