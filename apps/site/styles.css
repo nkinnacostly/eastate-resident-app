@@ -387,3 +387,32 @@ p { margin: 0; max-width: var(--measure); text-wrap: pretty; }
 .prose-list { margin: 14px 0 0; padding-left: 22px; color: var(--muted); }
 .prose-list li { margin: 0 0 8px; line-height: 1.65; }
 .prose-list li strong { color: var(--ink); font-weight: 700; }
+
+
+/* ── Google Play badge ─────────────────────────────────────────── */
+/*
+   The official badge PNG carries Google's mandated clear space inside the
+   image itself, so the visible badge renders noticeably smaller than its
+   box: 58px of image height lands the artwork at roughly the 50px of the
+   .btn sitting beside it. Do not crop that padding out to make the edges
+   line up, and do not recolour or redraw the badge — Google's brand terms
+   require the supplied artwork unaltered. Height is the only free variable.
+*/
+.play-badge { display: inline-block; line-height: 0; }
+.play-badge img { height: 58px; width: auto; display: block; }
+.play-badge:hover { opacity: .88; }
+
+/* Hero: a labelled pairing rather than a third button in .btn-row. The page
+   sells to estate managers, but the app is only usable by a resident whose
+   estate is already set up — an unlabelled download button in a B2B hero
+   invites the wrong person to install an app they cannot sign in to. */
+.app-get { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 16px; margin-top: 28px; }
+.app-get-label { font-size: 13.5px; font-weight: 600; color: var(--muted); }
+
+.site-foot .play-badge { margin-top: 18px; }
+/* The global focus ring is var(--ink), which is the footer's own background. */
+.site-foot .play-badge:focus-visible { outline-color: var(--canvas); }
+
+@media (max-width: 620px) {
+  .play-badge img { height: 52px; }
+}
