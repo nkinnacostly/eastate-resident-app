@@ -1,5 +1,6 @@
 import { countsAgainstCap, displayStatus, type DisplayStatus } from '@estate/core';
 
+import { callEdgeFunction } from './edge';
 import { supabase } from './supabase';
 
 /**
@@ -49,6 +50,70 @@ export interface CodeRow {
   status: DisplayStatus;
   owner_name: string;
   owner_unit: string | null;
+}
+
+// ─── guards ──────────────────────────────────────────────────────────────────
+
+export interface OnboardGuardResult {
+  estate_id: string;
+  guard_user_id: string;
+  email: string;
+  full_name: string | null;
+  /** Null when an existing account was reused — that person keeps their own. */
+  password: string | null;
+  reused_existing_account: boolean;
+  welcome_email_queued: boolean;
+}
+
+/**
+ * Registers a guard at this estate and returns their handover details.
+ *
+ * An Edge Function rather than an RPC for the same reason as estate
+ * onboarding: minting an auth user needs the service role key, which bypasses
+ * RLS and must never reach a browser bundle. The function re-checks that the
+ * caller really administers `estateId` — the JWT proves who they are, not what
+ * they may do, and the estate id travels from the client.
+ */
+export async function onboardGuard(input: {
+  estate_id: string;
+  email: string;
+  full_name?: string;
+  phone?: string;
+}): Promise<OnboardGuardResult> {
+  return callEdgeFunction<OnboardGuardResult>('onboard-guard', input, describeGuardError);
+}
+
+function describeGuardError(code: string): string {
+  const map: Record<string, string> = {
+    not_authenticated: 'You are signed out. Sign in again.',
+    not_an_admin_at_this_estate: 'Only an administrator of this estate can register a guard.',
+    estate_id_required: 'No estate selected.',
+    email_required: 'The guard needs an email address.',
+    email_invalid: 'That does not look like an email address.',
+    lookup_failed: 'That address could not be checked.',
+    create_user_failed: 'The guard account could not be created.',
+    grant_membership_failed: 'The account exists but could not be attached to this estate.',
+  };
+  return map[code] ?? code;
+}
+
+/**
+ * Who holds the gate right now, or null when nobody does.
+ *
+ * Reads the same `current_shift` the resident app uses, so the dashboard and
+ * the residents' phones can never disagree about who is on duty.
+ */
+export interface CurrentShift {
+  shift_id: string;
+  guard_name: string;
+  started_at: string;
+}
+
+export async function currentShift(estateId: string): Promise<CurrentShift | null> {
+  const { data, error } = await supabase.rpc('current_shift', { p_estate_id: estateId });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? null;
 }
 
 // ─── people ──────────────────────────────────────────────────────────────────

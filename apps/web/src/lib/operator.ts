@@ -6,6 +6,7 @@
  * RLS policy of every table — would leave a cross-tenant read path open on the
  * whole schema for the sake of these screens. See 20260815170000.
  */
+import { callEdgeFunction } from './edge';
 import { supabase } from './supabase';
 
 export interface Portfolio {
@@ -143,32 +144,7 @@ export async function onboardEstate(input: {
   admin_email: string;
   admin_name?: string;
 }): Promise<OnboardResult> {
-  const { data, error } = await supabase.functions.invoke<OnboardResult & { error?: string; detail?: string }>(
-    'onboard-estate',
-    { body: input },
-  );
-
-  // functions.invoke reports a non-2xx as a FunctionsHttpError whose message is
-  // just the status, so the useful part has to be read off the response body.
-  if (error) {
-    const detail = await readFunctionError(error);
-    throw new Error(detail ?? error.message);
-  }
-  if (!data || (data as { error?: string }).error) {
-    throw new Error(describe((data as { error?: string })?.error ?? 'unknown_error'));
-  }
-  return data;
-}
-
-async function readFunctionError(error: unknown): Promise<string | null> {
-  const res = (error as { context?: Response }).context;
-  if (!res || typeof res.json !== 'function') return null;
-  try {
-    const body = await res.json();
-    return describe(body?.error ?? '') + (body?.detail ? ` — ${body.detail}` : '');
-  } catch {
-    return null;
-  }
+  return callEdgeFunction<OnboardResult>('onboard-estate', input, describe);
 }
 
 /** Machine codes become sentences here, once, rather than at each call site. */
