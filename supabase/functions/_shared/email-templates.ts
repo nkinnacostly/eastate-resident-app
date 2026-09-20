@@ -252,6 +252,79 @@ export function estateAdminWelcome(v: {
   };
 }
 
+// ─── 1b. Guard registered by an estate admin → the guard ─────────────────────
+//
+// Sent when an estate admin registers a guard. Unlike the admin and landlord
+// mails there is no code to pass on and no dashboard to open: a guard's whole
+// job lives in the guard app, so the only thing this needs to do is get them
+// signed in and say what the app is for.
+//
+// No password in here, same as every other mail we send. The admin has it on
+// screen for the in-person handover; this link is the route for a guard who
+// would rather set their own.
+
+export function guardWelcome(v: {
+  guardName: string | null;
+  estateName: string | null;
+  setPasswordUrl: string | null;
+}): RenderedEmail {
+  const greeting = v.guardName ? `Hi ${v.guardName},` : 'Hi,';
+  const at = v.estateName ? ` at <strong>${esc(v.estateName)}</strong>` : '';
+  const atPlain = v.estateName ? ` at ${v.estateName}` : '';
+
+  const body =
+    p(esc(greeting)) +
+    p(`You have been registered as a guard${at} on myestateaccess.`) +
+    p(
+      'When a resident expects a visitor they generate a one-time code and send it on. At the gate you enter that code in the myestateaccess guard app and it tells you straight away whether to let the person through. Codes work once and expire after six hours.',
+    ) +
+    p(
+      'Start your shift when you come on duty. Residents are told who is on the gate, and every entry you record is kept in the estate\u2019s log.',
+    ) +
+    muted(
+      'The app keeps working when the gate has no signal \u2014 codes are checked on the phone itself and sync when the connection returns.',
+    );
+
+  const cta = v.setPasswordUrl ? { label: 'Set your password', url: v.setPasswordUrl } : undefined;
+
+  const footnote = v.setPasswordUrl
+    ? 'This link signs you in once so you can choose a password, and expires in 24 hours. If it has expired, or your estate gave you a password in person, open the guard app and use \u201cForgot password\u201d.'
+    : undefined;
+
+  return {
+    subject: v.estateName
+      ? `You are registered as a guard at ${v.estateName}`
+      : 'You are registered as a guard on myestateaccess',
+    html: shell({
+      preheader: `You have been registered as a guard${atPlain}. Set your password to sign in.`,
+      heading: 'You are on the gate',
+      body,
+      cta,
+      footnote,
+    }),
+    text: [
+      greeting,
+      '',
+      `You have been registered as a guard${atPlain} on myestateaccess.`,
+      '',
+      'When a resident expects a visitor they generate a one-time code and send it on. At the gate you enter that code in the myestateaccess guard app and it tells you straight away whether to let the person through. Codes work once and expire after six hours.',
+      '',
+      'Start your shift when you come on duty. Residents are told who is on the gate, and every entry you record is kept in the estate log.',
+      '',
+      'The app keeps working when the gate has no signal: codes are checked on the phone itself and sync when the connection returns.',
+      '',
+      v.setPasswordUrl
+        ? `Set your password: ${v.setPasswordUrl}\n(This link expires in 24 hours. If it has expired, or your estate gave you a password in person, use "Forgot password" in the guard app.)`
+        : 'Your estate will give you your password.',
+      '',
+      '\u2014',
+      'You are receiving this because an estate registered you as a guard on myestateaccess.',
+      'Privacy policy: https://myestateaccess.com/privacy',
+      'Questions: hello@myestateaccess.com',
+    ].join('\n'),
+  };
+}
+
 // ─── 2. Landlord onboarded → the landlord ────────────────────────────────────
 
 export function landlordWelcome(v: {

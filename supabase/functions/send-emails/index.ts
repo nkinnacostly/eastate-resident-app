@@ -15,6 +15,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import {
   estateAdminWelcome,
+  guardWelcome,
   landlordWelcome,
   type RenderedEmail,
 } from '../_shared/email-templates.ts';
@@ -107,6 +108,20 @@ function render(msg: Record<string, unknown>): { to: string; email: RenderedEmai
         houseNumber: (msg.house_number as string) ?? '',
         houseCode: (msg.house_code as string) ?? '',
         appUrl: SITE_URL,
+      }),
+    };
+  }
+
+  if (kind === 'guard_welcome') {
+    return {
+      to,
+      // Keyed on the pairing, not the person: the same guard registered at a
+      // second estate is a different mail and must not be deduplicated away.
+      key: `guard-${msg.guard_user_id}-${msg.estate_id}`,
+      email: guardWelcome({
+        guardName: (msg.guard_name as string | null) ?? null,
+        estateName: (msg.estate_name as string | null) ?? null,
+        setPasswordUrl: (msg.set_password_url as string | null) ?? null,
       }),
     };
   }
