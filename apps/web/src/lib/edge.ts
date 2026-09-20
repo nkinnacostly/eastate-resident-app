@@ -17,7 +17,10 @@ import { supabase } from './supabase';
  */
 export async function callEdgeFunction<T>(
   name: string,
-  body: unknown,
+  // Not `unknown`: functions.invoke types its body as a union of concrete
+  // payloads, and `unknown` is assignable to none of them. Every caller here
+  // sends a plain JSON object, so that is what this asks for.
+  body: Record<string, unknown>,
   /** Machine codes to sentences, once per caller rather than at each call site. */
   describe: (code: string) => string,
 ): Promise<T> {
