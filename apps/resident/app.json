@@ -121,7 +121,7 @@
           "faceIDPermission": "Allow My Estate Access to unlock with Face ID."
         }
       ],
-      "./plugins/with-pod-deployment-target"
+      "../../plugins/with-pod-deployment-target"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -101,7 +101,8 @@
             "deploymentTarget": "15.1"
           }
         }
-      ]
+      ],
+      "../../plugins/with-pod-deployment-target"
     ],
     "experiments": {
       "typedRoutes": true,
