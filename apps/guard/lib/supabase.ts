@@ -10,7 +10,7 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseAnonKey) {
   // Fail loudly at startup rather than with an opaque network error later.
   // Expo only inlines vars prefixed EXPO_PUBLIC_, and reads .env files from
-  // the app directory (apps/resident), not the workspace root.
+  // the app directory (apps/guard), not the workspace root.
   //
   // .env.local is gitignored and EAS Build uploads only what git tracks, so a
   // cloud build never sees it. The values EAS uses live in EAS environment
@@ -22,9 +22,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   // A store build once shipped that threw right here on launch, because the
   // values existed only in .env.local. Adding another EXPO_PUBLIC_ var means
   // adding it to EAS as well, or the next store build crashes the same way.
+  //
+  // The guard app has its OWN EAS project, so `eas env:list` has to be run
+  // from apps/guard — the resident project's variables do not cover it.
   throw new Error(
     'Missing EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY. ' +
-      'Expected in apps/resident/.env.local — restart the dev server after adding them.',
+      'Expected in apps/guard/.env.local — restart the dev server after adding them.',
   );
 }
 

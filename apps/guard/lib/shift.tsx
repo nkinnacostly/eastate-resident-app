@@ -79,11 +79,23 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false;
     void (async () => {
+      // user_id is filtered HERE rather than left to RLS. The policy is
+      // "read own OR as estate admin OR platform admin", so for anyone
+      // holding an admin membership this query would also return every OTHER
+      // guard's row at that estate — and `limit(1)` with no order would pick
+      // one at random. The app would then sign in against an estate this
+      // person is not a guard at, and every verification would come back
+      // not_a_guard_at_this_estate with nothing on screen to explain it.
+      //
+      // The ordering matters for the ordinary case too: a guard who works two
+      // estates got a different post on each launch.
       const { data, error } = await supabase
         .from('memberships')
-        .select('id, estate_id, estates(name)')
+        .select('id, estate_id, created_at, estates(name)')
+        .eq('user_id', session.user.id)
         .eq('role', 'guard')
         .eq('is_active', true)
+        .order('created_at', { ascending: true })
         .limit(1);
 
       if (cancelled) return;

@@ -104,7 +104,10 @@ export default function VerdictScreen() {
           <View className="mt-3 self-start rounded-full bg-coral px-3 py-1.5">
             <Text className="font-jk-b text-label tracking-label text-white">FLAGGED ENTRY</Text>
           </View>
-          <Text className="mt-4 max-w-[15ch] font-jk-xb text-[30px] leading-[34px] tracking-tight text-ink">
+          {/* max-w-measure (320px), not `15ch`: `ch` is a CSS unit with no
+              meaning in React Native, so it resolved to nothing and the
+              heading ran the full width of the screen. */}
+          <Text className="mt-4 max-w-measure font-jk-xb text-[30px] leading-[34px] tracking-tight text-ink">
             Admitted without a match
           </Text>
 

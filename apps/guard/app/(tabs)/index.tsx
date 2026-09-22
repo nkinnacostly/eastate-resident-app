@@ -7,7 +7,7 @@ import { Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CodeBoxes, Keypad } from '@/components/keypad';
-import { Eyebrow, StatusDot, WarnBanner } from '@/components/ui';
+import { Eyebrow, StatusDot, TAB_BAR_CLEARANCE, WarnBanner } from '@/components/ui';
 import { codeSchema, type CodeValues } from '@/lib/schemas';
 import { useShift } from '@/lib/shift';
 import { verifyOffline, verifyOnline } from '@/lib/verify';
@@ -76,7 +76,7 @@ export default function Check() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
-      <View className="flex-1 px-4 pb-2">
+      <View className="flex-1 px-4">
         <View className="mt-1.5 flex-row items-center justify-between px-1">
           <View>
             <Eyebrow className="text-muted">
@@ -137,8 +137,10 @@ export default function Check() {
           )}
         />
 
-        {/* Clears the floating nav bar. */}
-        <View className="h-[70px]" />
+        {/* Clears the floating nav bar, and leaves a real gap above it. The
+            Check key is the most-tapped control in the app and sat flush
+            against the bar, so a thumb reaching for it could catch Log. */}
+        <View style={{ height: TAB_BAR_CLEARANCE }} />
       </View>
     </SafeAreaView>
   );

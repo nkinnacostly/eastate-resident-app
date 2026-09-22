@@ -8,6 +8,24 @@ import {
   type ViewProps,
 } from 'react-native';
 
+/**
+ * How much room the floating nav bar needs at the bottom of a screen.
+ *
+ * Published here because every tab screen has to clear the same bar, and each
+ * one used to carry its own guess: the keypad reserved 70px, the log and shift
+ * screens 112px. 70 was exactly wrong — the bar's top edge sits at
+ * BOTTOM + HEIGHT above the screen edge, so the Check key finished flush
+ * against it with no gap at all, and the two numbers could not both be right.
+ *
+ * Derive, don't guess. Changing the bar's height or offset now moves every
+ * screen with it.
+ */
+export const TAB_BAR_HEIGHT = 66;
+export const TAB_BAR_BOTTOM = 20;
+/** Deliberate breathing room, not slack. The gate is tapped in a hurry. */
+export const TAB_BAR_GAP = 22;
+export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + TAB_BAR_BOTTOM + TAB_BAR_GAP;
+
 export function Card({ children, className = '', ...rest }: ViewProps & { className?: string }) {
   return (
     <View className={`rounded-card bg-card ${className}`} {...rest}>

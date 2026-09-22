@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, WarnBanner } from '@/components/ui';
+import { Card, TAB_BAR_CLEARANCE, WarnBanner } from '@/components/ui';
 import { recentEvents, type OutboxRow } from '@/lib/db';
 import { useShift } from '@/lib/shift';
 import { REJECT_COPY } from '@/lib/verify';
@@ -66,7 +66,7 @@ export default function Log() {
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <ScrollView
         className="flex-1 px-5"
-        contentContainerClassName="pb-28"
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

@@ -1,7 +1,7 @@
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, PrimaryButton, StatusDot, WarnBanner } from '@/components/ui';
+import { Card, PrimaryButton, StatusDot, TAB_BAR_CLEARANCE, WarnBanner } from '@/components/ui';
 import { useShift } from '@/lib/shift';
 
 function ago(seconds: number | null): string {
@@ -48,7 +48,7 @@ export default function Shift() {
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <ScrollView
         className="flex-1 px-5"
-        contentContainerClassName="pb-28"
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
         <Text className="mt-3 font-jk-xb text-display tracking-tight text-ink">{name}</Text>
