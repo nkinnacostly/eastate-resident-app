@@ -12,11 +12,13 @@ import { CODE_CHARSET } from '@estate/core';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
+import SetPassword from '@/app/(auth)/set-password';
 import StartShift from '@/app/(auth)/start-shift';
 import Check from '@/app/(tabs)/index';
 
 // `mock`-prefixed so jest's module factories are allowed to close over them.
 const mockSignIn = jest.fn(async () => ({ error: null as string | null }));
+const mockSetPassword = jest.fn(async () => ({ error: null as string | null }));
 const mockShift = {
   session: null as unknown,
   post: { membership_id: 'm-1', estate_id: 'e-1', estate_name: 'Acacia Park' },
@@ -32,6 +34,8 @@ const mockShift = {
   sync: jest.fn(async () => {}),
   endShift: jest.fn(async () => {}),
   signIn: mockSignIn,
+  mustChangePassword: false as boolean | null,
+  setPassword: mockSetPassword,
 };
 
 jest.mock('@/lib/shift', () => ({ useShift: () => mockShift }));
@@ -49,6 +53,7 @@ const button = (name: string) => screen.getByRole('button', { name });
 beforeEach(() => {
   jest.clearAllMocks();
   mockSignIn.mockResolvedValue({ error: null });
+  mockSetPassword.mockResolvedValue({ error: null });
   (global as { __router?: unknown }).__router = { push: jest.fn(), replace: jest.fn() };
 });
 
@@ -200,5 +205,72 @@ describe('code entry', () => {
     } finally {
       mockShift.post = post;
     }
+  });
+});
+
+/**
+ * The handover password is the one an admin generated, read off a screen and
+ * said out loud. These assert the button, same as the rest of this file: a
+ * mismatch rule that only renders a message is worth nothing if the guard can
+ * still submit past it.
+ */
+describe('set password', () => {
+  const next = () => screen.getByPlaceholderText('New password');
+  const again = () => screen.getByPlaceholderText('Repeat it');
+
+  it('starts disabled — nothing has been typed', () => {
+    render(<SetPassword />);
+    expect(button('Save and start')).toBeDisabled();
+  });
+
+  it('stays disabled below the 8-character floor Supabase itself enforces', async () => {
+    render(<SetPassword />);
+    fireEvent.changeText(next(), 'short');
+    fireEvent.changeText(again(), 'short');
+
+    await waitFor(() => expect(button('Save and start')).toBeDisabled());
+  });
+
+  // The whole point of the second field. A typo here sets a password the guard
+  // cannot type again, on an account they cannot recover without an admin.
+  it('stays disabled while the two do not match', async () => {
+    render(<SetPassword />);
+    fireEvent.changeText(next(), 'gatehouse42');
+    fireEvent.changeText(again(), 'gatehouse43');
+
+    await waitFor(() => expect(button('Save and start')).toBeDisabled());
+  });
+
+  it('enables once both are long enough and identical', async () => {
+    render(<SetPassword />);
+    fireEvent.changeText(next(), 'gatehouse42');
+    fireEvent.changeText(again(), 'gatehouse42');
+
+    await waitFor(() => expect(button('Save and start')).toBeEnabled());
+  });
+
+  // Not trimmed, deliberately: a leading space is a legitimate character, and
+  // eating it would set a password that never works again.
+  it('passes the password through untouched, spaces and all', async () => {
+    render(<SetPassword />);
+    fireEvent.changeText(next(), ' gatehouse42 ');
+    fireEvent.changeText(again(), ' gatehouse42 ');
+
+    await waitFor(() => expect(button('Save and start')).toBeEnabled());
+    fireEvent.press(button('Save and start'));
+
+    await waitFor(() => expect(mockSetPassword).toHaveBeenCalledWith(' gatehouse42 '));
+  });
+
+  it('keeps a rejected password on screen rather than only in the alert', async () => {
+    mockSetPassword.mockResolvedValue({ error: 'This password is known to be compromised.' });
+    render(<SetPassword />);
+    fireEvent.changeText(next(), 'gatehouse42');
+    fireEvent.changeText(again(), 'gatehouse42');
+
+    await waitFor(() => expect(button('Save and start')).toBeEnabled());
+    fireEvent.press(button('Save and start'));
+
+    await screen.findByText(/known to be compromised/i);
   });
 });

@@ -36,9 +36,17 @@ interface ShiftState {
   /** Past POOL_STALE_THRESHOLD_SECONDS the keypad shows the degraded banner. */
   stale: boolean;
   syncing: boolean;
+  /**
+   * This account still carries the password an admin generated and read out.
+   * Null while unknown — distinct from false, because routing on "not yet
+   * loaded" would flash the keypad at a guard who is about to be sent to the
+   * set-password screen.
+   */
+  mustChangePassword: boolean | null;
   refresh: () => Promise<void>;
   sync: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  setPassword: (next: string) => Promise<{ error: string | null }>;
   endShift: () => Promise<void>;
 }
 
@@ -52,6 +60,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const [queued, setQueued] = useState(0);
   const [lastPullAt, setLastPullAt] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState<boolean | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // expo-network's hook: { isConnected, isInternetReachable, type } — verified
@@ -175,9 +184,69 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 1000)) : null;
   }, [lastPullAt, now]);
 
+  /**
+   * Is this account still on its handover password?
+   *
+   * onboard-guard sets profiles.must_change_password when an ADMIN generates
+   * the account, because by the time that password is first used it has been
+   * read off a screen and spoken aloud at a gate. The flag was already being
+   * written and nothing in this app ever read it, so it changed nothing for
+   * the people it was written about.
+   *
+   * Resolved from the session rather than the post: a guard with no post yet
+   * still has an account whose password two people know.
+   *
+   * A failed read resolves to false rather than staying null. Null holds the
+   * app on a spinner, and the failure mode of guessing wrong here is a guard
+   * who is not asked to change a password — which is where we already were.
+   * Holding the gate shut over it would be worse.
+   */
+  useEffect(() => {
+    if (!session) {
+      setMustChangePassword(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('must_change_password')
+        .eq('id', session.user.id)
+        .single();
+      if (cancelled) return;
+      if (error) {
+        console.warn('[shift] could not read must_change_password', error.message);
+        setMustChangePassword(false);
+        return;
+      }
+      setMustChangePassword(Boolean(data?.must_change_password));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
+  }, []);
+
+  /**
+   * Set a new password, then drop the flag.
+   *
+   * Order matters and the flag is cleared through an RPC rather than an UPDATE:
+   * column-level grants (20260815180000) mean a client cannot write
+   * must_change_password directly, so the only way to clear it is
+   * clear_must_change_password(), which exists precisely so it cannot be
+   * cleared WITHOUT changing the password.
+   */
+  const setPassword = useCallback(async (next: string) => {
+    const { error } = await supabase.auth.updateUser({ password: next });
+    if (error) return { error: error.message };
+    const { error: clearErr } = await supabase.rpc('clear_must_change_password');
+    if (clearErr) return { error: clearErr.message };
+    setMustChangePassword(false);
+    return { error: null };
   }, []);
 
   /**
@@ -253,14 +322,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       poolAgeSeconds,
       stale: poolAgeSeconds !== null && poolAgeSeconds > POOL_STALE_THRESHOLD_SECONDS,
       syncing,
+      mustChangePassword,
       refresh,
       sync,
       signIn,
+      setPassword,
       endShift,
     }),
     [
       session, post, loading, online, poolCount, queued, lastPullAt,
-      poolAgeSeconds, syncing, refresh, sync, signIn, endShift,
+      poolAgeSeconds, syncing, mustChangePassword, refresh, sync, signIn,
+      setPassword, endShift,
     ],
   );
 

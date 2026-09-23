@@ -17,19 +17,36 @@ import 'react-native-reanimated';
 import { ShiftProvider, useShift } from '@/lib/shift';
 
 function Gate() {
-  const { session, post, loading } = useShift();
+  const { session, post, loading, mustChangePassword } = useShift();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
     const inAuth = segments[0] === '(auth)';
+    const onSetPassword = segments[1] === 'set-password';
+
     // No session OR no guard post means there is no shift to run. A signed-in
     // user who is not an active guard anywhere is sent back rather than shown
     // an empty keypad they cannot use.
-    if ((!session || !post) && !inAuth) router.replace('/(auth)/start-shift');
+    if ((!session || !post) && !inAuth) {
+      router.replace('/(auth)/start-shift');
+      return;
+    }
+
+    // Still on the password an admin generated and read out. Checked BEFORE
+    // the route to the keypad, and only once the flag has actually resolved —
+    // `null` means unknown, and routing on unknown would flash the keypad at
+    // somebody who is about to be sent here anyway.
+    if (session && mustChangePassword === true) {
+      if (!onSetPassword) router.replace('/(auth)/set-password');
+      return;
+    }
+
+    // Covers the moment the password is saved: the guard is standing on
+    // set-password with the flag now false, and nothing else would move them.
     if (session && post && inAuth) router.replace('/(tabs)');
-  }, [session, post, loading, segments, router]);
+  }, [session, post, loading, mustChangePassword, segments, router]);
 
   if (loading) {
     return (

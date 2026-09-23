@@ -56,6 +56,42 @@ export const signInSchema = z.object({
 
 export type SignInValues = z.infer<typeof signInSchema>;
 
+// ─── Choosing a new password ──────────────────────────────────────────────────
+
+/**
+ * Supabase's own default minimum. Stated here rather than assumed, because a
+ * rule the client enforces one character looser than the server produces a
+ * form that submits, fails, and cannot explain why.
+ */
+const PASSWORD_MIN = 8;
+
+/**
+ * Unlike signInSchema.password, this one DOES carry a strength rule — it is
+ * where a password is set rather than presented, which is the distinction that
+ * file makes above. Still deliberately only a length floor: a guard is typing
+ * this one-handed at a gate, and a symbol-and-digit rule at that moment
+ * produces `Password1!` on every phone in the estate.
+ *
+ * Not trimmed. A leading or trailing space is a legitimate character, and
+ * eating it here would set a password the guard can never type again.
+ */
+export const setPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(PASSWORD_MIN, `Use at least ${PASSWORD_MIN} characters.`)
+      .max(SUPABASE_PASSWORD_MAX, `A password is at most ${SUPABASE_PASSWORD_MAX} characters.`),
+    confirm: z.string().min(1, 'Type it a second time.'),
+  })
+  // Reported against `confirm`, not the form: an error with no path renders
+  // nowhere, and the guard sees a dead button with no message.
+  .refine((v) => v.password === v.confirm, {
+    path: ['confirm'],
+    message: 'The two do not match.',
+  });
+
+export type SetPasswordValues = z.infer<typeof setPasswordSchema>;
+
 // ─── Access code ──────────────────────────────────────────────────────────────
 
 /**
