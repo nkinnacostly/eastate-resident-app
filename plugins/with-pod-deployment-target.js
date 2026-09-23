@@ -31,6 +31,21 @@ const path = require('path');
  * this. That is a reprieve, not a difference of opinion — when EAS moves to
  * Xcode 27 the cloud builds fail exactly the same way. Fixing it here means
  * that upgrade is uneventful.
+ *
+ * THIS ONLY RUNS ON PREBUILD — REGISTERING IT IS NOT ENOUGH LOCALLY
+ *
+ * A dangerous mod runs during `expo prebuild`. `expo run:ios` SKIPS prebuild
+ * when ios/ already exists, so adding this plugin to app.json does nothing to
+ * a native folder that was generated before it. That is not theoretical: the
+ * guard app's ios/ predated the plugin, pod install ran happily, and six
+ * targets stayed at 12.0–13.4 (RNCAsyncStorage_resources, RNSVGFilters,
+ * ReachabilitySwift) with the plugin sitting registered and inert.
+ *
+ *     npx expo prebuild --platform ios --clean
+ *
+ * is what actually applies it. Afterwards every target reads 15.1 — 230 of
+ * 230 in the guard app, verified. EAS is unaffected either way, because ios/
+ * is gitignored and a cloud build always prebuilds from scratch.
  */
 const DEPLOYMENT_TARGET = '15.1';
 
