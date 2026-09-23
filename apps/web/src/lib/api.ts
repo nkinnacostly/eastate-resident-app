@@ -40,6 +40,8 @@ export interface EventRow {
   guard_name: string;
   host_name: string | null;
   host_unit: string | null;
+  /** The guard admitted this without the device matching a code. */
+  admitted_without_match: boolean;
 }
 
 export interface CodeRow {
@@ -311,7 +313,7 @@ export async function listEvents(estateId: string, limit = 100): Promise<EventRo
     // by parsing this at the type level, and `'a' + 'b'` widens to `string`,
     // which collapses the result to GenericStringError.
     .select(
-      'id, code_attempted, outcome, reject_reason, verified_at, synced_at, source, memberships!verification_events_verified_by_membership_id_fkey(profiles(full_name)), access_codes(memberships!access_codes_membership_id_fkey(unit, profiles(full_name)))',
+      'id, code_attempted, outcome, reject_reason, verified_at, synced_at, source, admitted_without_match, memberships!verification_events_verified_by_membership_id_fkey(profiles(full_name)), access_codes(memberships!access_codes_membership_id_fkey(unit, profiles(full_name)))',
     )
     .eq('estate_id', estateId)
     .order('synced_at', { ascending: false, nullsFirst: false })
@@ -334,6 +336,7 @@ export async function listEvents(estateId: string, limit = 100): Promise<EventRo
       guard_name: guard?.profiles?.full_name ?? 'Unknown guard',
       host_name: code?.memberships?.profiles?.full_name ?? null,
       host_unit: code?.memberships?.unit ?? null,
+      admitted_without_match: Boolean(e.admitted_without_match),
     };
   });
 }

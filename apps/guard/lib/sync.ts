@@ -62,6 +62,20 @@ export async function push(estateId: string): Promise<{ pushed: number; collisio
       code: e.code,
       verified_at: e.verified_at,
       pool_age_seconds: e.pool_age_seconds,
+      // The one thing the server cannot work out for itself.
+      //
+      // Every other field here is evidence the server re-judges: it resolves
+      // the code, checks the status, and reaches its own verdict, which is
+      // right — the phone's view of a code is a cache and the server's is the
+      // truth. But 'flagged' is not a verdict about a code. It is the record
+      // that a guard overrode a refusal and let somebody through anyway, and
+      // no amount of server-side state can reconstruct that afterwards.
+      //
+      // It used to be dropped here, so an override arrived looking like an
+      // ordinary offline check against a code that did not exist — and was
+      // logged as REJECTED. The audit trail said the visitor was turned away
+      // when the guard had waved them through.
+      flagged: e.outcome === 'flagged',
     })),
   });
   if (error) throw new Error(error.message);

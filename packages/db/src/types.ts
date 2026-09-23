@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -414,6 +414,24 @@ export type Database = {
           },
         ]
       }
+      password_reset_attempts: {
+        Row: {
+          email_key: string
+          id: number
+          requested_at: string
+        }
+        Insert: {
+          email_key: string
+          id?: number
+          requested_at?: string
+        }
+        Update: {
+          email_key?: string
+          id?: number
+          requested_at?: string
+        }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
           created_at: string
@@ -490,6 +508,7 @@ export type Database = {
       }
       verification_events: {
         Row: {
+          admitted_without_match: boolean
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
@@ -505,6 +524,7 @@ export type Database = {
           verified_by_membership_id: string
         }
         Insert: {
+          admitted_without_match?: boolean
           client_event_id: string
           code_attempted?: string | null
           code_id?: string | null
@@ -520,6 +540,7 @@ export type Database = {
           verified_by_membership_id: string
         }
         Update: {
+          admitted_without_match?: boolean
           client_event_id?: string
           code_attempted?: string | null
           code_id?: string | null
@@ -569,12 +590,14 @@ export type Database = {
           p_code: string
           p_code_id: string
           p_estate_id: string
+          p_flagged?: boolean
           p_membership_id: string
           p_pool_age: number
           p_source: Database["public"]["Enums"]["event_source"]
           p_verified_at: string
         }
         Returns: {
+          admitted_without_match: boolean
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
@@ -597,6 +620,7 @@ export type Database = {
         }
       }
       approve_join_request: { Args: { p_request_id: string }; Returns: string }
+      claim_password_reset: { Args: { p_email: string }; Returns: string }
       clear_must_change_password: { Args: never; Returns: undefined }
       create_estate: {
         Args: { p_address?: string; p_contact_info?: string; p_name: string }
@@ -643,7 +667,17 @@ export type Database = {
           status: string
         }[]
       }
+      dispatch_emails_tick: { Args: never; Returns: undefined }
       dispatch_notifications_tick: { Args: never; Returns: undefined }
+      emails_archive: { Args: { p_msg_id: number }; Returns: boolean }
+      emails_read: {
+        Args: { p_qty: number; p_vt: number }
+        Returns: {
+          message: Json
+          msg_id: number
+          read_ct: number
+        }[]
+      }
       end_shift: {
         Args: { p_estate_id: string }
         Returns: {
@@ -651,6 +685,10 @@ export type Database = {
           result: string
           shift_id: string
         }[]
+      }
+      enqueue_email: {
+        Args: { p_kind: string; p_payload: Json }
+        Returns: number
       }
       generate_code: { Args: { p_len?: number }; Returns: string }
       grant_membership: {
@@ -669,6 +707,7 @@ export type Database = {
       ingest_verification_events: {
         Args: { p_estate_id: string; p_events: Json }
         Returns: {
+          admitted_without_match: boolean
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
@@ -718,6 +757,7 @@ export type Database = {
         Returns: {
           message: Json
           msg_id: number
+          read_ct: number
         }[]
       }
       operator_admins: {
@@ -810,6 +850,7 @@ export type Database = {
           verifications_30d: number
         }[]
       }
+      purge_password_reset_attempts: { Args: never; Returns: undefined }
       register_push_token: {
         Args: {
           p_device_id?: string
@@ -840,6 +881,13 @@ export type Database = {
         Returns: string
       }
       rotate_house_code: { Args: { p_house_id: string }; Returns: string }
+      service_find_user_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
       start_shift: {
         Args: { p_estate_id: string }
         Returns: {
@@ -895,12 +943,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -924,11 +972,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -949,11 +997,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -974,11 +1022,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -991,11 +1039,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

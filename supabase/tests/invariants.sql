@@ -172,4 +172,24 @@ insert into results select 10,'queue: code_used + forced_pull enqueued',
   'code_used='||count(*) filter (where message->>'kind'='code_used')::text||' forced_pull='||count(*) filter (where message->>'kind'='forced_pull')::text,
   count(*) filter (where message->>'kind'='code_used')>=1 and count(*) filter (where message->>'kind'='forced_pull')>=1
   from pgmq.q_notifications;
+-- The admit-and-flag override, both directions.
+--
+-- These are a pair on purpose. 12 proves the override now survives the replay;
+-- 13 proves adding it did not turn ordinary unknown-code rejections into
+-- admissions. One without the other would let a fix that admits EVERYTHING
+-- pass, which is the worse failure of the two -- it would open the gate.
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated"}';
+insert into results select 12,'flagged: guard override replays as admitted, not rejected',
+  v.outcome::text||'/without_match='||v.admitted_without_match::text,
+  v.outcome='admitted' and v.admitted_without_match
+  from public.ingest_verification_events('11111111-1111-4111-8111-111111111111',
+    '[{"client_event_id":"eeeeeeee-0000-4000-8000-000000000010","code_id":null,"code":"QQQQQQ","verified_at":"2026-09-23T10:00:00Z","pool_age_seconds":900,"flagged":true}]'::jsonb) v;
+commit;
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated"}';
+insert into results select 13,'flagged: an unflagged unknown code is still refused',
+  v.outcome::text||'/'||coalesce(v.reject_reason::text,'null')||'/without_match='||v.admitted_without_match::text,
+  v.outcome='rejected' and v.reject_reason='unknown_code' and not v.admitted_without_match
+  from public.ingest_verification_events('11111111-1111-4111-8111-111111111111',
+    '[{"client_event_id":"eeeeeeee-0000-4000-8000-000000000011","code_id":null,"code":"QQQQQQ","verified_at":"2026-09-23T10:00:00Z","pool_age_seconds":900}]'::jsonb) v;
+commit;
 select seq, case when pass then 'PASS' else 'FAIL' end as status, name, detail from results order by seq;

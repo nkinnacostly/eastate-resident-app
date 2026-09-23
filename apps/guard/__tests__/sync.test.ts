@@ -99,6 +99,25 @@ describe('push', () => {
     expect(state.marked).not.toContain('e2');
   });
 
+  // The override is the ONE thing in an outbox row the server cannot re-derive.
+  // It used to be dropped from the payload, so an admit-and-flag arrived
+  // looking like an ordinary offline check against a code that did not exist
+  // and was recorded as REJECTED — the audit log claimed a visitor was turned
+  // away when the guard had waved them through.
+  it('forwards the admit-and-flag override to the server', async () => {
+    state.queue = [
+      { client_event_id: 'e1', code: 'A', code_id: null, outcome: 'flagged', verified_at: 't', pool_age_seconds: 9 },
+      { client_event_id: 'e2', code: 'B', code_id: 'c2', outcome: 'admitted', verified_at: 't', pool_age_seconds: 9 },
+      { client_event_id: 'e3', code: 'C', code_id: null, outcome: 'rejected', verified_at: 't', pool_age_seconds: 9 },
+    ];
+    mockRpc.mockResolvedValue({ data: [], error: null });
+
+    await push('estate-1');
+
+    const sent = mockRpc.mock.calls[0][1].p_events;
+    expect(sent.map((e: { flagged: boolean }) => e.flagged)).toEqual([true, false, false]);
+  });
+
   it('counts collisions so they can be surfaced, never dropped', async () => {
     state.queue = [{ client_event_id: 'e1', code: 'A', code_id: null, verified_at: 't', pool_age_seconds: null }];
     mockRpc.mockResolvedValue({ data: [{ client_event_id: 'e1', collision: true }], error: null });

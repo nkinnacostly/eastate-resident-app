@@ -4,6 +4,10 @@ import { HeadActions, Card, Chip, Empty, PageHead } from '../components/ui';
 import { listEvents, type EventRow } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { clock, dayTime, outcomeLabel } from '../lib/format';
+// One definition of "flagged", shared with the page devoted to them — two
+// copies of this predicate is how the dashboard ends up disagreeing with
+// itself about how many entries need reconciling.
+import { isFlagged } from './flagged';
 
 const COLS = 'grid grid-cols-[110px_100px_1.3fr_1fr_1fr_100px] gap-4';
 const FILTERS = ['All', 'Admitted', 'Refused', 'Flagged'] as const;
@@ -34,10 +38,11 @@ export function Audit() {
   }, [load]);
 
   const shown = rows.filter((e) => {
-    // 'flagged' is not an outcome the server stores — it is an admitted event
-    // that arrived from a device with no matching code (source offline_replay,
-    // no code_id). Derive it rather than inventing a column.
-    const flagged = e.outcome === 'admitted' && e.source === 'offline_replay' && !e.host_name;
+    // Stored, not derived. The old predicate
+    // (`admitted && offline_replay && !host_name`) could never be true — an
+    // admitted event always has a resolved code, so it always has a host.
+    // See 20260923100000_flagged_entries.sql.
+    const flagged = isFlagged(e);
     const match =
       filter === 'All' ||
       (filter === 'Admitted' && e.outcome === 'admitted' && !flagged) ||
@@ -99,8 +104,7 @@ export function Audit() {
           <Empty>No entries{filter === 'All' ? ' yet' : ` matching ${filter.toLowerCase()}`}.</Empty>
         ) : (
           shown.map((e) => {
-            const flagged =
-              e.outcome === 'admitted' && e.source === 'offline_replay' && !e.host_name;
+            const flagged = isFlagged(e);
             return (
               <div key={e.id} className={`${COLS} items-center border-t border-hair px-4 py-3`}>
                 {/* verified_at is what a human reads; synced_at is what SORTS. */}
