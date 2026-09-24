@@ -389,18 +389,36 @@ p { margin: 0; max-width: var(--measure); text-wrap: pretty; }
 .prose-list li strong { color: var(--ink); font-weight: 700; }
 
 
-/* ── Google Play badge ─────────────────────────────────────────── */
+/* ── Store badges ──────────────────────────────────────────────── */
 /*
-   The official badge PNG carries Google's mandated clear space inside the
-   image itself, so the visible badge renders noticeably smaller than its
-   box: 58px of image height lands the artwork at roughly the 50px of the
-   .btn sitting beside it. Do not crop that padding out to make the edges
-   line up, and do not recolour or redraw the badge — Google's brand terms
-   require the supplied artwork unaltered. Height is the only free variable.
+   Two badges from two companies, each of which requires its own artwork
+   used unaltered. Neither may be recoloured, redrawn or cropped, so height
+   is the only free variable — which is the whole difficulty, because the
+   two are measured differently.
+
+   Google's PNG carries its mandated clear space INSIDE the image. The file
+   is 646x250 but the badge itself occupies only the middle 564x168, i.e.
+   67.2% of the file height (measured, not estimated). So `height: 58px`
+   puts 39px of visible badge on the page, not 58.
+
+   Apple's SVG is the badge alone — viewBox 0 0 119.66407 40, no padding —
+   and 40px is the size it is drawn at. Apple's clear space is the caller's
+   job, which is what the .store-badges gap provides.
+
+   That is the lucky part: Google at a 58px box renders 39px of artwork and
+   Apple's native size is 40px, so the two sit level with no scaling of
+   either. Change one and you have to re-derive the other, or the pair
+   starts looking like a mistake.
 */
-.play-badge { display: inline-block; line-height: 0; }
-.play-badge img { height: 58px; width: auto; display: block; }
-.play-badge:hover { opacity: .88; }
+.store-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; }
+
+.play-badge,
+.app-store-badge { display: inline-block; line-height: 0; }
+.play-badge:hover,
+.app-store-badge:hover { opacity: .88; }
+
+.play-badge img { height: 58px; width: auto; display: block; }      /* 39px visible */
+.app-store-badge img { height: 40px; width: auto; display: block; } /* 40px visible */
 
 /* Hero: a labelled pairing rather than a third button in .btn-row. The page
    sells to estate managers, but the app is only usable by a resident whose
@@ -409,10 +427,14 @@ p { margin: 0; max-width: var(--measure); text-wrap: pretty; }
 .app-get { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 16px; margin-top: 28px; }
 .app-get-label { font-size: 13.5px; font-weight: 600; color: var(--muted); }
 
-.site-foot .play-badge { margin-top: 18px; }
+.site-foot .store-badges { margin-top: 18px; }
 /* The global focus ring is var(--ink), which is the footer's own background. */
-.site-foot .play-badge:focus-visible { outline-color: var(--canvas); }
+.site-foot .play-badge:focus-visible,
+.site-foot .app-store-badge:focus-visible { outline-color: var(--canvas); }
 
 @media (max-width: 620px) {
+  /* Kept in step: 52 x 0.672 = 35px of Google artwork, so Apple goes to 35
+     rather than staying at 40 and suddenly out-sizing it. */
   .play-badge img { height: 52px; }
+  .app-store-badge img { height: 35px; }
 }

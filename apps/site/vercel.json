@@ -20,7 +20,7 @@
       ]
     },
     {
-      "source": "/(og.png|play-badge.png|favicon.svg|styles.css)",
+      "source": "/(og.png|play-badge.png|app-store-badge.svg|favicon.svg|styles.css)",
       "headers": [
         {
           "key": "Cache-Control",

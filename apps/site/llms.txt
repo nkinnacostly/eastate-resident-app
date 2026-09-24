@@ -23,6 +23,19 @@ message and read it out at the gate.
 - Estates are **fully isolated from one another**; no estate can see another's residents, codes or gate log.
 - Pricing is **per home** and quoted after a demo.
 
+## Get the app
+
+The resident app is published on both stores. Visitors install nothing — they
+receive a code in a message and read it out at the gate.
+
+- [App Store](https://apps.apple.com/app/id6811966469) — iPhone and iPad
+- [Google Play](https://play.google.com/store/apps/details?id=com.myestateaccess.resident) — Android
+
+Downloading it is not enough on its own: signing in requires an estate that
+already uses myestateaccess, and an administrator there approves the resident
+before any visitor code can be generated. The guard app is issued by the estate
+and is not publicly listed.
+
 ## Pages
 
 - [Home](https://myestateaccess.com/): what the product does, how a code moves from resident to visitor to guard, and who can see what.
