@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button, Card, Chip, Empty, HeadActions, PageHead, Search, Stat, TableFoot,
 } from '../components/ui';
+import { HouseImport } from '../components/house-import';
 import { createHouse, listHouses, rotateHouseCode, type HouseRow } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
@@ -17,6 +18,7 @@ export function Houses() {
   const [q, setQ] = useState('');
 
   const [open, setOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [form, setForm] = useState({ number: '', name: '', phone: '' });
   const [created, setCreated] = useState<{ number: string; code: string } | null>(null);
 
@@ -95,6 +97,13 @@ export function Houses() {
         blurb="Every house at this estate and its landlord. Each house has its own code — a resident types the estate code and their house code to ask to join, so the pair places them in the right home."
         right={
           <HeadActions estate={activeEstate?.estate_name ?? '—'}>
+            <Button
+              variant="quiet"
+              onClick={() => setImporting((v) => !v)}
+              className="h-[42px] px-5 text-[13.5px]"
+            >
+              {importing ? 'Close import' : 'Import / export'}
+            </Button>
             <Button onClick={() => setOpen((v) => !v)} className="h-[42px] px-5 text-[13.5px]">
               {open ? 'Cancel' : 'Add a house'}
             </Button>
@@ -122,6 +131,15 @@ export function Houses() {
             Done
           </Button>
         </Card>
+      ) : null}
+
+      {importing && activeEstateId ? (
+        <HouseImport
+          estateId={activeEstateId}
+          estateName={activeEstate?.estate_name ?? 'estate'}
+          houses={rows}
+          onDone={load}
+        />
       ) : null}
 
       {open ? (

@@ -1,5 +1,7 @@
 import { countsAgainstCap, displayStatus, type DisplayStatus } from '@estate/core';
+import type { Json } from '@estate/db';
 
+import type { HouseInput } from './csv';
 import { callEdgeFunction } from './edge';
 import { supabase } from './supabase';
 
@@ -263,6 +265,64 @@ export async function rotateHouseCode(houseId: string): Promise<string> {
   const { data, error } = await supabase.rpc('rotate_house_code', { p_house_id: houseId });
   if (error) throw new Error(error.message);
   return data as unknown as string;
+}
+
+export interface ImportedHouse {
+  seq: number;
+  house_number: string | null;
+  house_code: string | null;
+  /**
+   * created   — new house, code is fresh
+   * duplicate — already on the roll, code is the EXISTING one, nothing changed
+   * invalid   — no house number in that row
+   * failed    — a code collision; re-importing the file fixes it
+   */
+  status: 'created' | 'duplicate' | 'invalid' | 'failed';
+}
+
+/**
+ * Import an estate roll in one call.
+ *
+ * Deliberately not a loop over createHouse: 300 round trips is slow, and a
+ * browser that dies at row 180 leaves a half-built estate with no record of
+ * where it stopped. The RPC reports a row per input, so a partial result is
+ * still a complete account of what happened.
+ */
+export async function importHouses(
+  estateId: string,
+  houses: HouseInput[],
+): Promise<ImportedHouse[]> {
+  const { data, error } = await supabase.rpc('create_houses_bulk', {
+    p_estate_id: estateId,
+    // Cast: the generated type for a jsonb argument is Json, and an array of
+    // object literals does not narrow to it on its own.
+    p_houses: houses as unknown as Json,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ImportedHouse[];
+}
+
+export interface BulkApproval {
+  request_id: string;
+  status: 'approved' | 'failed';
+  detail: string | null;
+}
+
+/**
+ * Approve many join requests at once.
+ *
+ * The RPC loops over approve_join_request rather than reimplementing it, so
+ * the per-request estate check still runs for every id. A request belonging to
+ * another estate comes back 'failed'; it is never approved and never aborts
+ * the rest of the batch.
+ */
+export async function approveRequests(requestIds: string[]): Promise<BulkApproval[]> {
+  if (requestIds.length === 0) return [];
+  const { data, error } = await supabase.rpc('approve_join_requests_bulk', {
+    p_request_ids: requestIds,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as BulkApproval[];
 }
 
 // ─── codes ───────────────────────────────────────────────────────────────────

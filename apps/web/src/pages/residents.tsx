@@ -5,8 +5,8 @@ import {
   Avatar, Button, Card, Chip, Empty, FilterChips, HeadActions, PageHead, Search, Stat, TableFoot,
 } from '../components/ui';
 import {
-  approveRequest, declineRequest, deactivateMembership, listPending, listPeople,
-  type PendingRow, type PersonRow,
+  approveRequest, approveRequests, declineRequest, deactivateMembership, listPending,
+  listPeople, type PendingRow, type PersonRow,
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
@@ -23,6 +23,8 @@ export function Residents() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('All');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNote, setBulkNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!activeEstateId) return;
@@ -45,6 +47,53 @@ export function Residents() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Approve everyone waiting, in one call.
+   *
+   * Confirmed first, and worded as what it actually does: each approval places
+   * a person in the house whose code they typed and lets them generate visitor
+   * codes for it. Undoing one afterwards means finding that resident and
+   * suspending them, so a mis-click here is not free.
+   *
+   * The result is reported per row rather than assumed — a request another
+   * admin decided a moment ago comes back failed, and saying "all approved"
+   * when one was not is how an estate ends up with a resident nobody
+   * remembers turning down.
+   */
+  const approveAll = async () => {
+    const ids = pending.map((r) => r.id);
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Approve all ${ids.length} pending residents?\n\n` +
+          'Each one is placed in the house whose code they entered and can immediately ' +
+          'generate visitor codes for it. Reversing an approval means suspending that ' +
+          'resident individually.',
+      )
+    )
+      return;
+
+    setBulkBusy(true);
+    setError(null);
+    setBulkNote(null);
+    try {
+      const res = await approveRequests(ids);
+      const ok = res.filter((r) => r.status === 'approved').length;
+      const bad = res.filter((r) => r.status === 'failed');
+      setBulkNote(
+        bad.length === 0
+          ? `Approved ${ok} ${ok === 1 ? 'resident' : 'residents'}.`
+          : `Approved ${ok} of ${res.length}. ${bad.length} could not be approved — ` +
+            'they may have been decided by another admin already. They are still listed below.',
+      );
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const decide = async (fn: () => Promise<void>, id: string) => {
     setBusyId(id);
@@ -110,7 +159,24 @@ export function Residents() {
           requests rot. */}
       {pending.length > 0 ? (
         <>
-          <h2 className="mt-8 text-[16.5px] font-extrabold">Awaiting approval</h2>
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-[16.5px] font-extrabold">Awaiting approval</h2>
+            {/* Only offered from two upwards: a one-request "Approve all" is a
+                second button that does what the first one does, and the whole
+                point of the confirm below is that this decision is bulk. */}
+            {pending.length > 1 ? (
+              <Button variant="dark" disabled={bulkBusy} onClick={() => void approveAll()}>
+                {bulkBusy ? 'Approving…' : `Approve all ${pending.length}`}
+              </Button>
+            ) : null}
+          </div>
+
+          {bulkNote ? (
+            <div className="mt-3 rounded-[14px] bg-lime-soft px-4 py-3 text-[13px] font-semibold text-lime-ink">
+              {bulkNote}
+            </div>
+          ) : null}
+
           <Card className="mt-3.5">
             {pending.map((r, i) => (
               <div

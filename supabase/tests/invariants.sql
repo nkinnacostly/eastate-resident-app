@@ -192,4 +192,119 @@ insert into results select 13,'flagged: an unflagged unknown code is still refus
   from public.ingest_verification_events('11111111-1111-4111-8111-111111111111',
     '[{"client_event_id":"eeeeeeee-0000-4000-8000-000000000011","code_id":null,"code":"QQQQQQ","verified_at":"2026-09-23T10:00:00Z","pool_age_seconds":900}]'::jsonb) v;
 commit;
+-- ─── bulk house import ───────────────────────────────────────────────────────
+--
+-- The property that matters is IDEMPOTENCE. An admin exports the roll, imports
+-- it, spots three missing houses, and imports the whole file again — that is
+-- the normal way this is used. A second import must not create a second house
+-- at the same number, and above all must not ROTATE the code, because the
+-- first one has already been printed on a letter and posted.
+-- Rerunnable, like every other fixture here: the previous run created these,
+-- and test 14 asserts on CREATED counts, so leaving them behind turns a green
+-- suite red on its second run for no reason.
+delete from public.houses
+ where estate_id = '11111111-1111-4111-8111-111111111111'
+   and house_number like 'QA-%';
+
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}';
+insert into results select 14,'bulk import: creates houses and reports each row',
+  'created='||count(*) filter (where b.status='created')::text
+   ||' invalid='||count(*) filter (where b.status='invalid')::text,
+  count(*) filter (where b.status='created')=3
+  and count(*) filter (where b.status='invalid')=1
+  from public.create_houses_bulk('11111111-1111-4111-8111-111111111111',
+    '[{"house_number":"QA-1"},{"house_number":"QA-2","landlord_name":"Owner Two"},
+      {"house_number":"QA-3"},{"house_number":"   "}]'::jsonb) b;
+commit;
+
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}';
+insert into results select 15,'bulk import: re-importing skips and keeps the SAME code',
+  'dupes='||count(*) filter (where b.status='duplicate')::text
+   ||' codes_match='||count(*) filter (where b.house_code = h.house_code)::text,
+  count(*) filter (where b.status='duplicate')=3
+  and count(*) filter (where b.house_code = h.house_code)=3
+  from public.create_houses_bulk('11111111-1111-4111-8111-111111111111',
+    '[{"house_number":"QA-1"},{"house_number":"QA-2"},{"house_number":"QA-3"}]'::jsonb) b
+  join public.houses h
+    on h.estate_id = '11111111-1111-4111-8111-111111111111'
+   and h.house_number = b.house_number;
+commit;
+
+insert into results select 16,'bulk import: one row per house, not two',
+  'rows='||count(*)::text, count(*)=3
+  from public.houses
+ where estate_id='11111111-1111-4111-8111-111111111111' and house_number like 'QA-%';
+
+-- A resident is not an admin. The batch is refused outright rather than
+-- partially applied, because the estate is a parameter of the CALL.
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}';
+do $$ declare v_msg text; v_ok boolean:=false;
+begin
+  begin
+    perform public.create_houses_bulk('11111111-1111-4111-8111-111111111111',
+      '[{"house_number":"SNEAK-1"}]'::jsonb);
+    v_msg:='IMPORT SUCCEEDED AS A RESIDENT';
+  exception when others then v_msg:=sqlstate||' '||sqlerrm; v_ok:=true; end;
+  insert into results values (17,'bulk import: refused to a non-admin',v_msg,v_ok);
+end $$;
+commit;
+
+-- ─── bulk approve ────────────────────────────────────────────────────────────
+--
+-- Two requests, one at each estate, approved in ONE call by an admin who
+-- administers only estate A. The estate-A request must go through and the
+-- estate-B request must not — the whole reason the bulk function loops over
+-- approve_join_request instead of reimplementing its authority check.
+--
+-- A DEDICATED ADMIN, because the obvious candidate does not work. User 001 is
+-- an estate-A admin AND a platform admin, and approve_join_request lets a
+-- platform admin approve at ANY estate on purpose. Running this as 001
+-- approves both requests and passes nothing — it measures the escape hatch
+-- rather than the boundary. 005 administers estate A and nothing else.
+insert into auth.users (id, email, aud, role, raw_user_meta_data, email_confirmed_at)
+values ('00000000-0000-4000-8000-000000000005','adm-a@estate-qa.local','authenticated',
+        'authenticated','{"full_name":"Admin A"}','now')
+on conflict (id) do nothing;
+
+insert into public.memberships (id, user_id, estate_id, role)
+values ('aaaaaaaa-0000-4000-8000-000000000005','00000000-0000-4000-8000-000000000005',
+        '11111111-1111-4111-8111-111111111111','admin')
+on conflict (user_id, estate_id, role) do nothing;
+
+-- Rerunnable: a previous run approved these, so clear the memberships they
+-- created or the "no membership leaked" check reads last run's result.
+delete from public.memberships
+ where user_id = '00000000-0000-4000-8000-000000000003' and role = 'resident';
+
+insert into public.join_requests (id, user_id, estate_id, status)
+values
+  ('dddddddd-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000003',
+   '11111111-1111-4111-8111-111111111111','pending'),
+  ('dddddddd-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003',
+   '22222222-2222-4222-8222-222222222222','pending')
+on conflict (id) do update set status='pending', decided_at=null;
+
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000005","role":"authenticated"}';
+insert into results select 18,'bulk approve: approves own estate, refuses another''s',
+  'approved='||count(*) filter (where b.status='approved')::text
+   ||' failed='||count(*) filter (where b.status='failed')::text,
+  count(*) filter (where b.status='approved')=1
+  and count(*) filter (where b.status='failed')=1
+  from public.approve_join_requests_bulk(array[
+    'dddddddd-0000-4000-8000-000000000001'::uuid,
+    'dddddddd-0000-4000-8000-000000000002'::uuid]) b;
+commit;
+
+-- The failure above must be a REFUSAL, not a cosmetic status: estate B's
+-- request has to still be pending, and no membership may exist at estate B.
+insert into results select 19,'bulk approve: the refused request was not decided',
+  'status='||status::text, status='pending'
+  from public.join_requests where id='dddddddd-0000-4000-8000-000000000002';
+
+insert into results select 20,'bulk approve: no membership leaked into estate B',
+  'memberships='||count(*)::text, count(*)=0
+  from public.memberships
+ where estate_id='22222222-2222-4222-8222-222222222222'
+   and user_id='00000000-0000-4000-8000-000000000003';
+
 select seq, case when pass then 'PASS' else 'FAIL' end as status, name, detail from results order by seq;

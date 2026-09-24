@@ -620,6 +620,14 @@ export type Database = {
         }
       }
       approve_join_request: { Args: { p_request_id: string }; Returns: string }
+      approve_join_requests_bulk: {
+        Args: { p_request_ids: string[] }
+        Returns: {
+          detail: string
+          request_id: string
+          status: string
+        }[]
+      }
       claim_password_reset: { Args: { p_email: string }; Returns: string }
       clear_must_change_password: { Args: never; Returns: undefined }
       create_estate: {
@@ -638,6 +646,15 @@ export type Database = {
           house_code: string
           house_number: string
           id: string
+        }[]
+      }
+      create_houses_bulk: {
+        Args: { p_estate_id: string; p_houses: Json }
+        Returns: {
+          house_code: string
+          house_number: string
+          seq: number
+          status: string
         }[]
       }
       current_membership: {

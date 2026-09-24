@@ -21,6 +21,7 @@
     "guard": "npm run start --workspace @estate/guard",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:csv": "node scripts/test-csv.mjs",
     "check:deps": "node scripts/check-deps.mjs",
     "test:db:delivery": "supabase db query -f supabase/tests/delivery.sql --linked"
   },

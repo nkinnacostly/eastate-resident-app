@@ -7,6 +7,15 @@ delete from public.code_mint_attempts
  where membership_id::text like 'aaaaaaaa-%' or membership_id::text like 'bbbbbbbb-%';
 delete from public.push_tokens
  where membership_id::text like 'aaaaaaaa-%' or membership_id::text like 'bbbbbbbb-%';
+-- BEFORE memberships, not after. An approved join request carries
+-- decided_by_membership_id, which references memberships with no ON DELETE
+-- action -- so deleting the admin's membership while a decided request still
+-- points at it fails with a foreign key violation and takes the whole teardown
+-- with it. The estates delete below would cascade these away, but only if we
+-- ever got that far.
+delete from public.join_requests
+ where estate_id in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222');
+
 delete from public.memberships
  where estate_id in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222');
 delete from public.estates
