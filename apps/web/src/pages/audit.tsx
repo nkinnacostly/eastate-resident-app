@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { HeadActions, Card, Chip, Empty, PageHead } from '../components/ui';
-import { listEvents, type EventRow } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { isFlagged, listEvents, type EventRow } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { clock, dayTime, outcomeLabel } from '../lib/format';
-// One definition of "flagged", shared with the page devoted to them — two
-// copies of this predicate is how the dashboard ends up disagreeing with
-// itself about how many entries need reconciling.
-import { isFlagged } from './flagged';
 
 const COLS = 'grid grid-cols-[110px_100px_1.3fr_1fr_1fr_100px] gap-4';
 const FILTERS = ['All', 'Admitted', 'Refused', 'Flagged'] as const;

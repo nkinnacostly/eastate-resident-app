@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { initials } from '../lib/format';
 import { SearchIcon } from './icons';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -170,15 +171,6 @@ export function Empty({ children }: { children: ReactNode }) {
 /** Monospaced-feel code, letter-spaced so it can be read aloud at a gate. */
 export function Code({ children }: { children: ReactNode }) {
   return <span className="font-extrabold tracking-code">{children}</span>;
-}
-
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
 }
 
 export function Avatar({ name, className = '' }: { name: string; className?: string }) {

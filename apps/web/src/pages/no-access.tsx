@@ -1,4 +1,4 @@
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 
 /**
  * Signed in, but not an admin anywhere.

@@ -8,7 +8,7 @@ import {
   approveRequest, approveRequests, declineRequest, deactivateMembership, listPending,
   listPeople, type PendingRow, type PersonRow,
 } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 
 const COLS = 'grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1.2fr)_100px_170px] gap-4';
 const FILTERS = ['All', 'Approved', 'At cap', 'Suspended'] as const;

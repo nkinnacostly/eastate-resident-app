@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { NavLinkRenderProps } from 'react-router-dom';
 
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
+import { initials } from '../lib/format';
 import {
   Brand,
   Chevron,
@@ -11,7 +12,6 @@ import {
   LogIcon,
   SettingsIcon,
 } from './icons';
-import { initials } from './ui';
 
 /**
  * Nav mirrors the design: Overview owns a group of sub-destinations, the rest

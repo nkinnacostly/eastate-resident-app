@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { Card, Chip, Empty, PageHead, Stat } from '../components/ui';
 import { listCodes, listEvents, listPending, type EventRow } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 import { dayTime, outcomeLabel } from '../lib/format';
 
 export function Overview() {

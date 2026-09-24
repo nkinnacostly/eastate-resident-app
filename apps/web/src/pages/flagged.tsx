@@ -1,26 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Card, Chip, Empty, HeadActions, PageHead, Stat } from '../components/ui';
-import { listEvents, type EventRow } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { isFlagged, listEvents, type EventRow } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { dayTime } from '../lib/format';
-
-/**
- * The guard used the admit-and-flag override.
- *
- * This used to be derived — `admitted && offline_replay && !host_name` — on
- * the argument that deriving beats a column that can drift from the event it
- * describes. The predicate was unsatisfiable. An event is only 'admitted'
- * because the conditional burn matched a code row, so code_id is never null
- * there, so the host always resolves. This page showed nothing, ever.
- *
- * It is stored now (see 20260923100000_flagged_entries.sql), because the flag
- * is a fact about a decision a guard made at a gate holding a phone that knew
- * nothing — not something the server can work back to afterwards.
- */
-export function isFlagged(e: EventRow): boolean {
-  return e.admitted_without_match;
-}
 
 export function Flagged() {
   const { activeEstateId, activeEstate } = useAuth();

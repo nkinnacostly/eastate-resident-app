@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { HeadActions, Card, Chip, Empty, PageHead, Button } from '../components/ui';
 import { listCodes, revokeCode, type CodeRow } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 import { dayTime, timeLeft } from '../lib/format';
 
 const COLS = 'grid grid-cols-[110px_1.2fr_1fr_120px_140px] gap-4';

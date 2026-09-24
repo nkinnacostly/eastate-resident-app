@@ -1,9 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import type { NavLinkRenderProps } from 'react-router-dom';
 
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
+import { initials } from '../lib/format';
 import { Brand, EstatesIcon, GridIcon, GuardsIcon, HealthIcon, SettingsIcon } from './icons';
-import { initials } from './ui';
 
 /**
  * The operator's own shell.

@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { Button, Card } from '../components/ui';
 import { Brand } from '../components/icons';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 
 /**
  * Shown before anything else to an admin whose account was created during

@@ -46,6 +46,28 @@ export interface EventRow {
   admitted_without_match: boolean;
 }
 
+/**
+ * The guard used the admit-and-flag override.
+ *
+ * Lives beside EventRow rather than in a page, for two reasons. It is a fact
+ * about the row, not about either screen that renders it -- the audit log and
+ * the Flagged page must never disagree about how many entries need
+ * reconciling. And exporting a non-component from a page file breaks React
+ * Fast Refresh for that whole file, which is what oxlint's
+ * react/only-export-components was pointing at.
+ *
+ * This used to be derived -- `admitted && offline_replay && !host_name` -- on
+ * the argument that deriving beats a column that can drift from the event it
+ * describes. The predicate was unsatisfiable: an event is only 'admitted'
+ * because the conditional burn matched a code row, so code_id is never null
+ * there, so the host always resolves. It is stored now, because the flag is a
+ * fact about a decision a guard made at a gate holding a phone that knew
+ * nothing (20260923100000_flagged_entries.sql).
+ */
+export function isFlagged(e: EventRow): boolean {
+  return e.admitted_without_match;
+}
+
 export interface CodeRow {
   id: string;
   code: string;

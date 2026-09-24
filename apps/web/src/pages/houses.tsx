@@ -5,7 +5,7 @@ import {
 } from '../components/ui';
 import { HouseImport } from '../components/house-import';
 import { createHouse, listHouses, rotateHouseCode, type HouseRow } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 
 const COLS = 'grid grid-cols-[90px_110px_minmax(0,1.4fr)_minmax(0,1fr)_110px_120px] gap-4';
 

@@ -43,3 +43,17 @@ export function outcomeLabel(outcome: string, reason: string | null): string {
   }
   return outcome.charAt(0).toUpperCase() + outcome.slice(1);
 }
+
+/**
+ * "Thabo Nkosi" -> "TN". Lives here rather than in components/ui because it is
+ * a string function, and exporting a non-component from a file full of
+ * components breaks React Fast Refresh for every component in it.
+ */
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+}

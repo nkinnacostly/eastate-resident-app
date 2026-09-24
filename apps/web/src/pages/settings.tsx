@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 import { HeadActions, Button, Card, Chip, PageHead } from '../components/ui';
 import { rotateJoinCode } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth-context';
 
 function Row({ title, blurb, right }: { title: string; blurb: string; right: React.ReactNode }) {
   return (

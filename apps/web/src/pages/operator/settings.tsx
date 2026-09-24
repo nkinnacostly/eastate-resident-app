@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Card, Chip, PageHead } from '../../components/ui';
-import { useAuth } from '../../lib/auth';
+import { useAuth } from '../../lib/auth-context';
 import { getPortfolio, type Portfolio } from '../../lib/operator';
 import { count } from '../../lib/operator-format';
 

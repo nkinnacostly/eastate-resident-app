@@ -9,8 +9,9 @@
     "build": "tsc -b && vite build",
     "//typecheck": "tsc -b, NOT tsc --noEmit: tsconfig.json here is a solution file with files:[] and only references, so --noEmit type-checks zero files and always passes.",
     "typecheck": "tsc -b",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "//lint": "oxlint, NOT eslint: this workspace migrated to oxlint (see .oxlintrc.json) but the script was left behind. `eslint .` then resolved an ad-hoc eslint with no config in this workspace, linted the dist/ build output, and failed on minified vendor code -- which also failed the repo-wide `npm run lint`."
   },
   "dependencies": {
     "@estate/core": "*",
