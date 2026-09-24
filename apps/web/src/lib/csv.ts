@@ -141,87 +141,120 @@ function matchColumn(header: string): keyof HouseInput | null {
   return null;
 }
 
-export interface ReadHousesResult {
-  houses: HouseInput[];
-  /** True when row 1 was consumed as column names rather than data. */
-  hadHeader: boolean;
-  /** Which CSV column each field was taken from, for the preview. */
-  mapping: Partial<Record<keyof HouseInput, string>>;
-  /** Rows dropped for having no house number, by 1-based position in the file. */
-  skipped: number[];
+/** Which file column feeds each field. null means "not in this file". */
+export type ColumnMapping = Record<keyof HouseInput, number | null>;
+
+export interface Detection {
+  /** One label per column, for the mapping controls. */
+  headers: string[];
+  /** Whether row 1 is column names rather than a house. */
+  hasHeader: boolean;
+  mapping: ColumnMapping;
+  /**
+   * True when house_number was not matched by name and we fell back to a
+   * column by position. Surfaced so the UI can say the choice is a guess
+   * rather than presenting it with the same confidence as a real match.
+   */
+  assumedHouseColumn: boolean;
 }
 
+const EMPTY_MAPPING: ColumnMapping = {
+  house_number: null, landlord_name: null, landlord_phone: null, landlord_email: null,
+};
+
 /**
- * Turn a parsed CSV into house rows.
+ * Work out how to read a file — a STARTING POINT, not a verdict.
  *
- * HEADERLESS FILES ARE SUPPORTED DELIBERATELY. The likeliest thing an admin
- * has is a bare column of house numbers pasted out of a levy statement, with
- * no header at all. Requiring one would mean the most common input is the one
- * that fails. So: if row 1 contains anything recognisable as a column name it
- * is treated as a header; otherwise the file is read positionally and row 1 is
- * data. Either way the caller previews the result before anything is written.
+ * Detection is separate from application on purpose. The admin's file comes
+ * from a system we have never seen, so any mapping we infer is a guess, and a
+ * guess the person cannot correct is worse than no guess at all: their only
+ * recourse would be to go and edit the spreadsheet, which is the work this
+ * feature exists to remove. So this proposes, `applyMapping` disposes, and the
+ * UI lets the two disagree.
+ *
+ * HEADERLESS FILES ARE SUPPORTED DELIBERATELY. The likeliest input is a bare
+ * column of house numbers pasted out of a levy statement. Requiring a header
+ * would mean the commonest file is the one that fails.
  */
-export function readHouses(rows: CsvRow[]): ReadHousesResult {
-  const mapping: Partial<Record<keyof HouseInput, string>> = {};
-  const skipped: number[] = [];
+export function detectMapping(rows: CsvRow[]): Detection {
+  if (rows.length === 0) {
+    return { headers: [], hasHeader: false, mapping: { ...EMPTY_MAPPING }, assumedHouseColumn: false };
+  }
 
-  if (rows.length === 0) return { houses: [], hadHeader: false, mapping, skipped };
+  // Ragged rows are normal in exported files, so the column count is the
+  // widest row rather than the first one.
+  const width = rows.reduce((w, r) => Math.max(w, r.length), 0);
+  const first = rows[0];
+  const matched = Array.from({ length: width }, (_, c) => matchColumn(first[c] ?? ''));
+  const hasHeader = matched.some((m) => m !== null);
 
-  const header = rows[0];
-  const matched = header.map(matchColumn);
-  const hadHeader = matched.some((m) => m !== null);
+  const mapping: ColumnMapping = { ...EMPTY_MAPPING };
+  let assumedHouseColumn = false;
 
-  // Column index per field. With a header, from the match. Without one, by
-  // position: number, name, phone, email.
-  const index: Partial<Record<keyof HouseInput, number>> = {};
-  if (hadHeader) {
+  if (hasHeader) {
     matched.forEach((field, col) => {
-      if (field && index[field] === undefined) {
-        index[field] = col;
-        mapping[field] = header[col].trim();
-      }
+      if (field && mapping[field] === null) mapping[field] = col;
     });
 
-    // A header we PARTLY understand is the dangerous case. "Property,Phone"
+    // A header we only PARTLY understand is the dangerous case. "Ref,Phone"
     // matches on phone, so row 1 is eaten as a header — but nothing maps to
     // house_number, every row is then skipped, and the admin is told their
-    // file has no house numbers when it plainly does.
-    //
-    // The house number is essentially always the first column, so fall back
-    // to the leftmost column we did not otherwise claim. The preview is what
-    // makes this safe to guess at: a wrong choice is visible before it writes
-    // anything.
-    if (index.house_number === undefined) {
-      const taken = new Set(Object.values(index));
-      for (let col = 0; col < header.length; col++) {
+    // file has no house numbers when it plainly does. The house number is
+    // essentially always the leftmost column, so claim the first one nothing
+    // else took, and flag that it was a guess.
+    if (mapping.house_number === null) {
+      const taken = new Set(Object.values(mapping).filter((v): v is number => v !== null));
+      for (let col = 0; col < width; col++) {
         if (!taken.has(col)) {
-          index.house_number = col;
-          mapping.house_number = `${header[col].trim() || `column ${col + 1}`} (assumed)`;
+          mapping.house_number = col;
+          assumedHouseColumn = true;
           break;
         }
       }
     }
   } else {
-    const positional: (keyof HouseInput)[] = [
+    // Positional: number, name, phone, email.
+    const order: (keyof HouseInput)[] = [
       'house_number', 'landlord_name', 'landlord_phone', 'landlord_email',
     ];
-    positional.forEach((field, col) => {
-      if (col < header.length) {
-        index[field] = col;
-        mapping[field] = `column ${col + 1}`;
-      }
+    order.forEach((field, col) => {
+      if (col < width) mapping[field] = col;
     });
   }
 
+  const headers = Array.from({ length: width }, (_, c) =>
+    hasHeader ? (first[c] ?? '').trim() || `Column ${c + 1}` : `Column ${c + 1}`,
+  );
+
+  return { headers, hasHeader, mapping, assumedHouseColumn };
+}
+
+export interface AppliedRows {
+  houses: HouseInput[];
+  /** Rows dropped for having no house number, by 1-based line in the file. */
+  skipped: number[];
+}
+
+/**
+ * Turn the file into house rows using whatever mapping is in force — ours or
+ * the one the admin corrected it to.
+ */
+export function applyMapping(
+  rows: CsvRow[],
+  hasHeader: boolean,
+  mapping: ColumnMapping,
+): AppliedRows {
   const cell = (r: CsvRow, field: keyof HouseInput): string => {
-    const col = index[field];
-    return col === undefined ? '' : (r[col] ?? '').trim();
+    const col = mapping[field];
+    return col === null ? '' : (r[col] ?? '').trim();
   };
 
-  const body = hadHeader ? rows.slice(1) : rows;
-  const offset = hadHeader ? 2 : 1; // 1-based file line of body[0]
+  const body = hasHeader ? rows.slice(1) : rows;
+  const offset = hasHeader ? 2 : 1; // 1-based file line of body[0]
 
   const houses: HouseInput[] = [];
+  const skipped: number[] = [];
+
   body.forEach((r, n) => {
     const number = cell(r, 'house_number');
     if (!number) {
@@ -236,9 +269,20 @@ export function readHouses(rows: CsvRow[]): ReadHousesResult {
     });
   });
 
-  return { houses, hadHeader, mapping, skipped };
+  return { houses, skipped };
 }
 
+/** Human label for a field, used in the mapping controls and the preview. */
+export const FIELD_LABELS: Record<keyof HouseInput, string> = {
+  house_number: 'House number',
+  landlord_name: 'Landlord name',
+  landlord_phone: 'Landlord phone',
+  landlord_email: 'Landlord email',
+};
+
+export const FIELD_ORDER: (keyof HouseInput)[] = [
+  'house_number', 'landlord_name', 'landlord_phone', 'landlord_email',
+];
 /**
  * Serialise rows to CSV text.
  *
