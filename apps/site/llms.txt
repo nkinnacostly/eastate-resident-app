@@ -33,8 +33,11 @@ receive a code in a message and read it out at the gate.
 
 Downloading it is not enough on its own: signing in requires an estate that
 already uses myestateaccess, and an administrator there approves the resident
-before any visitor code can be generated. The guard app is issued by the estate
-and is not publicly listed.
+before any visitor code can be generated.
+
+The guard app is a separate app, on Google Play, and signing into it requires
+an active guard membership that an estate administrator grants — downloading
+it gives a person nothing on its own.
 
 ## Pages
 
