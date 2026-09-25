@@ -37,8 +37,19 @@ const renderSettled = async () => {
 
 const requestAccess = () => screen.getByRole('button', { name: 'Request access' });
 
-const fill = (estate: string, house = 'H4K2') => {
-  fireEvent.changeText(screen.getByPlaceholderText('Estate code'), estate);
+/**
+ * FINDS the first field rather than getting it.
+ *
+ * renderSettled waits for the pending-requests RPC to have been CALLED, which
+ * is not the same as the screen having finished with it — the spinner is still
+ * up for a tick after. Getting the field synchronously therefore raced the
+ * loading state, and lost only under full-suite timing: every one of these
+ * tests passed when the file was run on its own. That is the worst kind of
+ * failing test, because it shows up in CI attached to whichever change
+ * happened to shift a microtask.
+ */
+const fill = async (estate: string, house = 'H4K2') => {
+  fireEvent.changeText(await screen.findByPlaceholderText('Estate code'), estate);
   fireEvent.changeText(screen.getByPlaceholderText('House code'), house);
 };
 
@@ -93,7 +104,7 @@ describe('arriving from sign-up', () => {
     await waitFor(() => expect(screen.getByText('House code not recognised')).toBeTruthy());
     expect(screen.getByText(/Your account is saved/)).toBeTruthy();
     // And the form is there to correct it.
-    expect(screen.getByPlaceholderText('House code')).toBeTruthy();
+    expect(await screen.findByPlaceholderText('House code')).toBeTruthy();
   });
 
   it('reports a bad estate code handed over from sign-up', async () => {
@@ -139,7 +150,7 @@ describe('the request button', () => {
   // A house code alone cannot place anyone: it is only unique within an estate.
   it('stays disabled with only the estate code', async () => {
     await renderSettled();
-    fireEvent.changeText(screen.getByPlaceholderText('Estate code'), '9Y9EAEYH');
+    fireEvent.changeText(await screen.findByPlaceholderText('Estate code'), '9Y9EAEYH');
 
     await waitFor(() => expect(requestAccess()).toBeDisabled());
     expect(mockRequest).not.toHaveBeenCalled();
@@ -147,7 +158,7 @@ describe('the request button', () => {
 
   it('stays disabled with only the house code', async () => {
     await renderSettled();
-    fireEvent.changeText(screen.getByPlaceholderText('House code'), 'H4K2');
+    fireEvent.changeText(await screen.findByPlaceholderText('House code'), 'H4K2');
 
     await waitFor(() => expect(requestAccess()).toBeDisabled());
     expect(mockRequest).not.toHaveBeenCalled();
@@ -157,14 +168,14 @@ describe('the request button', () => {
   // presence check and fails at the server as "unknown estate".
   it('treats a field of spaces as empty', async () => {
     await renderSettled();
-    fill('   ', '   ');
+    await fill('   ', '   ');
 
     await waitFor(() => expect(requestAccess()).toBeDisabled());
   });
 
   it('enables once both codes are present', async () => {
     await renderSettled();
-    fill('9Y9EAEYH');
+    await fill('9Y9EAEYH');
 
     await waitFor(() => expect(requestAccess()).toBeEnabled());
   });
@@ -178,7 +189,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('  demo-4821  ', '  h4k2  ');
+    await fill('  demo-4821  ', '  h4k2  ');
     await submit();
 
     await waitFor(() => expect(screen.getByText(/House 27, Demo Estate/)).toBeTruthy());
@@ -194,7 +205,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('demo4821', 'h4k2');
+    await fill('demo4821', 'h4k2');
     await submit();
 
     await waitFor(() => expect(mockRequest).toHaveBeenCalled());
@@ -208,7 +219,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('DEMO4821');
+    await fill('DEMO4821');
     await submit();
 
     await waitFor(() => expect(screen.getByText(/House 27, Demo Estate/)).toBeTruthy());
@@ -223,7 +234,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('DEMO4821');
+    await fill('DEMO4821');
     await submit();
 
     await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
@@ -238,7 +249,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('NOPE1234');
+    await fill('NOPE1234');
     await submit();
 
     await waitFor(() => expect(screen.getByText('Estate code not recognised')).toBeTruthy());
@@ -252,7 +263,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('9Y9EAEYH', 'ZZZZ');
+    await fill('9Y9EAEYH', 'ZZZZ');
     await submit();
 
     await waitFor(() => expect(screen.getByText('House code not recognised')).toBeTruthy());
@@ -265,7 +276,7 @@ describe('joining by hand', () => {
     });
 
     await renderSettled();
-    fill('DEMO4821');
+    await fill('DEMO4821');
     await submit();
 
     await waitFor(() => expect(screen.getByText('Too many tries')).toBeTruthy());
@@ -275,7 +286,7 @@ describe('joining by hand', () => {
     mockRequest.mockRejectedValue(new Error('network down'));
 
     await renderSettled();
-    fill('DEMO4821');
+    await fill('DEMO4821');
     await submit();
 
     await waitFor(() =>
