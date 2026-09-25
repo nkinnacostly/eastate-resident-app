@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Pressable,
   Text,
@@ -7,6 +8,8 @@ import {
   type TextInputProps,
   type ViewProps,
 } from 'react-native';
+
+import { EyeIcon, EyeOffIcon } from './icons';
 
 /**
  * How much room the floating nav bar needs at the bottom of a screen.
@@ -126,6 +129,7 @@ export function Field({
   error,
   label,
   className = '',
+  secureTextEntry,
   ...rest
 }: TextInputProps & {
   error?: string;
@@ -134,18 +138,54 @@ export function Field({
   /** React 19 passes ref as a plain prop, so no forwardRef wrapper is needed. */
   ref?: React.Ref<TextInput>;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = Boolean(secureTextEntry);
   const invalid = Boolean(error);
+
   return (
     <View>
-      <Input
-        // The message is folded into the LABEL rather than the hint: VoiceOver
-        // reads hints last and can be configured off entirely, so a guard using
-        // a screen reader at a dark gate would get red they cannot see and
-        // silence. The label is always read.
-        accessibilityLabel={error ? `${label}. ${error}` : label}
-        className={`${invalid ? 'border border-coral' : ''} ${className}`}
-        {...rest}
-      />
+      {/* Wraps the INPUT only. The error slot below is part of the field but
+          not part of the box, and centring the eye against both would sit it
+          low. */}
+      <View>
+        <Input
+          // The message is folded into the LABEL rather than the accessibility
+          // hint: VoiceOver reads hints last and can be switched off entirely,
+          // so a screen-reader user would get a coral border they cannot see
+          // and silence. The label is always read.
+          accessibilityLabel={error ? `${label}. ${error}` : label}
+          // The ONLY prop the toggle changes. autoComplete and textContentType
+          // stay fixed, so the keychain keeps treating this as the same field
+          // and does not re-offer to fill it on every tap.
+          secureTextEntry={isPassword && !revealed}
+          className={`${invalid ? 'border border-coral' : ''} ${
+            isPassword ? 'pr-[52px]' : ''
+          } ${className}`}
+          {...rest}
+        />
+        {isPassword ? (
+          <Pressable
+            accessibilityRole="button"
+            // Says what the tap DOES, not what the icon depicts. An eye alone
+            // is ambiguous -- "it is shown" or "tap to show" -- and a screen
+            // reader user gets no icon to disambiguate it.
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            accessibilityState={{ selected: revealed }}
+            onPress={() => setRevealed((v) => !v)}
+            hitSlop={8}
+            // Full input height and a 52pt square: comfortably past the 44pt
+            // touch-target floor, and it does not blur the input, so the
+            // keyboard stays up mid-typing.
+            className="absolute right-0 top-0 h-[52px] w-[52px] items-center justify-center active:opacity-60"
+          >
+            {revealed ? (
+              <EyeOffIcon color="#8b9096" size={20} />
+            ) : (
+              <EyeIcon color="#8b9096" size={20} />
+            )}
+          </Pressable>
+        ) : null}
+      </View>
       <View className="h-5 justify-center px-1">
         {error ? <Text className="font-jk-md text-micro text-coral-ink">{error}</Text> : null}
       </View>

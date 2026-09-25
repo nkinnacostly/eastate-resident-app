@@ -274,3 +274,86 @@ describe('set password', () => {
     await screen.findByText(/known to be compromised/i);
   });
 });
+
+/**
+ * The password reveal.
+ *
+ * Worth testing rather than eyeballing, because the failure mode is silent and
+ * severe: `secureTextEntry` stuck ON looks identical to a working toggle
+ * (dots either way), and stuck OFF shows a guard's password on screen at a
+ * gate with people standing next to them. Neither is visible in a screenshot
+ * of the default state.
+ */
+describe('password reveal', () => {
+  const eye = () => screen.getByLabelText('Show password');
+  const eyeOff = () => screen.getByLabelText('Hide password');
+  const password = () => screen.getByPlaceholderText('Password');
+
+  it('starts hidden', () => {
+    render(<StartShift />);
+    expect(password().props.secureTextEntry).toBe(true);
+    // Labelled by what the tap DOES, not by what the icon depicts.
+    expect(eye()).toBeTruthy();
+  });
+
+  it('reveals on tap and offers to hide', () => {
+    render(<StartShift />);
+    fireEvent.press(eye());
+
+    expect(password().props.secureTextEntry).toBe(false);
+    expect(eyeOff()).toBeTruthy();
+    expect(screen.queryByLabelText('Show password')).toBeNull();
+  });
+
+  it('hides again on a second tap', () => {
+    render(<StartShift />);
+    fireEvent.press(eye());
+    fireEvent.press(eyeOff());
+
+    expect(password().props.secureTextEntry).toBe(true);
+    expect(eye()).toBeTruthy();
+  });
+
+  // The iOS failure this guards against: toggling secureTextEntry can fire
+  // onChangeText with an empty string and wipe the form state
+  // (facebook/react-native#12939). The value is controlled by react-hook-form,
+  // so what matters is that typing still reaches it after a toggle.
+  it('keeps the typed value and stays submittable across a toggle', async () => {
+    render(<StartShift />);
+    fireEvent.changeText(screen.getByPlaceholderText('you@estate.co.za'), 'guard@estate.co.za');
+    fireEvent.changeText(password(), 'hunter2');
+    await waitFor(() => expect(button('Sign in and sync')).toBeEnabled());
+
+    fireEvent.press(eye());
+    expect(password().props.value).toBe('hunter2');
+    await waitFor(() => expect(button('Sign in and sync')).toBeEnabled());
+
+    // And a keystroke made while revealed still lands.
+    fireEvent.changeText(password(), 'hunter22');
+    fireEvent.press(eyeOff());
+    expect(password().props.value).toBe('hunter22');
+
+    fireEvent.press(button('Sign in and sync'));
+    await waitFor(() =>
+      expect(mockSignIn).toHaveBeenCalledWith('guard@estate.co.za', 'hunter22'),
+    );
+  });
+
+  // Two password fields on one screen, each with its own eye.
+  it('reveals each field independently', () => {
+    render(<SetPassword />);
+    const eyes = screen.getAllByLabelText('Show password');
+    expect(eyes).toHaveLength(2);
+
+    fireEvent.press(eyes[0]);
+    expect(screen.getByPlaceholderText('New password').props.secureTextEntry).toBe(false);
+    // Revealing the new password must not also reveal the confirmation.
+    expect(screen.getByPlaceholderText('Repeat it').props.secureTextEntry).toBe(true);
+  });
+
+  it('puts no eye on a field that is not a password', () => {
+    render(<StartShift />);
+    expect(screen.getByPlaceholderText('you@estate.co.za').props.secureTextEntry).toBeFalsy();
+    expect(screen.getAllByLabelText('Show password')).toHaveLength(1);
+  });
+});
