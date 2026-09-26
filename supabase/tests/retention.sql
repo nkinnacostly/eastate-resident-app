@@ -17,6 +17,10 @@ insert into public.estates (id, name, event_retention_days) values
   ('e0000000-0000-4000-8000-000000000001', 'Default 90d', 90),
   ('e0000000-0000-4000-8000-000000000002', 'Risk-justified 180d', 180);
 
+insert into auth.users (id) values
+  ('00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000000002');
+
 insert into public.profiles (id, full_name) values
   ('00000000-0000-4000-8000-000000000001', 'Ada Guard'),
   ('00000000-0000-4000-8000-000000000002', 'Bode Resident');

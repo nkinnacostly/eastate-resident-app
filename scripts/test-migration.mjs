@@ -15,7 +15,12 @@
  * answers "does this migration do what it claims", not "is the system correct".
  *
  * Usage:
- *   node scripts/test-migration.mjs <harness.sql> <migration.sql> <invariants.sql>
+ *   node scripts/test-migration.mjs <file.sql> [file.sql ...]
+ *
+ * Files run in the order given, against one database: harness first, then the
+ * migrations in migration order, then the invariants. Running several
+ * migrations in sequence is the point -- two that each apply cleanly alone can
+ * still collide, and only the ordered run catches it.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -34,9 +39,14 @@ const PG_BIN = ['/opt/homebrew/opt/postgresql@14/bin', '/opt/homebrew/bin', '/us
   (d) => existsSync(join(d, 'initdb')),
 );
 
-const [harness, migration, invariants] = process.argv.slice(2);
-if (!harness || !migration || !invariants) {
-  console.error('usage: test-migration.mjs <harness.sql> <migration.sql> <invariants.sql>');
+const files = process.argv.slice(2);
+if (files.length === 0) {
+  console.error('usage: test-migration.mjs <file.sql> [file.sql ...]');
+  process.exit(2);
+}
+const missing = files.filter((f) => !existsSync(f));
+if (missing.length) {
+  console.error(`no such file:\n  ${missing.join('\n  ')}`);
   process.exit(2);
 }
 if (!PG_BIN) {
@@ -70,11 +80,7 @@ try {
   const created = psql(['-c', `create database ${DB};`]);
   if (created.status !== 0) throw new Error(created.stderr);
 
-  for (const [label, file] of [
-    ['harness', harness],
-    ['migration', migration],
-    ['invariants', invariants],
-  ]) {
+  for (const file of files) {
     const r = psql(['-d', DB, '-f', file]);
     // psql sends RAISE NOTICE to stderr, so PASS lines arrive there too.
     const out = `${r.stdout}${r.stderr}`;
@@ -82,7 +88,7 @@ try {
       if (/PASS|FAIL|ERROR/.test(line)) console.log(line.replace(/^.*?(NOTICE|ERROR):\s*/, '').trim());
     }
     if (r.status !== 0) {
-      console.error(`\n${label} failed:\n${out}`);
+      console.error(`\n${file} failed:\n${out}`);
       process.exitCode = 1;
       break;
     }

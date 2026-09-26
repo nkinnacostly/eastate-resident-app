@@ -1,6 +1,10 @@
--- Minimal stand-in for the parts of the real schema the retention migration
--- touches. Column names, types, nullability and FKs mirror the migrations so
--- that anything the real file would trip over trips here too.
+-- Stand-in for the parts of the real schema the retention, agency and PSIRA
+-- migrations touch. Column names, types, nullability and FKs mirror the real
+-- migrations so that anything those files would trip over trips here too.
+--
+-- It is NOT the real schema: no RLS, no policies, no triggers beyond the ones
+-- under test. `npm run test:db` is what exercises those, against a real
+-- project. This answers "does this migration do what it says".
 
 -- Supabase's stock roles, so REVOKE statements resolve.
 do $$ begin
@@ -26,19 +30,47 @@ create type public.reject_reason  as enum ('unknown_code', 'expired', 'already_u
 create type public.membership_role as enum ('resident', 'guard', 'admin');
 
 create table public.estates (
-  id         uuid primary key default gen_random_uuid(),
-  name       text not null,
-  created_at timestamptz not null default now()
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,
+  address      text,
+  contact_info text,
+  is_active    boolean not null default true,
+  created_at   timestamptz not null default now()
 );
 
+-- Supabase puts users in its own schema and the agency tables reference it.
+create schema if not exists auth;
+
+create table auth.users (
+  id uuid primary key
+);
+
+-- auth.uid() is what every definer function derives identity from. Backed by a
+-- settable GUC so a test can say who is calling.
+create or replace function auth.uid() returns uuid
+  language sql stable
+  as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+
 create table public.profiles (
-  id        uuid primary key,
+  id        uuid primary key references auth.users (id) on delete cascade,
+  phone     text,
   full_name text
 );
 
+create table public.platform_admins (
+  user_id uuid primary key references auth.users (id) on delete cascade
+);
+
+create or replace function public.is_platform_admin() returns boolean
+  language sql stable security definer set search_path = ''
+  as $$ select exists (
+    select 1 from public.platform_admins pa where pa.user_id = (select auth.uid())
+  ) $$;
+
+
 create table public.memberships (
   id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null,
+  user_id    uuid not null references auth.users (id) on delete cascade,
   estate_id  uuid not null references public.estates (id) on delete cascade,
   role       public.membership_role not null,
   unit       text,
@@ -84,3 +116,14 @@ create table public.guard_shifts (
   ended_at          timestamptz,
   ended_by_handover boolean not null default false
 );
+
+-- Declared last: it reads public.memberships, which is created above.
+create or replace function public.current_membership(p_estate_id uuid, p_role text)
+returns uuid language sql stable security definer set search_path = ''
+as $$
+  select m.id from public.memberships m
+   where m.user_id   = (select auth.uid())
+     and m.estate_id = p_estate_id
+     and m.role      = p_role::public.membership_role
+     and m.is_active;
+$$;

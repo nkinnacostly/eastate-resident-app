@@ -24,7 +24,7 @@
     "test:csv": "node scripts/test-csv.mjs",
     "check:deps": "node scripts/check-deps.mjs",
     "test:db:delivery": "supabase db query -f supabase/tests/delivery.sql --linked",
-    "test:retention": "node scripts/test-migration.mjs supabase/tests/retention-harness.sql supabase/migrations/20260926100000_retention.sql supabase/tests/retention.sql"
+    "test:migrations": "node scripts/test-migration.mjs supabase/tests/schema-harness.sql supabase/migrations/20260926100000_retention.sql supabase/migrations/20260926110000_agencies.sql supabase/migrations/20260926120000_psira_return.sql supabase/tests/retention.sql supabase/tests/agencies.sql"
   },
   "devDependencies": {
     "supabase": "^2.114.0",
