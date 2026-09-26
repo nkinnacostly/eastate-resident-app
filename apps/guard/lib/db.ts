@@ -35,6 +35,17 @@ export interface OutboxRow {
   /** Device clock. Shown to humans, never used for ordering (§10). */
   verified_at: string;
   pool_age_seconds: number | null;
+  /**
+   * Which guard made this call, captured when the decision was made.
+   *
+   * LOCAL ONLY -- it is never sent to the server, because a client-supplied
+   * membership id is a forged identity and the ingest RPC rightly derives the
+   * actor from auth.uid(). Its job here is the opposite: to stop this phone
+   * pushing one guard's decisions under another guard's session. See unsynced().
+   *
+   * Null on rows enqueued before this column existed.
+   */
+  membership_id: string | null;
   synced: 0 | 1;
 }
 
@@ -64,6 +75,7 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
         reject_reason    TEXT,
         verified_at      TEXT NOT NULL,
         pool_age_seconds INTEGER,
+        membership_id    TEXT,
         synced           INTEGER NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS outbox_unsynced_idx ON outbox (synced, verified_at);
@@ -74,6 +86,19 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
         value TEXT
       );
     `);
+
+    // Phones already in the field have an outbox without membership_id, and
+    // CREATE TABLE IF NOT EXISTS will not add it to them. Ask the table what
+    // it has rather than tracking a version number: on a fresh install the
+    // CREATE above already included the column, so this is a no-op, and on an
+    // upgrade it is exactly the one ALTER needed. Getting this wrong either
+    // way throws -- "duplicate column name" on fresh, "no such column" on
+    // upgrade -- so it cannot fail silently.
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(outbox)');
+    if (columns.length > 0 && !columns.some((c) => c.name === 'membership_id')) {
+      await db.execAsync('ALTER TABLE outbox ADD COLUMN membership_id TEXT');
+    }
+
     return db;
   })();
   return dbPromise;
@@ -192,16 +217,21 @@ export async function burnLocally(id: string): Promise<void> {
  * push an event the server has already recorded. It is a log entry, not a debt.
  */
 export async function enqueue(
-  row: Omit<OutboxRow, 'synced'>,
+  row: Omit<OutboxRow, 'synced' | 'membership_id'>,
   synced: 0 | 1 = 0,
 ): Promise<void> {
   const db = await getDb();
+  // Read here rather than threaded through verifyOnline/verifyOffline/
+  // admitAndFlag: the answer is a property of the session, not of the call,
+  // and the three call sites would only be passing along what bindSession
+  // already recorded. poolAgeSeconds() reads meta the same way.
+  const membershipId = await getMeta('session_membership_id');
   // DO NOTHING, not DO UPDATE: a client_event_id is claimed once. A retry with
   // the same id must not rewrite the outcome a guard already committed to.
   await db.runAsync(
     `INSERT INTO outbox
-       (client_event_id, code, code_id, outcome, reject_reason, verified_at, pool_age_seconds, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       (client_event_id, code, code_id, outcome, reject_reason, verified_at, pool_age_seconds, membership_id, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(client_event_id) DO NOTHING`,
     row.client_event_id,
     row.code,
@@ -210,22 +240,64 @@ export async function enqueue(
     row.reject_reason,
     row.verified_at,
     row.pool_age_seconds,
+    membershipId,
     synced,
   );
 }
 
-export async function unsynced(limit = 100): Promise<OutboxRow[]> {
+/**
+ * Rows the CURRENT guard may push.
+ *
+ * The filter is the whole point. ingest_verification_events derives the actor
+ * from auth.uid() -- correctly, since a client-supplied membership id would be
+ * a forged identity -- which means whoever is signed in at push time is the
+ * person the server records. Replaying guard A's queued decisions during guard
+ * B's session therefore writes B's name onto A's calls, and the audit trail
+ * says the wrong officer admitted the visitor. On a shared gate phone that is
+ * not a corner case: it is what happens after a force-quit handover.
+ *
+ * So a row that belongs to someone else is held, not pushed. It is a debt this
+ * session cannot honestly settle, and it clears the moment that guard signs in
+ * again on this phone -- which, at a fixed gate, is usually their next shift.
+ *
+ * Rows with a NULL membership_id predate the stamp. They push under whoever is
+ * present, exactly as they always did: imperfect attribution on old rows beats
+ * stranding audit records that can never be recovered from anywhere else.
+ */
+export async function unsynced(membershipId: string | null, limit = 100): Promise<OutboxRow[]> {
   const db = await getDb();
   return db.getAllAsync<OutboxRow>(
-    'SELECT * FROM outbox WHERE synced = 0 ORDER BY verified_at ASC LIMIT ?',
+    `SELECT * FROM outbox
+      WHERE synced = 0 AND (membership_id IS NULL OR membership_id = ?)
+      ORDER BY verified_at ASC LIMIT ?`,
+    membershipId,
     limit,
   );
 }
 
-export async function countUnsynced(): Promise<number> {
+export async function countUnsynced(membershipId: string | null): Promise<number> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ n: number }>(
-    'SELECT count(*) AS n FROM outbox WHERE synced = 0',
+    `SELECT count(*) AS n FROM outbox
+      WHERE synced = 0 AND (membership_id IS NULL OR membership_id = ?)`,
+    membershipId,
+  );
+  return row?.n ?? 0;
+}
+
+/**
+ * Queued decisions belonging to a DIFFERENT guard.
+ *
+ * Surfaced rather than hidden: these are real gate events the server has not
+ * seen, and a count of zero versus a count of nine is the difference between
+ * "nothing to do" and "go and find the guard who worked Tuesday night".
+ */
+export async function countStranded(membershipId: string | null): Promise<number> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>(
+    `SELECT count(*) AS n FROM outbox
+      WHERE synced = 0 AND membership_id IS NOT NULL AND membership_id IS NOT ?`,
+    membershipId,
   );
   return row?.n ?? 0;
 }
@@ -286,8 +358,13 @@ export async function clearPool(): Promise<void> {
  * Checked at post resolution rather than at pull time on purpose: a pull needs
  * the network, and the dangerous case is precisely the one where the phone is
  * verifying from cache.
+ *
+ * Also records WHO is on shift, which enqueue() stamps onto every decision.
+ * Both facts arrive at the same moment and neither is safe to assume, so they
+ * are set together.
  */
-export async function bindPoolToEstate(estateId: string): Promise<boolean> {
+export async function bindSession(estateId: string, membershipId: string): Promise<boolean> {
+  await setMeta('session_membership_id', membershipId);
   const previous = await getMeta('pool_estate_id');
   if (previous === estateId) return false;
   if (previous !== null) await clearPool();

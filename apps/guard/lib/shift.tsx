@@ -12,7 +12,14 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
-import { bindPoolToEstate, clearPool, countLivePool, countUnsynced, getMeta } from './db';
+import {
+  bindSession,
+  clearPool,
+  countLivePool,
+  countStranded,
+  countUnsynced,
+  getMeta,
+} from './db';
 import { registerForPush } from './push';
 import { supabase } from './supabase';
 import { syncNow } from './sync';
@@ -31,6 +38,14 @@ interface ShiftState {
   online: boolean;
   poolCount: number;
   queued: number;
+  /**
+   * Queued decisions belonging to a guard who is not signed in.
+   *
+   * They cannot be pushed without filing them under the wrong name, so they
+   * wait for their own guard. Shown so that "stuck" is visible rather than
+   * silent — see countStranded.
+   */
+  stranded: number;
   lastPullAt: string | null;
   poolAgeSeconds: number | null;
   /** Past POOL_STALE_THRESHOLD_SECONDS the keypad shows the degraded banner. */
@@ -58,6 +73,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [poolCount, setPoolCount] = useState(0);
   const [queued, setQueued] = useState(0);
+  const [stranded, setStranded] = useState(0);
   const [lastPullAt, setLastPullAt] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState<boolean | null>(null);
@@ -115,8 +131,9 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       const m = data[0];
       // Before anything may READ the pool. A cache filled at another estate is
       // not ours to verify against, and sign-out is not a reliable place to
-      // have dropped it — see bindPoolToEstate.
-      await bindPoolToEstate(m.estate_id);
+      // have dropped it — see bindSession. This also records WHO is on shift,
+      // which every queued decision is stamped with.
+      await bindSession(m.estate_id, m.id);
       if (cancelled) return;
       setPost({
         membership_id: m.id,
@@ -129,17 +146,20 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     };
   }, [session]);
 
+  const membershipId = post?.membership_id ?? null;
+
   const refresh = useCallback(async () => {
     setPoolCount(await countLivePool());
-    setQueued(await countUnsynced());
+    setQueued(await countUnsynced(membershipId));
+    setStranded(await countStranded(membershipId));
     setLastPullAt(await getMeta('last_pull_at'));
-  }, []);
+  }, [membershipId]);
 
   const sync = useCallback(async () => {
     if (!post) return;
     setSyncing(true);
     try {
-      await syncNow(post.estate_id);
+      await syncNow(post.estate_id, post.membership_id);
     } catch {
       // Deliberately swallowed. A failed sync is the NORMAL state at a gate with
       // no signal; the banner already tells the guard the pool is stale. Throwing
@@ -298,7 +318,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     // outbox survives on disk but nobody is authenticated to replay it.
     if (post) {
       try {
-        await syncNow(post.estate_id);
+        await syncNow(post.estate_id, post.membership_id);
       } catch {
         // Still sign out. The outbox persists and replays on the next shift.
       }
@@ -323,6 +343,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       online,
       poolCount,
       queued,
+      stranded,
       lastPullAt,
       poolAgeSeconds,
       stale: poolAgeSeconds !== null && poolAgeSeconds > POOL_STALE_THRESHOLD_SECONDS,
@@ -335,7 +356,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       endShift,
     }),
     [
-      session, post, loading, online, poolCount, queued, lastPullAt,
+      session, post, loading, online, poolCount, queued, stranded, lastPullAt,
       poolAgeSeconds, syncing, mustChangePassword, refresh, sync, signIn,
       setPassword, endShift,
     ],

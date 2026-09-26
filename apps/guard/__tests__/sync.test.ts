@@ -5,6 +5,7 @@ const state = {
   queue: [] as any[],
   marked: [] as string[],
   pulls: [] as { upserts: any[]; tombstones: string[]; cursor: number }[],
+  askedFor: [] as (string | null)[],
 };
 
 jest.mock('@/lib/db', () => ({
@@ -14,7 +15,10 @@ jest.mock('@/lib/db', () => ({
     state.pulls.push({ upserts, tombstones, cursor });
     state.cursor = String(cursor);
   }),
-  unsynced: jest.fn(async () => state.queue),
+  unsynced: jest.fn(async (membershipId: string | null) => {
+    state.askedFor.push(membershipId);
+    return state.queue;
+  }),
   markSynced: jest.fn(async (ids: string[]) => {
     state.marked.push(...ids);
   }),
@@ -31,6 +35,7 @@ beforeEach(() => {
   state.queue = [];
   state.marked = [];
   state.pulls = [];
+  state.askedFor = [];
 });
 
 describe('pull', () => {
@@ -77,7 +82,7 @@ describe('pull', () => {
 
 describe('push', () => {
   it('does nothing when the outbox is empty', async () => {
-    const r = await push('estate-1');
+    const r = await push('estate-1', 'm-1');
     expect(r).toEqual({ pushed: 0, collisions: 0 });
     expect(mockRpc).not.toHaveBeenCalled();
   });
@@ -92,7 +97,7 @@ describe('push', () => {
     // The server returns only e1.
     mockRpc.mockResolvedValue({ data: [{ client_event_id: 'e1', collision: false }], error: null });
 
-    const r = await push('estate-1');
+    const r = await push('estate-1', 'm-1');
 
     expect(r.pushed).toBe(1);
     expect(state.marked).toEqual(['e1']);
@@ -112,17 +117,26 @@ describe('push', () => {
     ];
     mockRpc.mockResolvedValue({ data: [], error: null });
 
-    await push('estate-1');
+    await push('estate-1', 'm-1');
 
     const sent = mockRpc.mock.calls[0][1].p_events;
     expect(sent.map((e: { flagged: boolean }) => e.flagged)).toEqual([true, false, false]);
+  });
+
+  // ingest_verification_events stamps the actor from auth.uid(), so the queue
+  // must be narrowed to the signed-in guard BEFORE it leaves the phone --
+  // otherwise the server files one guard's decisions under another's name.
+  it('asks only for the signed-in guard\'s queue', async () => {
+    await push('estate-1', 'm-7');
+
+    expect(state.askedFor).toEqual(['m-7']);
   });
 
   it('counts collisions so they can be surfaced, never dropped', async () => {
     state.queue = [{ client_event_id: 'e1', code: 'A', code_id: null, verified_at: 't', pool_age_seconds: null }];
     mockRpc.mockResolvedValue({ data: [{ client_event_id: 'e1', collision: true }], error: null });
 
-    const r = await push('estate-1');
+    const r = await push('estate-1', 'm-1');
 
     expect(r.collisions).toBe(1);
   });
@@ -142,7 +156,7 @@ describe('syncNow ordering', () => {
       return { data: { upserts: [], tombstones: [], cursor: 0 }, error: null };
     });
 
-    await syncNow('estate-1');
+    await syncNow('estate-1', 'm-1');
 
     expect(order[0]).toBe('ingest_verification_events');
     expect(order[1]).toBe('sync_pull');

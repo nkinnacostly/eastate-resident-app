@@ -44,14 +44,20 @@ export async function pull(estateId: string, maxPages = 10): Promise<number> {
 }
 
 /**
- * Replay queued verifications.
+ * Replay this guard's queued verifications.
  *
  * Only rows the server ACKNOWLEDGED are marked synced. Marking the whole batch
  * on a 200 would drop any event the server chose not to return, and an event
  * dropped here is an audit record that no longer exists anywhere.
  */
-export async function push(estateId: string): Promise<{ pushed: number; collisions: number }> {
-  const queue = await unsynced();
+export async function push(
+  estateId: string,
+  membershipId: string | null,
+): Promise<{ pushed: number; collisions: number }> {
+  // Scoped to the guard who made these calls. The server stamps the actor from
+  // auth.uid(), so pushing someone else's queue would file their decisions
+  // under this session's name. See unsynced().
+  const queue = await unsynced(membershipId);
   if (queue.length === 0) return { pushed: 0, collisions: 0 };
 
   const { data, error } = await supabase.rpc('ingest_verification_events', {
@@ -95,12 +101,15 @@ export async function push(estateId: string): Promise<{ pushed: number; collisio
  * the server before we ask for a pool that would otherwise still contain the
  * code we just burned and hand it back as live.
  */
-export async function syncNow(estateId: string): Promise<{
+export async function syncNow(
+  estateId: string,
+  membershipId: string | null,
+): Promise<{
   pushed: number;
   collisions: number;
   applied: number;
 }> {
-  const { pushed, collisions } = await push(estateId);
+  const { pushed, collisions } = await push(estateId, membershipId);
   const applied = await pull(estateId);
   return { pushed, collisions, applied };
 }

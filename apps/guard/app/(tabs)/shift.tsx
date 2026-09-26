@@ -26,7 +26,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function Shift() {
   const {
-    session, post, online, poolCount, queued, poolAgeSeconds, syncing, sync, endShift,
+    session, post, online, poolCount, queued, stranded, poolAgeSeconds, syncing, sync, endShift,
   } = useShift();
 
   const name = (session?.user.user_metadata?.full_name as string | undefined) ?? 'Guard';
@@ -65,6 +65,16 @@ export default function Shift() {
           </View>
         ) : null}
 
+        {stranded > 0 ? (
+          <View className="mt-4">
+            <WarnBanner>
+              {stranded} {stranded === 1 ? 'verification belongs' : 'verifications belong'} to
+              another guard and cannot be uploaded from this account — the estate would be told the
+              wrong officer made the call. They upload when that guard next signs in on this phone.
+            </WarnBanner>
+          </View>
+        ) : null}
+
         <Card className="mt-4 px-4 py-1">
           <Row label="Connection" value={<StatusDot online={online} label={online ? 'Online' : 'Offline'} />} />
           <View className="h-px bg-field" />
@@ -73,6 +83,12 @@ export default function Shift() {
           <Row label="Last sync" value={ago(poolAgeSeconds)} />
           <View className="h-px bg-field" />
           <Row label="Waiting to upload" value={String(queued)} />
+          {stranded > 0 ? (
+            <>
+              <View className="h-px bg-field" />
+              <Row label="Held for another guard" value={String(stranded)} />
+            </>
+          ) : null}
         </Card>
 
         <PrimaryButton
