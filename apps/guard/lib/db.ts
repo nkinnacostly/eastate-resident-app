@@ -247,8 +247,50 @@ export async function recentEvents(limit = 50): Promise<OutboxRow[]> {
   );
 }
 
-/** Ending a shift clears the cache but never the ledger. */
+/**
+ * Ending a shift clears the cache but never the ledger.
+ *
+ * The CURSOR goes with the rows, in one transaction, and that pairing is the
+ * whole point of this function. They are two halves of one cache: the rows,
+ * and the position those rows were fetched to. Deleting the rows alone left
+ * the phone claiming "I already hold everything up to sync_seq N" while
+ * holding nothing — and sync_pull returns only `sync_seq > cursor`, so the
+ * pool refilled with codes minted AFTER the handover and nothing before it.
+ *
+ * That is silent, and it fails exactly where offline mode is meant to earn its
+ * keep: a code a resident minted twenty minutes before the shift change is
+ * still valid for another five and a half hours, and the incoming guard's
+ * phone would never receive it. Online, nobody notices — the server resolves
+ * the code directly. Offline, that visitor is refused as an unknown code.
+ */
 export async function clearPool(): Promise<void> {
   const db = await getDb();
-  await db.execAsync('DELETE FROM pool');
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM pool');
+    await db.runAsync("DELETE FROM meta WHERE key = 'cursor'");
+  });
+}
+
+/**
+ * Bind the cache to one estate, discarding it if it was filled for another.
+ *
+ * The invariant: **the pool belongs to exactly one estate, and the app must
+ * prove it before reading from it.** Sign-out already clears the pool, but
+ * sign-out is the polite path. A gate phone on a shared charger dies, is
+ * force-quit, or is handed over mid-shift, and none of those run it — so the
+ * next guard can sign in at a DIFFERENT estate on top of a live pool holding
+ * the previous estate's codes. `findInPool` matches on the typed code alone
+ * (there is no estate_id on the row to match against), so one of those codes
+ * would be admitted at a gate it was never minted for.
+ *
+ * Checked at post resolution rather than at pull time on purpose: a pull needs
+ * the network, and the dangerous case is precisely the one where the phone is
+ * verifying from cache.
+ */
+export async function bindPoolToEstate(estateId: string): Promise<boolean> {
+  const previous = await getMeta('pool_estate_id');
+  if (previous === estateId) return false;
+  if (previous !== null) await clearPool();
+  await setMeta('pool_estate_id', estateId);
+  return previous !== null;
 }

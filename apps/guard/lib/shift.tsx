@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
-import { clearPool, countLivePool, countUnsynced, getMeta } from './db';
+import { bindPoolToEstate, clearPool, countLivePool, countUnsynced, getMeta } from './db';
 import { registerForPush } from './push';
 import { supabase } from './supabase';
 import { syncNow } from './sync';
@@ -113,6 +113,11 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
         return;
       }
       const m = data[0];
+      // Before anything may READ the pool. A cache filled at another estate is
+      // not ours to verify against, and sign-out is not a reliable place to
+      // have dropped it — see bindPoolToEstate.
+      await bindPoolToEstate(m.estate_id);
+      if (cancelled) return;
       setPost({
         membership_id: m.id,
         estate_id: m.estate_id,
