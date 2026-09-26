@@ -35,6 +35,31 @@ export const MAX_DELIVERY_NOTE_LENGTH = 200;
 /** Past this, the guard's verify screen shows the degraded-mode banner. */
 export const POOL_STALE_THRESHOLD_SECONDS = 15 * 60;
 
+/**
+ * How long a guard's phone may keep verifying without the server confirming it
+ * is still their post.
+ *
+ * DERIVED from the code lifetime, and that is the whole argument for it. A
+ * successful sync_pull proves two things at once: the pool is current, and the
+ * server still accepts this caller as an active guard at this estate -- the RPC
+ * raises not_a_guard_at_this_estate otherwise. So the time since the last
+ * successful pull is equally a measure of how stale the authorisation is.
+ *
+ * Every code the pool holds was minted at or before that pull, and a code lives
+ * CODE_TTL_HOURS from minting. So once this much time has passed with no
+ * contact, the pool cannot contain a single admissible code -- it is already
+ * worthless. Stopping there costs nothing that was not already gone, which is
+ * why this does NOT contradict the locked decision that a stale pool still
+ * admits. That rule is about codes, and it stands: a pool minutes or hours old
+ * keeps working through an outage, exactly as designed. This is about the
+ * GUARD, and it closes the one case that rule never covered -- a guard
+ * dismissed mid-shift whose phone would otherwise go on opening the gate.
+ *
+ * Bound to CODE_TTL_HOURS rather than written as 6 so the two can never drift:
+ * lengthen a code's life and the window follows it, keeping the cost at zero.
+ */
+export const OFFLINE_AUTHORISATION_TTL_SECONDS = CODE_TTL_HOURS * 3600;
+
 /** How often the guard app pulls codes / pushes queued events while active. */
 export const SYNC_INTERVAL_SECONDS = 45;
 

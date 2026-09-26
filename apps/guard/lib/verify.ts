@@ -1,4 +1,4 @@
-import type { RejectReason } from '@estate/core';
+import { OFFLINE_AUTHORISATION_TTL_SECONDS, type RejectReason } from '@estate/core';
 import * as Crypto from 'expo-crypto';
 
 import {
@@ -33,6 +33,19 @@ export type Verdict =
       decision: 'flagged';
       code: string;
       checkedWith: 'device';
+      clientEventId: string;
+    }
+  | {
+      /**
+       * Not a verdict about the code -- the phone declined to reach one.
+       *
+       * Distinct from 'refuse' on purpose. A refusal is something the guard
+       * says out loud to the visitor; this is something the guard has to fix,
+       * and telling a visitor "expired" when the truth is "this phone has lost
+       * contact" sends them away for the wrong reason.
+       */
+      decision: 'locked';
+      code: string;
       clientEventId: string;
     };
 
@@ -133,6 +146,23 @@ export async function verifyOffline(code: string): Promise<Verdict> {
   const clientEventId = Crypto.randomUUID();
   const age = await poolAgeSeconds();
   const now = new Date().toISOString();
+
+  // Authorisation has its own clock, and it is not the pool's.
+  //
+  // A successful sync_pull proves the server still accepts this caller as an
+  // active guard here; it raises otherwise. So time since the last pull
+  // measures how stale that proof is, and past a code's own lifetime there is
+  // nothing left to weigh: every code the pool holds was minted at or before
+  // that pull, so all of them have expired. Refusing here forfeits nothing and
+  // closes the case the stale-pool rule never covered -- a guard dismissed
+  // mid-shift whose phone would otherwise keep opening the gate.
+  //
+  // Nothing is enqueued. There is no decision to record, and writing one would
+  // put a gate event in the ledger under a guard the server may no longer
+  // recognise, which is the attribution problem in a new costume.
+  if (age !== null && age > OFFLINE_AUTHORISATION_TTL_SECONDS) {
+    return { decision: 'locked', code, clientEventId };
+  }
 
   const hit: PoolCode | null = await findInPool(code);
 

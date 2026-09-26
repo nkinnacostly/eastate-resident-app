@@ -1,4 +1,8 @@
-import { POOL_STALE_THRESHOLD_SECONDS, SYNC_INTERVAL_SECONDS } from '@estate/core';
+import {
+  OFFLINE_AUTHORISATION_TTL_SECONDS,
+  POOL_STALE_THRESHOLD_SECONDS,
+  SYNC_INTERVAL_SECONDS,
+} from '@estate/core';
 import * as Network from 'expo-network';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -50,6 +54,17 @@ interface ShiftState {
   poolAgeSeconds: number | null;
   /** Past POOL_STALE_THRESHOLD_SECONDS the keypad shows the degraded banner. */
   stale: boolean;
+  /**
+   * The server has not confirmed this is still their post for longer than a
+   * code can live, so the phone stops verifying.
+   *
+   * Not the same thing as `stale`, and the difference matters at a gate. Stale
+   * means "the answers may be old", and the guard works on regardless -- that
+   * is the locked decision and it is right. This means "we can no longer show
+   * that this person should be here", and by the time it is true every code in
+   * the pool has expired anyway, so nothing admissible is being refused.
+   */
+  authorisationExpired: boolean;
   syncing: boolean;
   /**
    * This account still carries the password an admin generated and read out.
@@ -347,6 +362,8 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       lastPullAt,
       poolAgeSeconds,
       stale: poolAgeSeconds !== null && poolAgeSeconds > POOL_STALE_THRESHOLD_SECONDS,
+      authorisationExpired:
+        poolAgeSeconds !== null && poolAgeSeconds > OFFLINE_AUTHORISATION_TTL_SECONDS,
       syncing,
       mustChangePassword,
       refresh,

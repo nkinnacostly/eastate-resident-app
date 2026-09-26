@@ -48,7 +48,10 @@ describe('offline verification', () => {
   it('admits a code held in the pool', async () => {
     const v = await verifyOffline('7K4P92');
 
-    expect(v.decision).toBe('admit');
+    // Narrowed rather than asserted, so the union stays exhaustive: adding a
+    // verdict variant without a `checkedWith` should fail the typecheck here,
+    // not at runtime in front of a visitor.
+    if (v.decision !== 'admit') throw new Error(`expected admit, got ${v.decision}`);
     expect(v.checkedWith).toBe('device');
   });
 
@@ -144,7 +147,7 @@ describe('online verification', () => {
 
     const v = await verifyOnline('estate-1', '7K4P92');
 
-    expect(v.decision).toBe('admit');
+    if (v.decision !== 'admit') throw new Error(`expected admit, got ${v.decision}`);
     expect(v.checkedWith).toBe('server');
     // Critically: it did NOT touch the local pool. The server owns the burn.
     expect(mockDb.burned).toEqual([]);
@@ -297,5 +300,69 @@ describe('the shift log records online checks too', () => {
 
     expect(mockDb.enqueued[0].client_event_id).toBe(args.p_client_event_id);
     expect(mockDb.enqueued[0].client_event_id).toBe(v.clientEventId);
+  });
+});
+
+/**
+ * A guard dismissed mid-shift is the one case the stale-pool rule never
+ * covered. That rule -- a stale pool still admits, because refusing on old data
+ * turns a network outage into a gate outage -- is about CODES, and it stands.
+ * This is about the guard, and the window is bounded to a code's own lifetime
+ * so that nothing admissible is ever refused: past it, every code the pool
+ * holds was minted before the last contact and has therefore expired.
+ */
+describe('offline authorisation window', () => {
+  const SIX_HOURS = 6 * 3600;
+
+  beforeEach(() => {
+    mockDb.pool = [{ id: 'c1', code: '7K4P92', expires_at: inHours(5) }];
+  });
+
+  it('keeps verifying through an ordinary outage', async () => {
+    mockDb.lastPullAt = new Date(Date.now() - 45 * 60_000).toISOString();
+
+    const v = await verifyOffline('7K4P92');
+
+    expect(v.decision).toBe('admit');
+  });
+
+  // Right up to the boundary the pool may still hold a live code, so the phone
+  // must not give up early.
+  it('still verifies just inside the window', async () => {
+    mockDb.lastPullAt = new Date(Date.now() - (SIX_HOURS - 60) * 1000).toISOString();
+
+    const v = await verifyOffline('7K4P92');
+
+    expect(v.decision).toBe('admit');
+  });
+
+  it('stops verifying once the window has passed', async () => {
+    mockDb.lastPullAt = new Date(Date.now() - (SIX_HOURS + 60) * 1000).toISOString();
+
+    const v = await verifyOffline('7K4P92');
+
+    expect(v.decision).toBe('locked');
+  });
+
+  // Nothing is written. A gate event recorded here would be attributed to a
+  // guard the server may no longer recognise, and there is no decision to
+  // record in any case -- the phone declined to reach one.
+  it('records nothing when locked', async () => {
+    mockDb.lastPullAt = new Date(Date.now() - (SIX_HOURS + 60) * 1000).toISOString();
+
+    await verifyOffline('7K4P92');
+
+    expect(mockDb.enqueued).toEqual([]);
+    expect(mockDb.burned).toEqual([]);
+  });
+
+  // A phone that has never synced holds no codes at all, so there is nothing
+  // to lock down and no last-pull time to measure against.
+  it('does not lock a phone that has never synced', async () => {
+    mockDb.lastPullAt = null;
+
+    const v = await verifyOffline('7K4P92');
+
+    expect(v.decision).toBe('admit');
   });
 });

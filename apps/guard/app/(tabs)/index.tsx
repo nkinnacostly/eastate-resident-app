@@ -20,7 +20,8 @@ function minutes(seconds: number | null): string {
 }
 
 export default function Check() {
-  const { post, online, poolCount, poolAgeSeconds, stale, refresh } = useShift();
+  const { post, online, poolCount, poolAgeSeconds, stale, authorisationExpired, refresh } =
+    useShift();
   const router = useRouter();
 
   const {
@@ -87,7 +88,17 @@ export default function Check() {
           <StatusDot online={online} label={online ? 'Synced' : 'Offline'} />
         </View>
 
-        {!online || stale ? (
+        {!online && authorisationExpired ? (
+          <View className="mt-3.5">
+            {/* Ranked above the ordinary stale banner: that one says answers
+                may be old, this one says there are no answers. Showing both
+                would bury the one the guard has to act on. */}
+            <WarnBanner>
+              Out of contact for {minutes(poolAgeSeconds)} — longer than a code stays valid, so
+              every code on this phone has expired. Get signal and sync before checking anyone in.
+            </WarnBanner>
+          </View>
+        ) : !online || stale ? (
           <View className="mt-3.5">
             <WarnBanner>
               Checking against {poolCount} codes held on this phone · last sync{' '}
@@ -131,7 +142,14 @@ export default function Check() {
                 // No post means no estate to verify against — the RPC would be
                 // rejected server-side anyway, so do not let the guard tap into
                 // an error they cannot act on.
-                canSubmit={isValid && Boolean(post)}
+                //
+                // Same reasoning for an expired authorisation, one step
+                // earlier: verifyOffline would return 'locked' and the guard
+                // would have typed six characters to be told the phone cannot
+                // answer. The banner above already says so; the key should not
+                // invite the tap. When the phone is ONLINE this does not apply
+                // — a server check re-proves authorisation by making it.
+                canSubmit={isValid && Boolean(post) && (online || !authorisationExpired)}
               />
             </>
           )}

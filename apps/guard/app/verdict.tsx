@@ -50,6 +50,49 @@ export default function VerdictScreen() {
     );
   }
 
+  // ── Locked ────────────────────────────────────────────────────────────────
+  //
+  // Handled before `source`, because a locked phone never checked anything --
+  // there is no server and no device answer to label it with.
+  //
+  // Deliberately NOT styled as a refusal. The ink "Do not admit" screen is a
+  // verdict about the visitor, and this is not: the visitor may be perfectly
+  // entitled to come in and the phone simply cannot say. Sending the guard to
+  // fix the phone is the correct instruction; sending the visitor away is not.
+  if (verdict.decision === 'locked') {
+    return (
+      <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+        <View className="flex-1 px-5 pb-6">
+          <View className="mt-3 self-start rounded-full bg-coral px-3 py-1.5">
+            <Text className="font-jk-b text-label tracking-label text-white">
+              CANNOT CHECK CODES
+            </Text>
+          </View>
+          <Text className="mt-4 max-w-measure font-jk-xb text-[30px] leading-[34px] tracking-tight text-ink">
+            This phone needs to reconnect
+          </Text>
+
+          <Card className="mt-5 p-5">
+            <Text className="font-jk-xb text-[22px] tracking-code text-ink">{verdict.code}</Text>
+            <View className="my-3.5 h-px bg-field" />
+            <Text className="font-jk text-sub leading-[20px] text-muted">
+              It has been out of contact for longer than a code stays valid, so every code it
+              holds has expired anyway. Nothing was recorded against this attempt.
+            </Text>
+          </Card>
+
+          <Text className="mt-4 font-jk text-sub text-muted">
+            Get signal and sync, then check the code again. If the visitor cannot wait, call the
+            resident.
+          </Text>
+
+          <View className="flex-1" />
+          <PrimaryButton title="Back to keypad" onPress={done} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const source =
     verdict.checkedWith === 'server' ? 'CHECKED WITH THE SERVER' : 'CHECKED ON THIS PHONE';
 
