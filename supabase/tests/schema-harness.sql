@@ -75,7 +75,11 @@ create table public.memberships (
   role       public.membership_role not null,
   unit       text,
   is_active  boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+
+  -- Mirrors the real schema: one row per person per role per estate, which is
+  -- what place_officer_at_estate's ON CONFLICT depends on.
+  unique (user_id, estate_id, role)
 );
 
 create table public.access_codes (

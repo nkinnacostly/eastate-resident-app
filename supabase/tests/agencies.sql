@@ -282,3 +282,142 @@ select pg_temp.check('de-identification keeps the agency stamp', (
      and verified_by_membership_id is null
      and de_identified_at is not null
   from public.verification_events where id = 'a9000000-0000-4000-8000-000000000001'));
+
+-- ─── Write paths ─────────────────────────────────────────────────────────────
+--
+-- The first version of this model shipped with none of these: tables, stamps
+-- and a revocation function for officers who could never be added. These are
+-- the calls that make it reachable, and the authority checks are the point of
+-- each one.
+
+insert into auth.users (id) values
+  ('a0000000-0000-4000-8000-00000000000e'),  -- platform admin
+  ('a0000000-0000-4000-8000-00000000000f'),  -- estate admin at Kelvin Grove
+  ('a0000000-0000-4000-8000-000000000010');  -- a new officer
+
+insert into public.profiles (id, full_name) values
+  ('a0000000-0000-4000-8000-00000000000e', 'Platform Admin'),
+  ('a0000000-0000-4000-8000-00000000000f', 'Estate Admin'),
+  ('a0000000-0000-4000-8000-000000000010', 'Nomsa Officer');
+
+insert into public.platform_admins (user_id) values ('a0000000-0000-4000-8000-00000000000e');
+
+insert into public.memberships (user_id, estate_id, role) values
+  ('a0000000-0000-4000-8000-00000000000f', 'e1000000-0000-4000-8000-000000000001', 'admin');
+
+-- An agency is an onboarding event, not a signup. Anyone being able to mint one
+-- means anyone can mint a plausible "Fidelity ADT" and invite estates to
+-- contract with it.
+set test.uid = 'a0000000-0000-4000-8000-00000000000f';
+do $$
+begin
+  perform public.create_agency('Rogue Security');
+  raise exception 'FAIL  an estate admin created an agency';
+exception
+  when insufficient_privilege then raise notice 'PASS  only a platform admin can create an agency';
+end $$;
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000e';
+select public.create_agency('Charlie Protection', '5566778', 'ZA-PSIRA',
+                            'a0000000-0000-4000-8000-00000000000b') as id \gset new_agency_
+
+select pg_temp.check('a new agency comes with an administrator', (
+  select count(*) = 1 from public.agency_memberships
+   where agency_id = :'new_agency_id'::uuid and role = 'admin' and is_active));
+
+-- The estate signs, not the agency. PSIRA's Code already forbids a provider
+-- routing a client's service elsewhere without the client's consent, and an
+-- estate discovering it had been contracted to a guarding company it never
+-- engaged is the failure this prevents.
+set test.uid = 'a0000000-0000-4000-8000-00000000000b';
+do $$
+begin
+  perform public.create_agency_contract('e1000000-0000-4000-8000-000000000001',
+                                        'b0000000-0000-4000-8000-000000000001');
+  raise exception 'FAIL  an agency contracted itself into an estate';
+exception
+  when insufficient_privilege then raise notice 'PASS  an agency cannot contract itself in';
+end $$;
+
+-- THE confused-deputy test. We hold rights at every estate and the caller names
+-- the estate, so a placement without a live contract must be refused -- or an
+-- agency admin can post their own officers at a rival's client.
+set test.uid = 'a0000000-0000-4000-8000-00000000000e';
+select public.add_agency_officer(:'new_agency_id'::uuid,
+                                 'a0000000-0000-4000-8000-000000000010') as id \gset newofficer_
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000b';
+-- Through a setting, not :'newofficer_id': psql does not interpolate its
+-- variables inside a dollar-quoted block, so the substitution never happens and
+-- the block fails to parse.
+select set_config('test.officer', :'newofficer_id', false);
+do $$
+begin
+  perform public.place_officer_at_estate(
+    current_setting('test.officer')::uuid, 'e1000000-0000-4000-8000-000000000001');
+  raise exception 'FAIL  placed an officer with no contract';
+exception
+  when insufficient_privilege then raise notice 'PASS  placement without a live contract is refused';
+end $$;
+
+-- With a contract the estate signed, placement works.
+set test.uid = 'a0000000-0000-4000-8000-00000000000f';
+select public.create_agency_contract('e1000000-0000-4000-8000-000000000001',
+                                     :'new_agency_id'::uuid) as id \gset contract_
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000e';
+select public.place_officer_at_estate(:'newofficer_id'::uuid,
+                                      'e1000000-0000-4000-8000-000000000001') as id \gset placed_
+
+select pg_temp.check('a placed officer is an active guard at that estate', (
+  select is_active and placed_by_agency_id = :'new_agency_id'::uuid
+  from public.memberships where id = :'placed_id'::uuid));
+
+-- Ending the contract takes the guards with it. Leaving them active is how a
+-- former provider's officers keep working a gate for months -- the failure with
+-- no answer in any product surveyed.
+set test.uid = 'a0000000-0000-4000-8000-00000000000f';
+select public.end_agency_contract(:'contract_id'::uuid);
+
+select pg_temp.check('ending a contract withdraws that agency''s guards', (
+  select not is_active from public.memberships where id = :'placed_id'::uuid));
+
+select pg_temp.check('the ended contract is no longer live', (
+  select count(*) = 0 from public.agency_contracts
+   where id = :'contract_id'::uuid and during @> now()));
+
+-- ...but only that agency's. An estate's own guard is not theirs to withdraw.
+select pg_temp.check('an in-house guard survives a contract ending', (
+  select is_active from public.memberships
+   where id = 'd1000000-0000-4000-8000-000000000003'));
+
+-- A registration check is an attestation by the employer, who carries the legal
+-- duty to have made it -- never by the officer about themselves.
+set test.uid = 'a0000000-0000-4000-8000-000000000010';
+do $$
+begin
+  perform public.record_psira_registration('a0000000-0000-4000-8000-000000000010', '9999999', 'A');
+  raise exception 'FAIL  an officer attested their own registration';
+exception
+  when insufficient_privilege then raise notice 'PASS  an officer cannot attest their own registration';
+end $$;
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000e';
+select public.record_psira_registration('a0000000-0000-4000-8000-000000000010', '4455667', 'D');
+
+select pg_temp.check('recording a registration stamps when a human checked', (
+  select psira_registration_number = '4455667' and psira_grade = 'D'
+     and psira_verified_at is not null
+  from public.profiles where id = 'a0000000-0000-4000-8000-000000000010'));
+
+-- The grade ladder is A-E. Anything else is a typo that would travel into a
+-- statutory return.
+do $$
+begin
+  perform public.record_psira_registration('a0000000-0000-4000-8000-000000000010', '4455667', 'Z');
+  raise exception 'FAIL  an invalid grade was accepted';
+exception
+  when check_violation then raise notice 'PASS  an invalid grade is rejected';
+end $$;
+
+reset test.uid;
