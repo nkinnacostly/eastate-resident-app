@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { myAgencies, type Agency } from './agency';
 import { Ctx, type AdminMembership, type AuthState } from './auth-context';
 import { supabase } from './supabase';
 
@@ -13,6 +14,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [agenciesLoaded, setAgenciesLoaded] = useState(false);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -76,6 +79,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshEstates();
   }, [refreshEstates]);
 
+  useEffect(() => {
+    if (!userId) {
+      setAgencies([]);
+      setAgenciesLoaded(true);
+      return;
+    }
+    setAgenciesLoaded(false);
+    let live = true;
+    void (async () => {
+      try {
+        const rows = await myAgencies();
+        if (live) setAgencies(rows.filter((a) => a.role === 'admin'));
+      } catch (e) {
+        // Loaded-on-error, matching the ownership check below: holding the app
+        // on a blank screen is worse than treating a failed lookup as "no
+        // agencies", which lands somewhere with a way out.
+        console.warn('[auth] agency lookup failed:', (e as Error).message);
+      } finally {
+        if (live) setAgenciesLoaded(true);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [userId]);
+
   // Resolved alongside the memberships and for the same reason: a role carried
   // in a JWT claim goes stale exactly where staleness is dangerous — a revoked
   // platform admin would keep the operator dashboard until their token
@@ -138,11 +167,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session, loading, estates, estatesLoaded, activeEstateId,
       setActiveEstateId, activeEstate, refreshEstates, signIn, signOut,
       isPlatformAdmin, rolesLoaded, mustChangePassword, changePassword,
+      agencies, agenciesLoaded,
     }),
     [
       session, loading, estates, estatesLoaded, activeEstateId,
       activeEstate, refreshEstates, signIn, signOut,
       isPlatformAdmin, rolesLoaded, mustChangePassword, changePassword,
+      agencies, agenciesLoaded,
     ],
   );
 

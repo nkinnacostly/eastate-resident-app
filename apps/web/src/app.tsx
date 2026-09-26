@@ -1,8 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { AgencyShell } from './components/agency-shell';
 import { OperatorShell } from './components/operator-shell';
 import { Shell } from './components/shell';
 import { useAuth } from './lib/auth-context';
+import { AgencyCoverage } from './pages/agency/coverage';
+import { AgencyMonthlyReturn } from './pages/agency/monthly-return';
+import { AgencyOfficers } from './pages/agency/officers';
 import { Audit } from './pages/audit';
 import { ChangePassword } from './pages/change-password';
 import { Codes } from './pages/codes';
@@ -61,6 +65,25 @@ function OperatorRoutes() {
   );
 }
 
+/** The security agency's portal: across its own estates, never inside one. */
+function AgencyRoutes() {
+  return (
+    <Routes>
+      {/* Pathless layout route with RELATIVE children, matching EstateRoutes.
+          A nested <Routes> resolves against the path its parent matched, so an
+          absolute "/agency" here would be looking for /agency/agency. The
+          shell's NavLinks stay absolute, which is the opposite rule and the
+          reason this is easy to get backwards. */}
+      <Route element={<AgencyShell />}>
+        <Route index element={<AgencyCoverage />} />
+        <Route path="officers" element={<AgencyOfficers />} />
+        <Route path="return" element={<AgencyMonthlyReturn />} />
+        <Route path="*" element={<Navigate to="/agency" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
 /**
  * One gate, not a guard per route.
  *
@@ -74,8 +97,10 @@ function OperatorRoutes() {
  * can be linked to.
  */
 export function App() {
-  const { session, loading, estates, estatesLoaded, isPlatformAdmin, rolesLoaded, mustChangePassword } =
-    useAuth();
+  const {
+    session, loading, estates, estatesLoaded, isPlatformAdmin, rolesLoaded,
+    mustChangePassword, agencies, agenciesLoaded,
+  } = useAuth();
 
   if (loading) return <div className="min-h-screen bg-ink" />;
   if (!session) return <SignIn />;
@@ -88,19 +113,45 @@ export function App() {
   // owner arriving directly at /estate would briefly render the estate routes,
   // whose catch-all rewrites the URL to "/" — and by the time the ownership
   // answer landed, the path they asked for was already gone.
-  if (!estatesLoaded || !rolesLoaded) return <div className="min-h-screen bg-ink" />;
-  if (!isPlatformAdmin && estates.length === 0) return <NoAccess />;
+  // agenciesLoaded joins the other two for the same reason: the agency list
+  // starts empty, so an agency-only admin would be shown NoAccess for the
+  // moment before the answer lands — a dead end for a legitimate user.
+  if (!estatesLoaded || !rolesLoaded || !agenciesLoaded) {
+    return <div className="min-h-screen bg-ink" />;
+  }
+  if (!isPlatformAdmin && estates.length === 0 && agencies.length === 0) return <NoAccess />;
 
   if (isPlatformAdmin) {
     return (
       <Routes>
-        {/* Only mounted for an owner who also administers an estate — the
-            operator shell hides the link otherwise. */}
+        {/* Only mounted for an owner who holds the role too — each shell hides
+            its link otherwise, and a link to a dashboard you cannot enter is a
+            dead end. */}
         {estates.length > 0 ? <Route path="/estate/*" element={<EstateRoutes base="/estate" />} /> : null}
+        {agencies.length > 0 ? <Route path="/agency/*" element={<AgencyRoutes />} /> : null}
         <Route path="*" element={<OperatorRoutes />} />
       </Routes>
     );
   }
 
-  return <EstateRoutes />;
+  // An estate admin who ALSO administers an agency lands on the estate
+  // dashboard and crosses over by link. Estate work is the daily job; the
+  // agency portal is something you visit monthly to file a return.
+  if (estates.length > 0) {
+    return (
+      <Routes>
+        {agencies.length > 0 ? <Route path="/agency/*" element={<AgencyRoutes />} /> : null}
+        <Route path="*" element={<EstateRoutes />} />
+      </Routes>
+    );
+  }
+
+  // Agency only: /agency is home, and anything else redirects there rather
+  // than 404ing someone who has exactly one place to be.
+  return (
+    <Routes>
+      <Route path="/agency/*" element={<AgencyRoutes />} />
+      <Route path="*" element={<Navigate to="/agency" replace />} />
+    </Routes>
+  );
 }

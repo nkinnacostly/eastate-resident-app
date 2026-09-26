@@ -8,7 +8,8 @@
     "ios": "expo start --ios --port 8082",
     "android": "expo start --android --port 8082",
     "lint": "expo lint",
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@estate/core": "*",

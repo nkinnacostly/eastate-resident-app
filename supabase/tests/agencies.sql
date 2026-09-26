@@ -421,3 +421,71 @@ exception
 end $$;
 
 reset test.uid;
+
+-- ─── What the agency may read ────────────────────────────────────────────────
+--
+-- The portal's whole privacy posture. A blanked row is still a record about a
+-- person; a count is not, and POPIA s6(1)(b) treats the two completely
+-- differently.
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000b';
+
+select count(*) as n from public.agency_coverage_summary(
+  'b0000000-0000-4000-8000-000000000001', now() - interval '60 days', now()) \gset cov_
+
+-- Alpha holds a contract at Kelvin Grove only. Silver Oaks is an estate it
+-- worked shifts at but never contracted to, and it must not surface.
+select pg_temp.check('coverage is scoped to estates the agency contracted to', :cov_n = 1);
+
+select estate_name as en, shifts as sh from public.agency_coverage_summary(
+  'b0000000-0000-4000-8000-000000000001', now() - interval '60 days', now()) \gset covrow_
+
+select pg_temp.check('coverage names the estate it is reporting on', :'covrow_en' = 'Kelvin Grove');
+
+-- The load-bearing assertion: the shape itself contains nothing about a person.
+select pg_temp.check('coverage returns counts, never rows about people', (
+  select count(*) = 0
+    from information_schema.parameters
+   where specific_schema = 'public'
+     and specific_name in (
+       select specific_name from information_schema.routines
+        where routine_schema = 'public' and routine_name = 'agency_coverage_summary')
+     and parameter_mode = 'OUT'
+     and parameter_name in ('code', 'code_attempted', 'resident_name', 'host_name',
+                            'unit', 'guard_name', 'verified_at')));
+
+-- Another agency's admin gets nothing at all.
+set test.uid = 'a0000000-0000-4000-8000-00000000000c';
+do $$
+begin
+  perform * from public.agency_coverage_summary('b0000000-0000-4000-8000-000000000001');
+  raise exception 'FAIL  another agency read our coverage';
+exception
+  when insufficient_privilege then raise notice 'PASS  another agency cannot read coverage';
+end $$;
+
+-- The roster is the agency's own staff: personal, and legitimately theirs.
+set test.uid = 'a0000000-0000-4000-8000-00000000000b';
+select count(*) as n from public.agency_roster('b0000000-0000-4000-8000-000000000001') \gset roster_
+select pg_temp.check('roster lists the agency''s own people', :roster_n = 2);
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000c';
+do $$
+begin
+  perform * from public.agency_roster('b0000000-0000-4000-8000-000000000001');
+  raise exception 'FAIL  another agency read our roster';
+exception
+  when insufficient_privilege then raise notice 'PASS  another agency cannot read the roster';
+end $$;
+
+-- my_agencies is a routing answer, so administering none returns an empty set
+-- rather than raising.
+set test.uid = 'a0000000-0000-4000-8000-00000000000f';
+select count(*) as n from public.my_agencies() \gset mine_
+select pg_temp.check('a non-agency user sees no agencies, without an error', :mine_n = 0);
+
+set test.uid = 'a0000000-0000-4000-8000-00000000000b';
+select count(*) as n from public.my_agencies() \gset mine2_
+select pg_temp.check('an agency admin sees their own agencies', :mine2_n = 2);
+
+reset test.uid;

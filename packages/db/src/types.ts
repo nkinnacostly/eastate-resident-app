@@ -509,6 +509,14 @@ export type Database = {
       verification_events: {
         Row: {
           admitted_without_match: boolean
+          // PENDING REGENERATION. Added by 20260926100000_retention.sql and
+          // 20260926110000_agencies.sql, which have not reached the database
+          // this file is generated from. Hand-added so the dashboard type-checks
+          // against the schema it will actually run on; `npm run db:types` will
+          // produce these legitimately once the migrations are applied, and this
+          // comment goes with them.
+          agency_id: string | null
+          de_identified_at: string | null
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
@@ -521,7 +529,9 @@ export type Database = {
           source: Database["public"]["Enums"]["event_source"]
           synced_at: string
           verified_at: string
-          verified_by_membership_id: string
+          // Nullable since retention: a de-identified event keeps the entry and
+          // drops the people.
+          verified_by_membership_id: string | null
         }
         Insert: {
           admitted_without_match?: boolean

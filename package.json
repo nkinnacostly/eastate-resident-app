@@ -20,11 +20,13 @@
     "resident": "npm run start --workspace @estate/resident",
     "guard": "npm run start --workspace @estate/guard",
     "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "//typecheck": "Runs in every workspace. Added because nothing repo-wide ran the web typecheck, so a broken one shipped: apps/web/tsconfig.json is a solution file, which makes `tsc --noEmit` there check ZERO files and always pass. Only `tsc -b` type-checks it.",
     "test": "npm run test --workspaces --if-present",
     "test:csv": "node scripts/test-csv.mjs",
     "check:deps": "node scripts/check-deps.mjs",
     "test:db:delivery": "supabase db query -f supabase/tests/delivery.sql --linked",
-    "test:migrations": "node scripts/test-migration.mjs supabase/tests/schema-harness.sql supabase/migrations/20260926100000_retention.sql supabase/migrations/20260926110000_agencies.sql supabase/migrations/20260926120000_psira_return.sql supabase/migrations/20260926130000_agency_writes.sql supabase/tests/retention.sql supabase/tests/agencies.sql"
+    "test:migrations": "node scripts/test-migration.mjs supabase/tests/schema-harness.sql supabase/migrations/20260926100000_retention.sql supabase/migrations/20260926110000_agencies.sql supabase/migrations/20260926120000_psira_return.sql supabase/migrations/20260926130000_agency_writes.sql supabase/migrations/20260926140000_agency_reporting.sql supabase/tests/retention.sql supabase/tests/agencies.sql"
   },
   "devDependencies": {
     "supabase": "^2.114.0",

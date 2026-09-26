@@ -1,6 +1,8 @@
 import { createContext, useContext } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
+import type { Agency } from './agency';
+
 /**
  * The auth context, its shape, and the hook that reads it.
  *
@@ -45,6 +47,15 @@ export interface AuthState {
    * catch-all route to rewrite the URL and strip the path they asked for.
    */
   rolesLoaded: boolean;
+  /**
+   * Agencies this user administers. Empty for everyone else.
+   *
+   * Resolved per session alongside the estate memberships, never from a JWT
+   * claim, for the same reason: an officer dismissed mid-session would keep the
+   * agency portal until their token refreshed.
+   */
+  agencies: Agency[];
+  agenciesLoaded: boolean;
   /**
    * Set on an account whose password was generated during estate onboarding and
    * read aloud to somebody. Cleared once they choose their own.
