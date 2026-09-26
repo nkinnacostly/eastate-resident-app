@@ -125,6 +125,119 @@ export type Database = {
           },
         ]
       }
+      agencies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          registration_body: string | null
+          registration_expires_at: string | null
+          registration_number: string | null
+          registration_verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          registration_body?: string | null
+          registration_expires_at?: string | null
+          registration_number?: string | null
+          registration_verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          registration_body?: string | null
+          registration_expires_at?: string | null
+          registration_number?: string | null
+          registration_verified_at?: string | null
+        }
+        Relationships: []
+      }
+      agency_contracts: {
+        Row: {
+          agency_id: string
+          created_at: string
+          during: unknown
+          ends_on: string | null
+          estate_id: string
+          id: string
+          revoked_at: string | null
+          starts_on: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          during?: unknown
+          ends_on?: string | null
+          estate_id: string
+          id?: string
+          revoked_at?: string | null
+          starts_on?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          during?: unknown
+          ends_on?: string | null
+          estate_id?: string
+          id?: string
+          revoked_at?: string | null
+          starts_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_contracts_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_contracts_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agency_memberships: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          role: Database["public"]["Enums"]["agency_role"]
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: Database["public"]["Enums"]["agency_role"]
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: Database["public"]["Enums"]["agency_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_memberships_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_mint_attempts: {
         Row: {
           hits: number
@@ -156,6 +269,7 @@ export type Database = {
           address: string | null
           contact_info: string | null
           created_at: string
+          event_retention_days: number
           id: string
           is_active: boolean
           join_code: string
@@ -165,6 +279,7 @@ export type Database = {
           address?: string | null
           contact_info?: string | null
           created_at?: string
+          event_retention_days?: number
           id?: string
           is_active?: boolean
           join_code?: string
@@ -174,6 +289,7 @@ export type Database = {
           address?: string | null
           contact_info?: string | null
           created_at?: string
+          event_retention_days?: number
           id?: string
           is_active?: boolean
           join_code?: string
@@ -183,30 +299,43 @@ export type Database = {
       }
       guard_shifts: {
         Row: {
+          agency_id: string | null
+          de_identified_at: string | null
           ended_at: string | null
           ended_by_handover: boolean
           estate_id: string
           id: string
-          membership_id: string
+          membership_id: string | null
           started_at: string
         }
         Insert: {
+          agency_id?: string | null
+          de_identified_at?: string | null
           ended_at?: string | null
           ended_by_handover?: boolean
           estate_id: string
           id?: string
-          membership_id: string
+          membership_id?: string | null
           started_at?: string
         }
         Update: {
+          agency_id?: string | null
+          de_identified_at?: string | null
           ended_at?: string | null
           ended_by_handover?: boolean
           estate_id?: string
           id?: string
-          membership_id?: string
+          membership_id?: string | null
           started_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "guard_shifts_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "guard_shifts_estate_id_fkey"
             columns: ["estate_id"]
@@ -364,6 +493,7 @@ export type Database = {
           house_id: string | null
           id: string
           is_active: boolean
+          placed_by_agency_id: string | null
           role: Database["public"]["Enums"]["membership_role"]
           unit: string | null
           user_id: string
@@ -375,6 +505,7 @@ export type Database = {
           house_id?: string | null
           id?: string
           is_active?: boolean
+          placed_by_agency_id?: string | null
           role: Database["public"]["Enums"]["membership_role"]
           unit?: string | null
           user_id: string
@@ -386,6 +517,7 @@ export type Database = {
           house_id?: string | null
           id?: string
           is_active?: boolean
+          placed_by_agency_id?: string | null
           role?: Database["public"]["Enums"]["membership_role"]
           unit?: string | null
           user_id?: string
@@ -403,6 +535,13 @@ export type Database = {
             columns: ["house_id"]
             isOneToOne: false
             referencedRelation: "houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_placed_by_agency_id_fkey"
+            columns: ["placed_by_agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
           {
@@ -454,6 +593,10 @@ export type Database = {
           id: string
           must_change_password: boolean
           phone: string | null
+          psira_expires_at: string | null
+          psira_grade: string | null
+          psira_registration_number: string | null
+          psira_verified_at: string | null
         }
         Insert: {
           created_at?: string
@@ -461,6 +604,10 @@ export type Database = {
           id: string
           must_change_password?: boolean
           phone?: string | null
+          psira_expires_at?: string | null
+          psira_grade?: string | null
+          psira_registration_number?: string | null
+          psira_verified_at?: string | null
         }
         Update: {
           created_at?: string
@@ -468,6 +615,10 @@ export type Database = {
           id?: string
           must_change_password?: boolean
           phone?: string | null
+          psira_expires_at?: string | null
+          psira_grade?: string | null
+          psira_registration_number?: string | null
+          psira_verified_at?: string | null
         }
         Relationships: []
       }
@@ -509,18 +660,12 @@ export type Database = {
       verification_events: {
         Row: {
           admitted_without_match: boolean
-          // PENDING REGENERATION. Added by 20260926100000_retention.sql and
-          // 20260926110000_agencies.sql, which have not reached the database
-          // this file is generated from. Hand-added so the dashboard type-checks
-          // against the schema it will actually run on; `npm run db:types` will
-          // produce these legitimately once the migrations are applied, and this
-          // comment goes with them.
           agency_id: string | null
-          de_identified_at: string | null
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
           collision: boolean
+          de_identified_at: string | null
           estate_id: string
           id: string
           outcome: Database["public"]["Enums"]["event_outcome"]
@@ -529,16 +674,16 @@ export type Database = {
           source: Database["public"]["Enums"]["event_source"]
           synced_at: string
           verified_at: string
-          // Nullable since retention: a de-identified event keeps the entry and
-          // drops the people.
           verified_by_membership_id: string | null
         }
         Insert: {
           admitted_without_match?: boolean
+          agency_id?: string | null
           client_event_id: string
           code_attempted?: string | null
           code_id?: string | null
           collision?: boolean
+          de_identified_at?: string | null
           estate_id: string
           id?: string
           outcome?: Database["public"]["Enums"]["event_outcome"]
@@ -547,14 +692,16 @@ export type Database = {
           source: Database["public"]["Enums"]["event_source"]
           synced_at?: string
           verified_at: string
-          verified_by_membership_id: string
+          verified_by_membership_id?: string | null
         }
         Update: {
           admitted_without_match?: boolean
+          agency_id?: string | null
           client_event_id?: string
           code_attempted?: string | null
           code_id?: string | null
           collision?: boolean
+          de_identified_at?: string | null
           estate_id?: string
           id?: string
           outcome?: Database["public"]["Enums"]["event_outcome"]
@@ -563,9 +710,16 @@ export type Database = {
           source?: Database["public"]["Enums"]["event_source"]
           synced_at?: string
           verified_at?: string
-          verified_by_membership_id?: string
+          verified_by_membership_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "verification_events_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "verification_events_code_id_fkey"
             columns: ["code_id"]
@@ -608,10 +762,12 @@ export type Database = {
         }
         Returns: {
           admitted_without_match: boolean
+          agency_id: string | null
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
           collision: boolean
+          de_identified_at: string | null
           estate_id: string
           id: string
           outcome: Database["public"]["Enums"]["event_outcome"]
@@ -620,7 +776,7 @@ export type Database = {
           source: Database["public"]["Enums"]["event_source"]
           synced_at: string
           verified_at: string
-          verified_by_membership_id: string
+          verified_by_membership_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -628,6 +784,71 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      add_agency_officer: {
+        Args: {
+          p_agency_id: string
+          p_role?: Database["public"]["Enums"]["agency_role"]
+          p_user_id: string
+        }
+        Returns: string
+      }
+      agency_coverage_summary: {
+        Args: { p_agency_id: string; p_from?: string; p_to?: string }
+        Returns: {
+          contract_live: boolean
+          entries_admitted: number
+          entries_flagged: number
+          entries_refused: number
+          estate_id: string
+          estate_name: string
+          hours: number
+          officers: number
+          shifts: number
+        }[]
+      }
+      agency_deactivate_officer: {
+        Args: { p_agency_membership_id: string }
+        Returns: number
+      }
+      agency_monthly_return: {
+        Args: { p_agency_id: string; p_month: string }
+        Returns: {
+          contact_phone: string
+          estate_address: string
+          estate_name: string
+          first_shift_at: string
+          grade: string
+          hours: number
+          last_shift_at: string
+          officer_name: string
+          registration_checked_at: string
+          registration_expires_at: string
+          registration_number: string
+          shifts: number
+        }[]
+      }
+      agency_roster: {
+        Args: { p_agency_id: string }
+        Returns: {
+          agency_membership_id: string
+          estates_posted: number
+          full_name: string
+          grade: string
+          is_active: boolean
+          registration_checked_at: string
+          registration_expires_at: string
+          registration_number: string
+          role: Database["public"]["Enums"]["agency_role"]
+        }[]
+      }
+      apply_retention: {
+        Args: never
+        Returns: {
+          codes_deleted: number
+          events_cleared: number
+          shifts_cleared: number
+        }[]
       }
       approve_join_request: { Args: { p_request_id: string }; Returns: string }
       approve_join_requests_bulk: {
@@ -640,6 +861,24 @@ export type Database = {
       }
       claim_password_reset: { Args: { p_email: string }; Returns: string }
       clear_must_change_password: { Args: never; Returns: undefined }
+      create_agency: {
+        Args: {
+          p_admin_user_id?: string
+          p_name: string
+          p_registration_body?: string
+          p_registration_number?: string
+        }
+        Returns: string
+      }
+      create_agency_contract: {
+        Args: {
+          p_agency_id: string
+          p_ends_on?: string
+          p_estate_id: string
+          p_starts_on?: string
+        }
+        Returns: string
+      }
       create_estate: {
         Args: { p_address?: string; p_contact_info?: string; p_name: string }
         Returns: string
@@ -705,6 +944,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      end_agency_contract: {
+        Args: { p_contract_id: string; p_revoked?: boolean }
+        Returns: undefined
+      }
       end_shift: {
         Args: { p_estate_id: string }
         Returns: {
@@ -735,10 +978,12 @@ export type Database = {
         Args: { p_estate_id: string; p_events: Json }
         Returns: {
           admitted_without_match: boolean
+          agency_id: string | null
           client_event_id: string
           code_attempted: string | null
           code_id: string | null
           collision: boolean
+          de_identified_at: string | null
           estate_id: string
           id: string
           outcome: Database["public"]["Enums"]["event_outcome"]
@@ -747,7 +992,7 @@ export type Database = {
           source: Database["public"]["Enums"]["event_source"]
           synced_at: string
           verified_at: string
-          verified_by_membership_id: string
+          verified_by_membership_id: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -756,6 +1001,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      is_agency_admin: { Args: { p_agency_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       mint_access_code: {
         Args: {
@@ -767,6 +1013,18 @@ export type Database = {
           code: string
           expires_at: string
           result: string
+        }[]
+      }
+      my_agencies: {
+        Args: never
+        Returns: {
+          agency_id: string
+          name: string
+          registration_body: string
+          registration_checked_at: string
+          registration_expires_at: string
+          registration_number: string
+          role: Database["public"]["Enums"]["agency_role"]
         }[]
       }
       my_pending_join_requests: {
@@ -877,7 +1135,20 @@ export type Database = {
           verifications_30d: number
         }[]
       }
+      place_officer_at_estate: {
+        Args: { p_agency_membership_id: string; p_estate_id: string }
+        Returns: string
+      }
       purge_password_reset_attempts: { Args: never; Returns: undefined }
+      record_psira_registration: {
+        Args: {
+          p_expires_at?: string
+          p_grade?: string
+          p_registration_number: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       register_push_token: {
         Args: {
           p_device_id?: string
@@ -945,6 +1216,7 @@ export type Database = {
       }
     }
     Enums: {
+      agency_role: "officer" | "admin"
       code_status: "active" | "used" | "revoked"
       event_outcome: "pending" | "admitted" | "collision" | "rejected"
       event_source: "online" | "offline_replay"
@@ -1085,6 +1357,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      agency_role: ["officer", "admin"],
       code_status: ["active", "used", "revoked"],
       event_outcome: ["pending", "admitted", "collision", "rejected"],
       event_source: ["online", "offline_replay"],
