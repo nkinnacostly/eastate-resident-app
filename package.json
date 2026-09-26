@@ -23,7 +23,8 @@
     "test": "npm run test --workspaces --if-present",
     "test:csv": "node scripts/test-csv.mjs",
     "check:deps": "node scripts/check-deps.mjs",
-    "test:db:delivery": "supabase db query -f supabase/tests/delivery.sql --linked"
+    "test:db:delivery": "supabase db query -f supabase/tests/delivery.sql --linked",
+    "test:retention": "node scripts/test-migration.mjs supabase/tests/retention-harness.sql supabase/migrations/20260926100000_retention.sql supabase/tests/retention.sql"
   },
   "devDependencies": {
     "supabase": "^2.114.0",

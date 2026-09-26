@@ -44,6 +44,15 @@ export interface EventRow {
   host_unit: string | null;
   /** The guard admitted this without the device matching a code. */
   admitted_without_match: boolean;
+  /**
+   * The names and the code were cut by the retention sweep.
+   *
+   * Carried as its own fact rather than inferred from the nulls, because an
+   * admin reading "Unknown guard" goes looking for a bug. The entry is still
+   * a true part of the register -- what happened, where and when -- it just no
+   * longer says who. See 20260926100000_retention.sql.
+   */
+  de_identified: boolean;
 }
 
 /**
@@ -395,7 +404,7 @@ export async function listEvents(estateId: string, limit = 100): Promise<EventRo
     // by parsing this at the type level, and `'a' + 'b'` widens to `string`,
     // which collapses the result to GenericStringError.
     .select(
-      'id, code_attempted, outcome, reject_reason, verified_at, synced_at, source, admitted_without_match, memberships!verification_events_verified_by_membership_id_fkey(profiles(full_name)), access_codes(memberships!access_codes_membership_id_fkey(unit, profiles(full_name)))',
+      'id, code_attempted, outcome, reject_reason, verified_at, synced_at, source, admitted_without_match, de_identified_at, memberships!verification_events_verified_by_membership_id_fkey(profiles(full_name)), access_codes(memberships!access_codes_membership_id_fkey(unit, profiles(full_name)))',
     )
     .eq('estate_id', estateId)
     .order('synced_at', { ascending: false, nullsFirst: false })
@@ -419,6 +428,7 @@ export async function listEvents(estateId: string, limit = 100): Promise<EventRo
       host_name: code?.memberships?.profiles?.full_name ?? null,
       host_unit: code?.memberships?.unit ?? null,
       admitted_without_match: Boolean(e.admitted_without_match),
+      de_identified: Boolean(e.de_identified_at),
     };
   });
 }

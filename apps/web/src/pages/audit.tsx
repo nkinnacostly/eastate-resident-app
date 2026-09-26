@@ -54,7 +54,7 @@ export function Audit() {
     <>
       <PageHead
         title="Audit log"
-        blurb="Every verification made at this estate: the code, the guard, the device time, and whether it reached the server. Records are append-only — nothing here can be edited or deleted."
+        blurb="Every verification made at this estate: the code, the guard, the device time, and whether it reached the server. Records are append-only — nothing here can be edited or deleted. Older entries keep what happened and drop who it involved."
         right={<HeadActions estate={activeEstate?.estate_name ?? '—'} />}
       />
 
@@ -105,7 +105,9 @@ export function Audit() {
               <div key={e.id} className={`${COLS} items-center border-t border-hair px-4 py-3`}>
                 {/* verified_at is what a human reads; synced_at is what SORTS. */}
                 <div className="text-[12.5px] font-bold text-muted">{dayTime(e.verified_at)}</div>
-                <div className="text-[13px] font-extrabold tracking-code">{e.code ?? '—'}</div>
+                <div className="text-[13px] font-extrabold tracking-code">
+                  {e.de_identified ? <span className="text-muted">·····</span> : (e.code ?? '—')}
+                </div>
                 <div>
                   {flagged ? (
                     <Chip tone="bad">Admitted · flagged</Chip>
@@ -115,7 +117,9 @@ export function Audit() {
                     <Chip>{outcomeLabel(e.outcome, e.reject_reason)}</Chip>
                   )}
                 </div>
-                <div className="truncate text-[12.5px] text-muted">{e.guard_name}</div>
+                <div className="truncate text-[12.5px] text-muted">
+                  {e.de_identified ? 'Details removed' : e.guard_name}
+                </div>
                 <div className="truncate text-[12.5px] text-muted">
                   {e.host_name ? `${e.host_name}${e.host_unit ? `, ${e.host_unit}` : ''}` : '—'}
                 </div>
