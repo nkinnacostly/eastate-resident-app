@@ -48,6 +48,21 @@ export function madeAt(iso: string): string {
 }
 
 /**
+ * Where a visitor can read what the gate records about them.
+ *
+ * A visitor has no account and no contract with the estate, so they never pass
+ * through a screen we control -- this forwarded message is the ONLY moment we
+ * can reach them before they arrive. South Africa's draft Residential
+ * Communities code says so directly: the privacy notice "should be made
+ * available via a link in the Visitor Management System so that visitors are
+ * able to read it prior to visiting the estate through the message they
+ * receive".
+ *
+ * Kept last and on its own line so it never competes with the code.
+ */
+const PRIVACY_URL = 'https://myestateaccess.com/privacy';
+
+/**
  * The message a resident forwards. Carries the estate so it makes sense alone.
  *
  * A delivery note is appended on its own line rather than inlined: the rider is
@@ -63,5 +78,6 @@ export function shareMessage(
 ): string {
   const base = `Your code for ${estate} is ${code}. ${validUntil(expiresAt)}.`;
   const note = deliveryNote?.trim();
-  return note ? `${base}\n\nDelivery instructions: ${note}` : base;
+  const body = note ? `${base}\n\nDelivery instructions: ${note}` : base;
+  return `${body}\n\nWhat the gate records: ${PRIVACY_URL}`;
 }

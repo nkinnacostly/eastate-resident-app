@@ -83,7 +83,7 @@ describe('shareMessage', () => {
 
   it('stays sane when the expiry is unusable', () => {
     const msg = shareMessage('7K4P92', 'Kelvin Grove', '');
-    expect(msg).toBe('Your code for Kelvin Grove is 7K4P92. Valid for 6 hours.');
+    expect(msg.split('\n')[0]).toBe('Your code for Kelvin Grove is 7K4P92. Valid for 6 hours.');
   });
 
   it('says nothing about delivery when there is no note', () => {
@@ -106,5 +106,23 @@ describe('shareMessage', () => {
   it('trims the note it was handed', () => {
     const msg = shareMessage('7K4P92', 'Kelvin Grove', iso(3600_000), '  Ring twice  ');
     expect(msg).toContain('Delivery instructions: Ring twice');
+  });
+
+  // A visitor has no account and never sees a screen we control, so this
+  // forwarded message is the only place a privacy notice can reach them before
+  // they arrive at the gate.
+  it('tells the visitor where to read what the gate records', () => {
+    for (const note of [undefined, 'Leave at the gate']) {
+      expect(shareMessage('7K4P92', 'Kelvin Grove', iso(3600_000), note)).toContain(
+        'https://myestateaccess.com/privacy',
+      );
+    }
+  });
+
+  // Last, always. The code is what the visitor is scanning for.
+  it('never lets the notice outrank the code or the instructions', () => {
+    const msg = shareMessage('7K4P92', 'Kelvin Grove', iso(3600_000), 'Leave at the gate');
+    expect(msg.indexOf('Delivery instructions')).toBeLessThan(msg.indexOf('privacy'));
+    expect(msg.split('\n')[0]).toContain('7K4P92');
   });
 });
