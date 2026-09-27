@@ -30,7 +30,11 @@ values
   ('00000000-0000-4000-8000-000000000001','owner@estate-qa.local','authenticated','authenticated','{"full_name":"Owner"}','now'),
   ('00000000-0000-4000-8000-000000000002','res-a@estate-qa.local','authenticated','authenticated','{"full_name":"Resident A"}','now'),
   ('00000000-0000-4000-8000-000000000003','grd-a@estate-qa.local','authenticated','authenticated','{"full_name":"Guard A"}','now'),
-  ('00000000-0000-4000-8000-000000000004','res-b@estate-qa.local','authenticated','authenticated','{"full_name":"Resident B"}','now')
+  ('00000000-0000-4000-8000-000000000004','res-b@estate-qa.local','authenticated','authenticated','{"full_name":"Resident B"}','now'),
+  -- A guard at the OTHER estate. Added because the cross-tenant verification
+  -- case had no guard to run it: the suite could prove a made-up code is
+  -- refused, but not that a REAL code from a neighbouring estate is.
+  ('00000000-0000-4000-8000-000000000005','grd-b@estate-qa.local','authenticated','authenticated','{"full_name":"Guard B"}','now')
 on conflict (id) do nothing;
 
 insert into public.platform_admins (user_id)
@@ -47,8 +51,15 @@ insert into public.memberships (id, user_id, estate_id, role)
 values
   ('aaaaaaaa-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','11111111-1111-4111-8111-111111111111','resident'),
   ('aaaaaaaa-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000003','11111111-1111-4111-8111-111111111111','guard'),
-  ('bbbbbbbb-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000004','22222222-2222-4222-8222-222222222222','resident')
-on conflict (user_id, estate_id, role) do nothing;
+  ('bbbbbbbb-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000004','22222222-2222-4222-8222-222222222222','resident'),
+  ('bbbbbbbb-0000-4000-8000-000000000005','00000000-0000-4000-8000-000000000005','22222222-2222-4222-8222-222222222222','guard')
+-- do UPDATE, not do NOTHING. This file's header promises the suite recreates
+-- its own fixtures each run, and `do nothing` quietly broke that promise: a
+-- test further down deactivates resident A's membership to check move-out, and
+-- nothing ever set it back. Every later run started with a resident who was not
+-- a resident, so anything added after that point silently got `not_a_resident`
+-- rather than a failure with a reason.
+on conflict (user_id, estate_id, role) do update set is_active = true;
 
 -- Did the on_auth_user_created trigger fire?
 select
@@ -306,5 +317,95 @@ insert into results select 20,'bulk approve: no membership leaked into estate B'
   from public.memberships
  where estate_id='22222222-2222-4222-8222-222222222222'
    and user_id='00000000-0000-4000-8000-000000000003';
+
+-- ─── A real code from a NEIGHBOURING estate ─────────────────────────────────
+--
+-- Reported from production on 27 Sep 2026: a resident minted two codes and the
+-- guard app said "no such code". It was correct -- the guard was posted to a
+-- different estate -- but the suite could not have told us that, because the
+-- only unknown_code test used a made-up string. A made-up code and a real code
+-- belonging to someone else are the same answer for very different reasons,
+-- and only one of them is a security property.
+--
+-- The message is deliberately identical to a genuinely unknown code. Saying
+-- "that code exists, but not here" would confirm to a guard at estate B that a
+-- code is live at estate A, which is a cross-tenant oracle.
+
+-- Its OWN table, not the shared `minted`. That already holds codes from the
+-- cap tests above, so "the code we just minted" cannot be picked out of it by
+-- ordering -- the first version of this test did exactly that and silently
+-- asserted against a different, already-burned code.
+create temp table xtenant(code text); grant all on xtenant to authenticated;
+
+-- Resident A is at the 3-code cap by this point in the suite, and a capped
+-- mint returns a STATUS ROW WITH A NULL CODE rather than raising -- so without
+-- this the table fills with a null, every lookup below matches nothing, and the
+-- assertions quietly evaporate instead of failing. The first version of this
+-- block did exactly that: one test vanished from the output entirely and the
+-- other reported the wrong reason.
+-- Revoked, not deleted: verification_events references access_codes, so a
+-- delete here trips the foreign key -- and the earlier tests' evidence should
+-- survive anyway. Revoking frees the cap because the cap counts codes that are
+-- active and unexpired.
+update public.access_codes set status='revoked'
+ where estate_id='11111111-1111-4111-8111-111111111111' and status='active';
+delete from public.code_mint_attempts where membership_id='aaaaaaaa-0000-4000-8000-000000000002';
+-- A test above deactivates this membership to prove move-out works. Restore it
+-- rather than reorder the file: these cases belong at the end, and depending on
+-- the order of unrelated tests is how a suite becomes fragile.
+update public.memberships set is_active = true
+ where id='aaaaaaaa-0000-4000-8000-000000000002';
+
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}';
+insert into xtenant select code from public.mint_access_code('11111111-1111-4111-8111-111111111111');
+commit;
+
+-- Prove the fixture before trusting anything built on it.
+insert into results select 20.5,'tenant: the fixture actually minted a code',
+  'code='||coalesce((select code from xtenant),'NULL'),
+  (select code from xtenant) is not null;
+
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000005","role":"authenticated"}';
+insert into results select 21,'tenant: estate A''s real code is unknown at estate B',
+  v.outcome::text||'/'||coalesce(v.reject_reason::text,'null'),
+  v.outcome='rejected' and v.reject_reason='unknown_code' and v.code_id is null
+  from public.verify_access_code('22222222-2222-4222-8222-222222222222',
+       (select code from xtenant), 'eeeeeeee-0000-4000-8000-000000000021') v;
+commit;
+
+-- THE ONE THAT MATTERS MORE. A failed cross-estate attempt must not consume
+-- the code. If it did, anyone holding a guard post at any estate could burn
+-- every code on the platform by guessing -- a cross-tenant denial of service
+-- dressed up as a verification.
+insert into results select 22,'tenant: the neighbour''s attempt did NOT burn the code',
+  'status='||status::text,
+  status='active'
+  from public.access_codes
+ where code=(select code from xtenant)
+   and estate_id='11111111-1111-4111-8111-111111111111';
+
+-- ...and the rejection is logged AT THE ESTATE THAT ATTEMPTED IT, not at the
+-- estate that owns the code. Otherwise estate A's log would fill with events
+-- from gates it does not operate.
+insert into results select 23,'tenant: the rejection is logged at the attempting estate',
+  'a='||(select count(*) from public.verification_events
+          where estate_id='11111111-1111-4111-8111-111111111111'
+            and reject_reason='unknown_code')::text
+  ||' b='||(select count(*) from public.verification_events
+          where estate_id='22222222-2222-4222-8222-222222222222'
+            and reject_reason='unknown_code')::text,
+  (select count(*) from public.verification_events
+    where estate_id='22222222-2222-4222-8222-222222222222'
+      and reject_reason='unknown_code') >= 1;
+
+-- And the control: the SAME code at its OWN estate admits. Without this, every
+-- assertion above is satisfied by a system that refuses everything.
+begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated"}';
+insert into results select 24,'tenant: the same code admits at its own estate',
+  v.outcome::text||'/'||coalesce(v.reject_reason::text,'null'),
+  v.outcome='admitted'
+  from public.verify_access_code('11111111-1111-4111-8111-111111111111',
+       (select code from xtenant), 'eeeeeeee-0000-4000-8000-000000000024') v;
+commit;
 
 select seq, case when pass then 'PASS' else 'FAIL' end as status, name, detail from results order by seq;
