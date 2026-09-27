@@ -14,6 +14,11 @@ do $$ begin
 do $$ begin
   create role service_role;  exception when duplicate_object then null; end $$;
 
+-- pgcrypto lives in `extensions` on Supabase, and generate_code / the dues
+-- pay_token both call extensions.gen_random_bytes.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+
 create schema if not exists cron;
 
 -- pg_cron is not in stock Postgres. Stubbed rather than stripped from the
@@ -42,7 +47,8 @@ create table public.estates (
 create schema if not exists auth;
 
 create table auth.users (
-  id uuid primary key
+  id    uuid primary key,
+  email text
 );
 
 -- auth.uid() is what every definer function derives identity from. Backed by a
@@ -82,6 +88,46 @@ create table public.memberships (
   unique (user_id, estate_id, role)
 );
 
+create table public.houses (
+  id             uuid primary key default gen_random_uuid(),
+  estate_id      uuid not null references public.estates (id) on delete cascade,
+  house_code     text not null,
+  house_number   text not null,
+  landlord_name  text,
+  landlord_phone text,
+  landlord_email text,
+  is_active      boolean not null default true,
+  created_at     timestamptz not null default now()
+);
+
+-- By ALTER, as the real schema does: houses postdates memberships, which is
+-- also why house_id is nullable there.
+alter table public.memberships
+  add column house_id uuid references public.houses (id) on delete set null;
+
+create table public.code_mint_attempts (
+  membership_id uuid not null references public.memberships (id) on delete cascade,
+  window_start  timestamptz not null,
+  hits          integer not null default 1,
+  primary key (membership_id, window_start)
+);
+
+-- Mirrors public.generate_code from 20260813120700, including the
+-- extensions.gen_random_bytes call and the 31-glyph alphabet.
+create or replace function public.generate_code(p_len integer default 6)
+returns text language plpgsql volatile set search_path = '' as $$
+declare
+  v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_bytes    bytea := extensions.gen_random_bytes(p_len);
+  v_out      text := '';
+  i          integer;
+begin
+  for i in 0 .. p_len - 1 loop
+    v_out := v_out || substr(v_alphabet, 1 + (get_byte(v_bytes, i) % 31), 1);
+  end loop;
+  return v_out;
+end $$;
+
 create table public.access_codes (
   id            uuid primary key default gen_random_uuid(),
   code          text not null,
@@ -90,8 +136,13 @@ create table public.access_codes (
   status        public.code_status not null default 'active',
   created_at    timestamptz not null default now(),
   expires_at    timestamptz not null,
-  swept_at      timestamptz
+  swept_at      timestamptz,
+  is_delivery   boolean not null default false,
+  delivery_note text
 );
+
+create unique index access_codes_live_code_key
+  on public.access_codes (estate_id, code) where status = 'active' and swept_at is null;
 
 create table public.verification_events (
   id                        uuid primary key default gen_random_uuid(),
