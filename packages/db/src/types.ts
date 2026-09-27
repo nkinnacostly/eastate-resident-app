@@ -264,11 +264,164 @@ export type Database = {
           },
         ]
       }
+      dues_charges: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          currency: string
+          due_on: string
+          estate_id: string
+          house_id: string | null
+          id: string
+          membership_id: string | null
+          paid_at: string | null
+          pay_token: string
+          period: string
+          status: Database["public"]["Enums"]["dues_charge_status"]
+          waive_reason: string | null
+          waived_at: string | null
+          waived_by_membership_id: string | null
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          currency: string
+          due_on: string
+          estate_id: string
+          house_id?: string | null
+          id?: string
+          membership_id?: string | null
+          paid_at?: string | null
+          pay_token?: string
+          period: string
+          status?: Database["public"]["Enums"]["dues_charge_status"]
+          waive_reason?: string | null
+          waived_at?: string | null
+          waived_by_membership_id?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          currency?: string
+          due_on?: string
+          estate_id?: string
+          house_id?: string | null
+          id?: string
+          membership_id?: string | null
+          paid_at?: string | null
+          pay_token?: string
+          period?: string
+          status?: Database["public"]["Enums"]["dues_charge_status"]
+          waive_reason?: string | null
+          waived_at?: string | null
+          waived_by_membership_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dues_charges_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_charges_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_charges_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_charges_waived_by_membership_id_fkey"
+            columns: ["waived_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dues_payments: {
+        Row: {
+          amount_minor: number
+          charge_id: string
+          created_at: string
+          currency: string
+          id: string
+          initiated_by_membership_id: string | null
+          payer_email: string | null
+          provider: string
+          provider_tx_id: string | null
+          raw_payload: Json | null
+          settled_at: string | null
+          status: Database["public"]["Enums"]["dues_payment_status"]
+          tx_ref: string
+        }
+        Insert: {
+          amount_minor: number
+          charge_id: string
+          created_at?: string
+          currency: string
+          id?: string
+          initiated_by_membership_id?: string | null
+          payer_email?: string | null
+          provider?: string
+          provider_tx_id?: string | null
+          raw_payload?: Json | null
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["dues_payment_status"]
+          tx_ref: string
+        }
+        Update: {
+          amount_minor?: number
+          charge_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          initiated_by_membership_id?: string | null
+          payer_email?: string | null
+          provider?: string
+          provider_tx_id?: string | null
+          raw_payload?: Json | null
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["dues_payment_status"]
+          tx_ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dues_payments_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "dues_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_payments_initiated_by_membership_id_fkey"
+            columns: ["initiated_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estates: {
         Row: {
           address: string | null
           contact_info: string | null
           created_at: string
+          dues_amount_minor: number | null
+          dues_billing_mode: Database["public"]["Enums"]["dues_billing_mode"]
+          dues_currency: string | null
+          dues_enforcement_authorised_at: string | null
+          dues_enforcement_authorised_by: string | null
+          dues_enforcement_basis: string | null
+          dues_grace_days: number
           event_retention_days: number
           id: string
           is_active: boolean
@@ -279,6 +432,13 @@ export type Database = {
           address?: string | null
           contact_info?: string | null
           created_at?: string
+          dues_amount_minor?: number | null
+          dues_billing_mode?: Database["public"]["Enums"]["dues_billing_mode"]
+          dues_currency?: string | null
+          dues_enforcement_authorised_at?: string | null
+          dues_enforcement_authorised_by?: string | null
+          dues_enforcement_basis?: string | null
+          dues_grace_days?: number
           event_retention_days?: number
           id?: string
           is_active?: boolean
@@ -289,13 +449,28 @@ export type Database = {
           address?: string | null
           contact_info?: string | null
           created_at?: string
+          dues_amount_minor?: number | null
+          dues_billing_mode?: Database["public"]["Enums"]["dues_billing_mode"]
+          dues_currency?: string | null
+          dues_enforcement_authorised_at?: string | null
+          dues_enforcement_authorised_by?: string | null
+          dues_enforcement_basis?: string | null
+          dues_grace_days?: number
           event_retention_days?: number
           id?: string
           is_active?: boolean
           join_code?: string
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "estates_dues_enforcement_authorised_by_fkey"
+            columns: ["dues_enforcement_authorised_by"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guard_shifts: {
         Row: {
@@ -935,6 +1110,16 @@ export type Database = {
       }
       dispatch_emails_tick: { Args: never; Returns: undefined }
       dispatch_notifications_tick: { Args: never; Returns: undefined }
+      dues_in_arrears: { Args: { p_membership_id: string }; Returns: boolean }
+      dues_payments_awaiting_verification: {
+        Args: { p_older_than?: string }
+        Returns: {
+          created_at: string
+          provider_tx_id: string
+          tx_ref: string
+        }[]
+      }
+      dues_reconcile_tick: { Args: never; Returns: undefined }
       emails_archive: { Args: { p_msg_id: number }; Returns: boolean }
       emails_read: {
         Args: { p_qty: number; p_vt: number }
@@ -961,6 +1146,7 @@ export type Database = {
         Returns: number
       }
       generate_code: { Args: { p_len?: number }; Returns: string }
+      generate_dues_charges: { Args: { p_period?: string }; Returns: number }
       grant_membership: {
         Args: {
           p_estate_id: string
@@ -1025,6 +1211,21 @@ export type Database = {
           registration_expires_at: string
           registration_number: string
           role: Database["public"]["Enums"]["agency_role"]
+        }[]
+      }
+      my_dues: {
+        Args: { p_estate_id: string }
+        Returns: {
+          amount_minor: number
+          billing_mode: Database["public"]["Enums"]["dues_billing_mode"]
+          charge_id: string
+          currency: string
+          due_on: string
+          is_overdue: boolean
+          pay_token: string
+          period: string
+          status: Database["public"]["Enums"]["dues_charge_status"]
+          subject: string
         }[]
       }
       my_pending_join_requests: {
@@ -1186,6 +1387,43 @@ export type Database = {
           user_id: string
         }[]
       }
+      set_dues_enforcement: {
+        Args: { p_authorised: boolean; p_basis?: string; p_estate_id: string }
+        Returns: undefined
+      }
+      settle_dues_payment: {
+        Args: {
+          p_amount_minor: number
+          p_currency: string
+          p_provider_status: string
+          p_provider_tx_id: string
+          p_raw: Json
+          p_tx_ref: string
+        }
+        Returns: string
+      }
+      start_dues_payment: {
+        Args: { p_charge_id: string }
+        Returns: {
+          amount_minor: number
+          currency: string
+          ok: boolean
+          reason: string
+          tx_ref: string
+        }[]
+      }
+      start_dues_payment_by_token: {
+        Args: { p_pay_token: string; p_payer_email: string }
+        Returns: {
+          amount_minor: number
+          currency: string
+          estate_name: string
+          house_number: string
+          ok: boolean
+          reason: string
+          tx_ref: string
+        }[]
+      }
       start_shift: {
         Args: { p_estate_id: string }
         Returns: {
@@ -1214,10 +1452,17 @@ export type Database = {
           verified_at: string
         }[]
       }
+      waive_dues_charge: {
+        Args: { p_charge_id: string; p_reason: string }
+        Returns: undefined
+      }
     }
     Enums: {
       agency_role: "officer" | "admin"
       code_status: "active" | "used" | "revoked"
+      dues_billing_mode: "none" | "per_house" | "per_resident"
+      dues_charge_status: "open" | "paid" | "waived"
+      dues_payment_status: "initiated" | "successful" | "failed" | "abandoned"
       event_outcome: "pending" | "admitted" | "collision" | "rejected"
       event_source: "online" | "offline_replay"
       join_request_status: "pending" | "approved" | "declined"
@@ -1359,6 +1604,9 @@ export const Constants = {
     Enums: {
       agency_role: ["officer", "admin"],
       code_status: ["active", "used", "revoked"],
+      dues_billing_mode: ["none", "per_house", "per_resident"],
+      dues_charge_status: ["open", "paid", "waived"],
+      dues_payment_status: ["initiated", "successful", "failed", "abandoned"],
       event_outcome: ["pending", "admitted", "collision", "rejected"],
       event_source: ["online", "offline_replay"],
       join_request_status: ["pending", "approved", "declined"],

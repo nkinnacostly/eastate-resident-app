@@ -563,3 +563,10 @@ begin
 exception when others then
   raise exception 'FAIL  dues_reconcile_tick raised with no secrets: %', sqlerrm;
 end $$;
+
+-- The arrears predicate must not be callable by anyone. It answers a financial
+-- question about a named person from an id the app handles openly.
+select pg_temp.check('the arrears predicate is not callable by anon', (
+  select not has_function_privilege('anon', 'public.dues_in_arrears(uuid)', 'execute')));
+select pg_temp.check('...nor by a signed-in user', (
+  select not has_function_privilege('authenticated', 'public.dues_in_arrears(uuid)', 'execute')));

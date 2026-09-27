@@ -465,28 +465,10 @@ export interface AdminDuesCharge {
   resident_name: string | null;
 }
 
-/**
- * ONE untyped accessor for the dues surface, not a cast per call site.
- *
- * packages/db types are generated FROM the live database, and the dues
- * migrations have not been applied to it yet -- so supabase-js knows neither
- * the new tables nor the new columns and rejects them at the type level.
- * Confining that to a single named thing keeps it easy to find and delete:
- * after `npm run db:types` this helper goes and the callers below type
- * themselves. The row interfaces above are hand-written to match the SQL and
- * are what the rest of the app sees.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const duesClient = supabase as any;
 
-async function duesRpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await duesClient.rpc(fn, args);
-  if (error) throw new Error(error.message);
-  return data as T;
-}
 
 export async function getDuesConfig(estateId: string): Promise<DuesConfig> {
-  const { data, error } = await duesClient
+  const { data, error } = await supabase
     .from('estates')
     .select(
       'dues_billing_mode, dues_amount_minor, dues_currency, dues_grace_days, dues_enforcement_authorised_at, dues_enforcement_basis',
@@ -498,7 +480,7 @@ export async function getDuesConfig(estateId: string): Promise<DuesConfig> {
 }
 
 export async function listDuesCharges(estateId: string): Promise<AdminDuesCharge[]> {
-  const { data, error } = await duesClient
+  const { data, error } = await supabase
     .from('dues_charges')
     .select(
       'id, period, amount_minor, currency, due_on, status, paid_at, waive_reason, houses(house_number), memberships(profiles(full_name))',
@@ -526,7 +508,11 @@ export async function listDuesCharges(estateId: string): Promise<AdminDuesCharge
 }
 
 export async function waiveDuesCharge(chargeId: string, reason: string): Promise<void> {
-  await duesRpc('waive_dues_charge', { p_charge_id: chargeId, p_reason: reason });
+  const { error } = await supabase.rpc('waive_dues_charge', {
+    p_charge_id: chargeId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
 }
 
 /**
@@ -542,9 +528,14 @@ export async function setDuesEnforcement(
   authorised: boolean,
   basis?: string,
 ): Promise<void> {
-  await duesRpc('set_dues_enforcement', {
+  const { error } = await supabase.rpc('set_dues_enforcement', {
     p_estate_id: estateId,
     p_authorised: authorised,
-    p_basis: basis ?? null,
+    // undefined, not null: PostgREST omits an undefined argument so the
+    // function's own `default null` applies, whereas an explicit null is a
+    // different thing to send. The generated types caught this the moment the
+    // temporary untyped accessor came out.
+    p_basis: basis || undefined,
   });
+  if (error) throw new Error(error.message);
 }

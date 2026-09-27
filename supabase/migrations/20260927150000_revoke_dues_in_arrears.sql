@@ -1,0 +1,25 @@
+-- Estate Access Platform — close dues_in_arrears to callers
+--
+-- db:advisors flagged it under anon_security_definer_function_executable: it is
+-- SECURITY DEFINER and I never revoked EXECUTE, so it was callable over the
+-- Data API by anyone holding the anon key -- which ships in every app bundle
+-- and is public by design.
+--
+-- Unlike the trigger functions in 20260926150000, THIS ONE WAS EXPLOITABLE.
+-- It takes a membership id and returns a boolean, and membership ids are not
+-- secret -- the resident app handles them routinely. So an unauthenticated
+-- caller with a membership id could ask "is this person behind on their
+-- levies", which is a financial fact about a named individual and nobody
+-- else's business. No rate limit, no audit trail, no sign-in.
+--
+-- That is the second time in two days I have shipped a definer function without
+-- revoking it. The rule is in CLAUDE.md precisely because it has bitten this
+-- repo before, and the default is silent: nothing fails, the function simply
+-- works for everyone.
+--
+-- Safe to revoke. Its only caller is mint_access_code, which is SECURITY
+-- DEFINER and therefore runs as the owner -- a definer function does not
+-- consult the invoking role's EXECUTE privilege on what it calls. No RLS policy
+-- references it either.
+
+revoke execute on function public.dues_in_arrears(uuid) from public, anon, authenticated;

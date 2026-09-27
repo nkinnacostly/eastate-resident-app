@@ -186,27 +186,10 @@ export interface DuesCharge {
   pay_token: string;
 }
 
-/**
- * One cast, in one place, with a reason.
- *
- * packages/db types are generated FROM the live database, and the dues
- * migrations have not been applied to it yet, so supabase-js rejects the
- * function name at the type level. Kept to a single line that is easy to find
- * and delete: once the migrations land and `npm run db:types` runs, this goes
- * and the call below types itself. DuesCharge above is hand-written to match
- * the SQL exactly and is what the rest of the app sees.
- */
-async function duesRpc<T>(fn: string, args: Record<string, unknown>): Promise<T[]> {
-  const client = supabase as unknown as {
-    rpc: (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: Error | null }>;
-  };
-  const { data, error } = await client.rpc(fn, args);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as T[];
-}
-
 export async function listMyDues(estateId: string): Promise<DuesCharge[]> {
-  return duesRpc<DuesCharge>('my_dues', { p_estate_id: estateId });
+  const { data, error } = await supabase.rpc('my_dues', { p_estate_id: estateId });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DuesCharge[];
 }
 
 /**
