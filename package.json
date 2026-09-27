@@ -20,7 +20,7 @@
     "resident": "npm run start --workspace @estate/resident",
     "guard": "npm run start --workspace @estate/guard",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc --noEmit -p apps/guard/tsconfig.json && tsc --noEmit -p apps/resident/tsconfig.json && npm run typecheck --workspace @estate/web",
     "//typecheck": "Runs in every workspace. Added because nothing repo-wide ran the web typecheck, so a broken one shipped: apps/web/tsconfig.json is a solution file, which makes `tsc --noEmit` there check ZERO files and always pass. Only `tsc -b` type-checks it.",
     "test": "npm run test --workspaces --if-present",
     "test:csv": "node scripts/test-csv.mjs",
@@ -38,5 +38,6 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-test-renderer": "19.1.0"
-  }
+  },
+  "//typecheck": "Driven from the ROOT for the mobile apps, never from their own package.json. @expo/fingerprint hashes packageJson:scripts, so adding a script there changes the runtimeVersion under the fingerprint policy -- which silently strands every OTA update, because EAS matches updates to builds on runtimeVersion. A dev-only line must not be able to do that. apps/web keeps its own script because tsconfig.json there is a solution file and only `tsc -b` checks it."
 }
