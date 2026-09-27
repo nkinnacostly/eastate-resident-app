@@ -669,3 +669,102 @@ select public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'per_house
 select public.raise_current_dues('e2000000-0000-4000-8000-000000000001') as n \gset first_
 select pg_temp.check('raising the current month is idempotent', (
   select public.raise_current_dues('e2000000-0000-4000-8000-000000000001') = 0));
+
+-- ─── Reminders ───────────────────────────────────────────────────────────────
+
+-- A fresh house charge, due in exactly 7 days, at a house that has BOTH a
+-- landlord on record and two residents living in it.
+insert into public.dues_charges (id, estate_id, period, house_id, amount_minor, currency, due_on)
+values ('cc200000-0000-4000-8000-0000000000aa', 'e2000000-0000-4000-8000-000000000001',
+        (date_trunc('month', current_date) + interval '6 months')::date,
+        'f2000000-0000-4000-8000-000000000001', 2500000, 'NGN', current_date + 7);
+
+-- Both sides are told. The landlord has to pay it and the tenants are the ones
+-- who get locked out; telling only one of them is how this becomes an argument
+-- at a gate.
+select public.send_due_dues_reminders() as n \gset rem_
+select pg_temp.check('a charge due in 7 days reminds the landlord and both residents', :rem_n = 3);
+
+select pg_temp.check('the landlord was written to', (
+  select count(*) = 1 from public.dues_reminders
+   where charge_id = 'cc200000-0000-4000-8000-0000000000aa'
+     and recipient = 'landlord' and sent_to = 'landlord@example.com'));
+
+select pg_temp.check('both residents of the house were written to', (
+  select count(*) = 2 from public.dues_reminders
+   where charge_id = 'cc200000-0000-4000-8000-0000000000aa' and recipient = 'resident'));
+
+-- THE idempotency property. The sweep runs daily and must not re-send.
+select public.send_due_dues_reminders() as n \gset rem2_
+select pg_temp.check('running the sweep again sends nothing', :rem2_n = 0);
+
+-- Only the landlord gets a payment link. A bearer link in a tenant's inbox is
+-- somebody else's bill.
+select pg_temp.check('only the landlord is sent a pay link', (
+  select count(*) filter (where message->>'pay_token' is not null) = 1
+     and count(*) filter (where message->>'pay_token' is null) = 2
+  from pgmq.sent where message->>'charge_id' = 'cc200000-0000-4000-8000-0000000000aa'));
+
+-- Two days out is a SECOND reminder, not a duplicate of the first.
+update public.dues_charges set due_on = current_date + 2
+ where id = 'cc200000-0000-4000-8000-0000000000aa';
+select public.send_due_dues_reminders() as n \gset rem3_
+select pg_temp.check('the two-day reminder is sent as well', :rem3_n = 3);
+select pg_temp.check('...and is recorded as its own kind', (
+  select count(distinct kind) = 2 from public.dues_reminders
+   where charge_id = 'cc200000-0000-4000-8000-0000000000aa'));
+
+-- Never chase a settled bill.
+update public.dues_charges set status = 'paid', paid_at = now()
+ where id = 'cc200000-0000-4000-8000-0000000000aa';
+update public.dues_charges set due_on = current_date + 7
+ where id = 'cc200000-0000-4000-8000-0000000000aa';
+select public.send_due_dues_reminders() as n \gset rem4_
+select pg_temp.check('a paid charge is never chased', :rem4_n = 0);
+
+-- ─── The admin button ────────────────────────────────────────────────────────
+
+insert into public.dues_charges (id, estate_id, period, house_id, amount_minor, currency, due_on)
+values ('cc200000-0000-4000-8000-0000000000bb', 'e2000000-0000-4000-8000-000000000001',
+        (date_trunc('month', current_date) + interval '7 months')::date,
+        'f2000000-0000-4000-8000-000000000001', 2500000, 'NGN', current_date + 20);
+
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+do $$
+begin
+  perform public.remind_dues_charge('cc200000-0000-4000-8000-0000000000bb');
+  raise exception 'FAIL  a resident sent a dues reminder';
+exception when insufficient_privilege then
+  raise notice 'PASS  only an admin may send a reminder';
+end $$;
+
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+select public.remind_dues_charge('cc200000-0000-4000-8000-0000000000bb') as n \gset man_
+select pg_temp.check('an admin can nudge on demand', :man_n = 3);
+
+select pg_temp.check('a manual nudge records who sent it', (
+  select bool_and(sent_by_membership_id = 'a2000000-0000-4000-8000-00000000000a')
+  from public.dues_reminders
+   where charge_id = 'cc200000-0000-4000-8000-0000000000bb' and kind = 'manual'));
+
+-- Unlike the scheduled ones, a second deliberate nudge a week later is a
+-- legitimate thing for an admin to do, so 'manual' is exempt from the
+-- once-per-kind index.
+select public.remind_dues_charge('cc200000-0000-4000-8000-0000000000bb') as n \gset man2_
+select pg_temp.check('an admin may nudge more than once', :man2_n = 3);
+
+-- A resident-billed charge reminds the resident and nobody else -- there is no
+-- landlord in that arrangement.
+insert into public.dues_charges (id, estate_id, period, membership_id, amount_minor, currency, due_on)
+values ('cc200000-0000-4000-8000-0000000000cc', 'e2000000-0000-4000-8000-000000000002',
+        (date_trunc('month', current_date) + interval '8 months')::date,
+        'a2000000-0000-4000-8000-000000000004', 750000, 'NGN', current_date + 7);
+
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+select public.remind_dues_charge('cc200000-0000-4000-8000-0000000000cc') as n \gset res_
+select pg_temp.check('a resident-billed charge reminds one person', :res_n = 1);
+select pg_temp.check('...and that person is the resident, with no pay link', (
+  select recipient = 'resident' from public.dues_reminders
+   where charge_id = 'cc200000-0000-4000-8000-0000000000cc' limit 1));
+
+reset test.uid;

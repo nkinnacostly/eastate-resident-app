@@ -11,11 +11,13 @@
 // dropped ack means the landlord gets their house code again, which reads as
 // the platform malfunctioning.
 
+import { formatMoney } from '../_shared/money.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import {
   estateAdminWelcome,
   guardWelcome,
+  duesReminder,
   landlordWelcome,
   type RenderedEmail,
 } from '../_shared/email-templates.ts';
@@ -122,6 +124,45 @@ function render(msg: Record<string, unknown>): { to: string; email: RenderedEmai
         guardName: (msg.guard_name as string | null) ?? null,
         estateName: (msg.estate_name as string | null) ?? null,
         setPasswordUrl: (msg.set_password_url as string | null) ?? null,
+      }),
+    };
+  }
+
+  if (kind === 'dues_reminder') {
+    const minor = Number(msg.amount_minor ?? 0);
+    const currency = (msg.currency as string) ?? 'NGN';
+    const dueOn = (msg.due_on as string) ?? '';
+    const role = (msg.recipient_role as 'landlord' | 'resident') ?? 'resident';
+    const token = (msg.pay_token as string | null) ?? null;
+
+    // Days left is computed HERE rather than carried on the message, because a
+    // message can sit in the queue through a retry and "due in 7 days" written
+    // yesterday is wrong today.
+    const due = new Date(`${dueOn}T00:00:00Z`);
+    const daysLeft = Number.isNaN(due.getTime())
+      ? 0
+      : Math.round((due.getTime() - Date.now()) / 86_400_000);
+
+    return {
+      to,
+      // Keyed on charge + kind + address: the same charge legitimately mails a
+      // landlord and a tenant, and both reminders for one charge are distinct.
+      key: `dues-${msg.charge_id}-${msg.reminder_kind}-${to}`,
+      email: duesReminder({
+        recipientName: (msg.recipient_name as string | null) ?? null,
+        role,
+        landlordPays: Boolean(msg.house_number),
+        estateName: (msg.estate_name as string) ?? 'Your estate',
+        houseNumber: (msg.house_number as string | null) ?? null,
+        amount: formatMoney(minor, currency),
+        dueOn: due.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'UTC',
+        }),
+        daysLeft,
+        payUrl: token ? `${SITE_URL}/dues/pay?t=${encodeURIComponent(token)}` : null,
+        appUrl: SITE_URL,
       }),
     };
   }

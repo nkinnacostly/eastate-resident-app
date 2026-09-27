@@ -28,6 +28,11 @@ create or replace function net.http_post(url text, headers jsonb default '{}', b
   returns bigint language sql as $$ select 1::bigint $$;
 create table if not exists vault.decrypted_secrets (name text primary key, decrypted_secret text);
 
+create schema if not exists pgmq;
+create table if not exists pgmq.sent (msg_id bigserial primary key, queue text, message jsonb);
+create or replace function pgmq.send(p_queue text, p_msg jsonb) returns bigint
+  language sql as $$ insert into pgmq.sent (queue, message) values (p_queue, p_msg) returning msg_id $$;
+
 create schema if not exists cron;
 
 -- pg_cron is not in stock Postgres. Stubbed rather than stripped from the

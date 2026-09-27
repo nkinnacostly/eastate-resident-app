@@ -571,3 +571,19 @@ export async function raiseCurrentDues(estateId: string): Promise<number> {
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
 }
+
+/**
+ * Nudge whoever is responsible for a charge, now.
+ *
+ * Goes to the landlord AND to the residents of a house-billed charge: the
+ * landlord has to pay it and the residents are the ones who get locked out.
+ * Returns how many people were written to, which is the only honest thing to
+ * report back — "sent" is meaningless when a house has no landlord on record.
+ */
+export async function remindDuesCharge(chargeId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('remind_dues_charge', {
+    p_charge_id: chargeId,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}

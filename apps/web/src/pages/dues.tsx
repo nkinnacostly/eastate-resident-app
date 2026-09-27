@@ -6,6 +6,7 @@ import {
   getDuesConfig,
   listDuesCharges,
   raiseCurrentDues,
+  remindDuesCharge,
   setDuesConfig,
   setDuesEnforcement,
   waiveDuesCharge,
@@ -102,6 +103,29 @@ export function Dues() {
     }
   };
 
+  const [reminding, setReminding] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const remind = async (charge: AdminDuesCharge) => {
+    setReminding(charge.id);
+    setNotice(null);
+    try {
+      const n = await remindDuesCharge(charge.id);
+      // The honest number, not "Sent". A house with no landlord on record and
+      // no residents linked yet reminds nobody, and saying otherwise would let
+      // an admin believe a bill had been chased when it had not.
+      setNotice(
+        n === 0
+          ? 'Nobody to remind — no landlord email or resident account is on record for this charge.'
+          : `Reminder sent to ${n} ${n === 1 ? 'person' : 'people'}.`,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setReminding(null);
+    }
+  };
+
   const waive = async (charge: AdminDuesCharge) => {
     const reason = window.prompt(
       `Waive ${formatMoney(charge.amount_minor, charge.currency)} for ${monthLabel(charge.period)}?\n\nRecord why — it stays on the charge.`,
@@ -132,6 +156,12 @@ export function Dues() {
       {error ? (
         <div className="mt-5 rounded-[14px] bg-coral-soft px-4 py-3 text-[13px] font-semibold text-coral-ink">
           {error}
+        </div>
+      ) : null}
+
+      {notice ? (
+        <div className="mt-5 rounded-[14px] bg-field px-4 py-3 text-[13px] font-semibold text-muted">
+          {notice}
         </div>
       ) : null}
 
@@ -319,15 +349,25 @@ export function Dues() {
                     <Chip>Open</Chip>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="flex items-center justify-end gap-3 text-right">
                   {r.status === 'open' ? (
-                    <button
-                      type="button"
-                      onClick={() => void waive(r)}
-                      className="text-[12px] font-bold text-muted underline hover:text-ink"
-                    >
-                      Waive
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void remind(r)}
+                        disabled={reminding === r.id}
+                        className="text-[12px] font-bold text-muted underline hover:text-ink disabled:opacity-50"
+                      >
+                        {reminding === r.id ? 'Sending…' : 'Remind'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void waive(r)}
+                        className="text-[12px] font-bold text-muted underline hover:text-ink"
+                      >
+                        Waive
+                      </button>
+                    </>
                   ) : r.waive_reason ? (
                     <span className="text-[11.5px] text-muted" title={r.waive_reason}>
                       why?

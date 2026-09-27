@@ -580,3 +580,171 @@ export function verifyEmailCode(v: { otp: string }): RenderedEmail {
     ].join('\n'),
   };
 }
+
+// ─── 9. Estate dues falling due ──────────────────────────────────────────────
+
+/**
+ * One template, two quite different letters.
+ *
+ * A LANDLORD is being asked to pay a bill, and gets a link that works without
+ * an account — they have no login, by design.
+ *
+ * A RESIDENT of a house-billed estate is being warned about something they
+ * cannot fix. Sending them a payment link would be sending someone else's bill
+ * to a tenant, so they are told who is responsible and what happens if it is
+ * not settled. That distinction is the whole reason this is not two lines of
+ * mail-merge.
+ */
+export function duesReminder(v: {
+  recipientName: string | null;
+  /** 'landlord' pays it; 'resident' is affected by it. */
+  role: 'landlord' | 'resident';
+  /** True when the estate bills the house rather than the resident. */
+  landlordPays: boolean;
+  estateName: string;
+  houseNumber: string | null;
+  amount: string;
+  dueOn: string;
+  daysLeft: number;
+  /** Only ever set for a landlord. */
+  payUrl: string | null;
+  appUrl: string;
+}): RenderedEmail {
+  const greeting = v.recipientName ? `Hi ${v.recipientName},` : 'Hi,';
+  const where = v.houseNumber
+    ? `House ${v.houseNumber} at ${v.estateName}`
+    : v.estateName;
+  const when =
+    v.daysLeft <= 0
+      ? 'is now overdue'
+      : v.daysLeft === 1
+        ? 'is due tomorrow'
+        : `is due in ${v.daysLeft} days`;
+
+  // A landlord: yours to pay, here is the link.
+  if (v.role === 'landlord') {
+    const body =
+      p(esc(greeting)) +
+      p(
+        `The estate dues for <strong>${esc(where)}</strong> ${esc(when)} — <strong>${esc(v.amount)}</strong>, due ${esc(v.dueOn)}.`,
+      ) +
+      p(
+        'You can settle it with the button below. No account or sign-in is needed.',
+      ) +
+      muted(
+        'If it is not paid, the people living at the house will not be able to generate visitor codes. Their own access to the estate is unaffected, and a guard can still let a visitor in at the gate.',
+      );
+
+    return {
+      subject: `${v.amount} due — estate dues for ${where}`,
+      html: shell({
+        preheader: `${v.amount} ${when}.`,
+        heading: 'Estate dues are due',
+        body,
+        cta: v.payUrl ? { label: `Pay ${v.amount}`, url: v.payUrl } : undefined,
+        footnote:
+          'If you no longer own this property, reply to this message and we will pass it on to the estate.',
+      }),
+      text: [
+        greeting,
+        '',
+        `The estate dues for ${where} ${when} — ${v.amount}, due ${v.dueOn}.`,
+        '',
+        v.payUrl ? `Pay here (no account needed): ${v.payUrl}` : '',
+        '',
+        'If it is not paid, the people living at the house will not be able to generate',
+        'visitor codes. Their own access to the estate is unaffected, and a guard can',
+        'still let a visitor in at the gate.',
+        '',
+        'If you no longer own this property, reply and we will pass it on to the estate.',
+        '',
+        '—',
+        'Privacy policy: https://myestateaccess.com/privacy',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    };
+  }
+
+  // A resident in a house-billed estate: not yours to pay, but it will affect
+  // you. No payment link — that would be sending a tenant somebody else's bill.
+  if (v.landlordPays) {
+    const body =
+      p(esc(greeting)) +
+      p(
+        `The estate dues for <strong>${esc(where)}</strong> ${esc(when)} — <strong>${esc(v.amount)}</strong>, due ${esc(v.dueOn)}.`,
+      ) +
+      p(
+        'These dues are billed to the owner of the house rather than to you. We have written to them as well.',
+      ) +
+      muted(
+        'If they are not settled, you will not be able to generate visitor codes until they are. Your own access to the estate is unaffected, and a guard can still let a visitor in at the gate. The app shows the owner’s contact details if you need to chase it.',
+      );
+
+    return {
+      subject: `Estate dues for ${where} ${when}`,
+      html: shell({
+        preheader: `${v.amount} ${when}. Billed to the owner, not to you.`,
+        heading: 'A heads-up about your estate dues',
+        body,
+        cta: { label: 'Open the app', url: v.appUrl },
+        footnote:
+          'You are receiving this because you live at this house and unpaid dues would affect your visitor codes.',
+      }),
+      text: [
+        greeting,
+        '',
+        `The estate dues for ${where} ${when} — ${v.amount}, due ${v.dueOn}.`,
+        '',
+        'These dues are billed to the owner of the house rather than to you.',
+        'We have written to them as well.',
+        '',
+        'If they are not settled, you will not be able to generate visitor codes until',
+        'they are. Your own access to the estate is unaffected, and a guard can still',
+        'let a visitor in at the gate.',
+        '',
+        `Open the app: ${v.appUrl}`,
+        '',
+        '—',
+        'Privacy policy: https://myestateaccess.com/privacy',
+      ].join('\n'),
+    };
+  }
+
+  // A resident who is billed directly: theirs to pay, in the app.
+  const body =
+    p(esc(greeting)) +
+    p(
+      `Your estate dues at <strong>${esc(v.estateName)}</strong> ${esc(when)} — <strong>${esc(v.amount)}</strong>, due ${esc(v.dueOn)}.`,
+    ) +
+    p('You can pay in the app in a few taps.') +
+    muted(
+      'If they are not settled you will not be able to generate visitor codes until they are. Your own access to the estate is unaffected, and a guard can still let a visitor in at the gate.',
+    );
+
+  return {
+    subject: `${v.amount} due — your estate dues at ${v.estateName}`,
+    html: shell({
+      preheader: `${v.amount} ${when}.`,
+      heading: 'Your estate dues are due',
+      body,
+      cta: { label: 'Pay in the app', url: v.appUrl },
+      footnote:
+        'If you think this is a mistake, speak to your estate office — they can waive or correct a charge.',
+    }),
+    text: [
+      greeting,
+      '',
+      `Your estate dues at ${v.estateName} ${when} — ${v.amount}, due ${v.dueOn}.`,
+      '',
+      `Pay in the app: ${v.appUrl}`,
+      '',
+      'If they are not settled you will not be able to generate visitor codes until',
+      'they are. Your own access to the estate is unaffected, and a guard can still',
+      'let a visitor in at the gate.',
+      '',
+      '—',
+      'Privacy policy: https://myestateaccess.com/privacy',
+    ].join('\n'),
+  };
+}

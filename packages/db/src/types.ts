@@ -410,6 +410,51 @@ export type Database = {
           },
         ]
       }
+      dues_reminders: {
+        Row: {
+          charge_id: string
+          id: string
+          kind: Database["public"]["Enums"]["dues_reminder_kind"]
+          recipient: string
+          sent_at: string
+          sent_by_membership_id: string | null
+          sent_to: string
+        }
+        Insert: {
+          charge_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["dues_reminder_kind"]
+          recipient: string
+          sent_at?: string
+          sent_by_membership_id?: string | null
+          sent_to: string
+        }
+        Update: {
+          charge_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["dues_reminder_kind"]
+          recipient?: string
+          sent_at?: string
+          sent_by_membership_id?: string | null
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dues_reminders_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "dues_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_reminders_sent_by_membership_id_fkey"
+            columns: ["sent_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estates: {
         Row: {
           address: string | null
@@ -1120,6 +1165,14 @@ export type Database = {
         }[]
       }
       dues_reconcile_tick: { Args: never; Returns: undefined }
+      dues_reminder_recipients: {
+        Args: { p_charge_id: string }
+        Returns: {
+          email: string
+          name: string
+          recipient: string
+        }[]
+      }
       emails_archive: { Args: { p_msg_id: number }; Returns: boolean }
       emails_read: {
         Args: { p_qty: number; p_vt: number }
@@ -1363,6 +1416,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      remind_dues_charge: { Args: { p_charge_id: string }; Returns: number }
       request_house_access: {
         Args: { p_estate_code: string; p_house_code: string }
         Returns: {
@@ -1384,6 +1438,15 @@ export type Database = {
         Returns: string
       }
       rotate_house_code: { Args: { p_house_id: string }; Returns: string }
+      send_due_dues_reminders: { Args: never; Returns: number }
+      send_dues_reminder: {
+        Args: {
+          p_actor?: string
+          p_charge_id: string
+          p_kind: Database["public"]["Enums"]["dues_reminder_kind"]
+        }
+        Returns: number
+      }
       service_find_user_by_email: {
         Args: { p_email: string }
         Returns: {
@@ -1477,6 +1540,11 @@ export type Database = {
       dues_billing_mode: "none" | "per_house" | "per_resident"
       dues_charge_status: "open" | "paid" | "waived"
       dues_payment_status: "initiated" | "successful" | "failed" | "abandoned"
+      dues_reminder_kind:
+        | "week_before"
+        | "two_days_before"
+        | "overdue"
+        | "manual"
       event_outcome: "pending" | "admitted" | "collision" | "rejected"
       event_source: "online" | "offline_replay"
       join_request_status: "pending" | "approved" | "declined"
@@ -1621,6 +1689,12 @@ export const Constants = {
       dues_billing_mode: ["none", "per_house", "per_resident"],
       dues_charge_status: ["open", "paid", "waived"],
       dues_payment_status: ["initiated", "successful", "failed", "abandoned"],
+      dues_reminder_kind: [
+        "week_before",
+        "two_days_before",
+        "overdue",
+        "manual",
+      ],
       event_outcome: ["pending", "admitted", "collision", "rejected"],
       event_source: ["online", "offline_replay"],
       join_request_status: ["pending", "approved", "declined"],
