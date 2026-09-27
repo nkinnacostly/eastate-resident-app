@@ -55,6 +55,19 @@ export interface CheckoutRequest {
   name?: string;
   title: string;
   description: string;
+  /**
+   * The estate's Flutterwave subaccount (RS_...). REQUIRED.
+   *
+   * Not optional, and the type says so on purpose. Estate dues must settle
+   * into the estate's own bank account, never ours -- see the long note in
+   * migration 20260927190000. An optional field here is one `?? undefined`
+   * away from a charge that quietly pays the platform instead, and because
+   * Flutterwave accepts a missing or invalid subaccount without complaint,
+   * nothing downstream would ever report it.
+   */
+  subaccountRef: string;
+  /** Our commission as a decimal fraction. 0.05 is five percent; 0 is none. */
+  feePercent: number;
 }
 
 /**
@@ -78,6 +91,21 @@ export interface CheckoutRequest {
  * second payment -- money taken with nothing to show for it.
  */
 export async function createCheckout(r: CheckoutRequest): Promise<string> {
+  // ⚠️ AN INVALID SUBACCOUNT IS ACCEPTED SILENTLY. Verified in their sandbox on
+  // 27 Sep 2026: a charge naming subaccount "RS_TOTALLYNOTREAL" returns 200
+  // success with a payable link. The split simply does not happen and the
+  // entire payment settles to the platform -- with no error, anywhere, ever.
+  //
+  // So this check is not defensive tidiness. It is the last point at which a
+  // missing destination can still be noticed, because the payment path will
+  // never notice it for us.
+  if (!r.subaccountRef || !r.subaccountRef.startsWith('RS_')) {
+    throw new Error('refusing to charge without the estate subaccount');
+  }
+  if (!(r.feePercent >= 0 && r.feePercent <= 0.2)) {
+    throw new Error(`refusing to charge with fee ${r.feePercent}`);
+  }
+
   const res = await fetch(`${BASE}/payments`, {
     method: 'POST',
     headers: authHeaders(),
@@ -95,6 +123,23 @@ export async function createCheckout(r: CheckoutRequest): Promise<string> {
       // Nested under `configuration`, per the OpenAPI spec. The prose guide
       // lists these as top-level and the spec wins.
       configuration: { session_duration: 60, max_retry_attempt: 3 },
+      // ─── The split ───────────────────────────────────────────────────────
+      //
+      // This one array is the difference between a lawful design and an
+      // unlawful one. The subaccount is the estate's own bank account, so the
+      // dues settle there directly and never enter our balance.
+      //
+      // `percentage` charges OUR commission and gives the subaccount the rest:
+      // "to collect a 9% commission, transaction_charge_type will be
+      // 'percentage' and transaction_charge will be 0.09". A flat split is
+      // avoided deliberately -- Nigeria's ₦50 stamp duty on qualifying
+      // transfers can exceed the room in a flat split and void it, sending the
+      // whole payment to the main account.
+      subaccounts: [{
+        id: r.subaccountRef,
+        transaction_charge_type: 'percentage',
+        transaction_charge: r.feePercent,
+      }],
     }),
     // Their system waits 28 seconds before returning a timeout, so a client
     // timeout below that abandons requests that are still alive server-side.
@@ -197,4 +242,124 @@ export function secretMatches(header: string | null, expected: string | undefine
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
+}
+
+// ─── Subaccounts: where an estate's money actually lands ─────────────────────
+//
+// ⚠️ A SUBACCOUNT HAS TWO IDS AND THEY ARE NOT INTERCHANGEABLE.
+//
+//   `subaccount_id`  "RS_F317C04E..."  -> the charge payload wants this one
+//   `id`             26704 (numeric)   -> GET and DELETE want this one
+//
+// GET /subaccounts/RS_F317C04E... returns 400 "Subaccount not found" for a
+// subaccount that was created seconds earlier and demonstrably exists. Both
+// are stored on the estate row; using the wrong one fails in a way that reads
+// like the subaccount was deleted.
+
+export interface Subaccount {
+  /** Numeric id, as a string. The only id that GET and DELETE accept. */
+  id: string;
+  /** RS_... reference. The only id a charge accepts. */
+  ref: string;
+  /** For NG this is the bank's own record of the holder; for ZA, what we sent. */
+  fullName: string;
+  bankName: string | null;
+}
+
+async function fw(method: string, path: string, body?: unknown) {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: authHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(35_000),
+  });
+  const json = await res.json().catch(() => null);
+  return { ok: res.ok && json?.status === 'success', status: res.status, json };
+}
+
+/** Banks we can pay out to, for the dropdown. NG returns ~600, ZA ~21. */
+export async function listBanks(country: 'NG' | 'ZA'): Promise<{ code: string; name: string }[]> {
+  const r = await fw('GET', `/banks/${country}`);
+  if (!r.ok) throw new Error(`could not list banks: ${r.status}`);
+  return (r.json.data as { code: string; name: string }[])
+    .map((b) => ({ code: b.code, name: b.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Ask the bank who owns an account number.
+ *
+ * ⚠️ NIGERIA ONLY, IN PRACTICE. NG returns the registered holder's name. ZA
+ * returns 400 "invalid account" even for a perfectly valid account -- there is
+ * no name lookup on that rail. Verified in their sandbox, 27 Sep 2026.
+ *
+ * `null` therefore means two different things by country, and the caller has to
+ * keep them apart: in NG it means the account does not exist and we must
+ * refuse; in ZA it means we cannot check, which is not the same as wrong. That
+ * distinction is what estates.settlement_account_verified records, so a screen
+ * can say "First National Bank confirmed this is the body corporate's account"
+ * in one case and "we could not verify this -- please check it" in the other.
+ */
+export async function resolveAccountName(
+  accountNumber: string,
+  bankCode: string,
+): Promise<string | null> {
+  const r = await fw('POST', '/accounts/resolve', {
+    account_number: accountNumber,
+    account_bank: bankCode,
+  });
+  if (!r.ok) return null;
+  const name = r.json?.data?.account_name;
+  return typeof name === 'string' && name.trim() ? name.trim() : null;
+}
+
+export async function createSubaccount(opts: {
+  country: 'NG' | 'ZA';
+  bankCode: string;
+  accountNumber: string;
+  businessName: string;
+  businessEmail: string;
+  feePercent: number;
+}): Promise<Subaccount> {
+  const r = await fw('POST', '/subaccounts', {
+    account_bank: opts.bankCode,
+    account_number: opts.accountNumber,
+    business_name: opts.businessName,
+    business_email: opts.businessEmail,
+    country: opts.country,
+    // The default split, used only if a charge omits its own override. Ours
+    // never does -- the charge is explicit so that editing a subaccount in the
+    // Flutterwave dashboard cannot silently change what an estate receives.
+    split_type: 'percentage',
+    split_value: opts.feePercent,
+  });
+  if (!r.ok) {
+    throw new Error(`could not create subaccount: ${r.json?.message ?? r.status}`);
+  }
+  const d = r.json.data;
+  return {
+    id: String(d.id),
+    ref: String(d.subaccount_id),
+    fullName: String(d.full_name ?? opts.businessName),
+    bankName: d.bank_name ? String(d.bank_name) : null,
+  };
+}
+
+/** Fetch by NUMERIC id. Passing the RS_ reference here always 404s. */
+export async function getSubaccount(numericId: string): Promise<Subaccount | null> {
+  const r = await fw('GET', `/subaccounts/${encodeURIComponent(numericId)}`);
+  if (!r.ok) return null;
+  const d = r.json.data;
+  return {
+    id: String(d.id),
+    ref: String(d.subaccount_id),
+    fullName: String(d.full_name ?? ''),
+    bankName: d.bank_name ? String(d.bank_name) : null,
+  };
+}
+
+/** Delete by NUMERIC id. Used to roll back a half-built settlement record. */
+export async function deleteSubaccount(numericId: string): Promise<boolean> {
+  const r = await fw('DELETE', `/subaccounts/${encodeURIComponent(numericId)}`);
+  return r.ok;
 }

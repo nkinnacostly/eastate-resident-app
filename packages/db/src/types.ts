@@ -455,6 +455,66 @@ export type Database = {
           },
         ]
       }
+      estate_settlement_changes: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by_membership_id: string | null
+          changed_by_user_id: string | null
+          estate_id: string
+          id: string
+          new_account_mask: string | null
+          new_bank_code: string | null
+          new_subaccount_ref: string | null
+          old_account_mask: string | null
+          old_bank_code: string | null
+          old_subaccount_ref: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by_membership_id?: string | null
+          changed_by_user_id?: string | null
+          estate_id: string
+          id?: string
+          new_account_mask?: string | null
+          new_bank_code?: string | null
+          new_subaccount_ref?: string | null
+          old_account_mask?: string | null
+          old_bank_code?: string | null
+          old_subaccount_ref?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by_membership_id?: string | null
+          changed_by_user_id?: string | null
+          estate_id?: string
+          id?: string
+          new_account_mask?: string | null
+          new_bank_code?: string | null
+          new_subaccount_ref?: string | null
+          old_account_mask?: string | null
+          old_bank_code?: string | null
+          old_subaccount_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estate_settlement_changes_changed_by_membership_id_fkey"
+            columns: ["changed_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estate_settlement_changes_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estates: {
         Row: {
           address: string | null
@@ -472,6 +532,16 @@ export type Database = {
           is_active: boolean
           join_code: string
           name: string
+          platform_fee_percent: number
+          settlement_account_name: string | null
+          settlement_account_number: string | null
+          settlement_account_verified: boolean
+          settlement_bank_code: string | null
+          settlement_bank_name: string | null
+          settlement_country: string | null
+          settlement_subaccount_id: string | null
+          settlement_subaccount_ref: string | null
+          settlement_verified_at: string | null
         }
         Insert: {
           address?: string | null
@@ -489,6 +559,16 @@ export type Database = {
           is_active?: boolean
           join_code?: string
           name: string
+          platform_fee_percent?: number
+          settlement_account_name?: string | null
+          settlement_account_number?: string | null
+          settlement_account_verified?: boolean
+          settlement_bank_code?: string | null
+          settlement_bank_name?: string | null
+          settlement_country?: string | null
+          settlement_subaccount_id?: string | null
+          settlement_subaccount_ref?: string | null
+          settlement_verified_at?: string | null
         }
         Update: {
           address?: string | null
@@ -506,6 +586,16 @@ export type Database = {
           is_active?: boolean
           join_code?: string
           name?: string
+          platform_fee_percent?: number
+          settlement_account_name?: string | null
+          settlement_account_number?: string | null
+          settlement_account_verified?: boolean
+          settlement_bank_code?: string | null
+          settlement_bank_name?: string | null
+          settlement_country?: string | null
+          settlement_subaccount_id?: string | null
+          settlement_subaccount_ref?: string | null
+          settlement_verified_at?: string | null
         }
         Relationships: [
           {
@@ -1080,6 +1170,10 @@ export type Database = {
         }[]
       }
       claim_password_reset: { Args: { p_email: string }; Returns: string }
+      clear_estate_settlement: {
+        Args: { p_estate_id: string }
+        Returns: undefined
+      }
       clear_must_change_password: { Args: never; Returns: undefined }
       create_agency: {
         Args: {
@@ -1198,6 +1292,20 @@ export type Database = {
         Args: { p_kind: string; p_payload: Json }
         Returns: number
       }
+      estate_settlement: {
+        Args: { p_estate_id: string }
+        Returns: {
+          account_mask: string
+          account_name: string
+          account_verified: boolean
+          bank_code: string
+          bank_name: string
+          billing_mode: Database["public"]["Enums"]["dues_billing_mode"]
+          configured_at: string
+          country: string
+          fee_percent: number
+        }[]
+      }
       generate_code: { Args: { p_len?: number }; Returns: string }
       generate_dues_charges: { Args: { p_period?: string }; Returns: number }
       grant_membership: {
@@ -1242,6 +1350,7 @@ export type Database = {
       }
       is_agency_admin: { Args: { p_agency_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      mask_account_number: { Args: { p_number: string }; Returns: string }
       mint_access_code: {
         Args: {
           p_delivery_note?: string
@@ -1468,6 +1577,25 @@ export type Database = {
         Args: { p_authorised: boolean; p_basis?: string; p_estate_id: string }
         Returns: undefined
       }
+      set_estate_settlement: {
+        Args: {
+          p_account_name: string
+          p_account_number: string
+          p_account_verified: boolean
+          p_actor_user_id?: string
+          p_bank_code: string
+          p_bank_name: string
+          p_country: string
+          p_estate_id: string
+          p_subaccount_id: string
+          p_subaccount_ref: string
+        }
+        Returns: undefined
+      }
+      set_platform_fee: {
+        Args: { p_estate_id: string; p_fee_percent: number }
+        Returns: undefined
+      }
       settle_dues_payment: {
         Args: {
           p_amount_minor: number
@@ -1484,8 +1612,10 @@ export type Database = {
         Returns: {
           amount_minor: number
           currency: string
+          fee_percent: number
           ok: boolean
           reason: string
+          subaccount_ref: string
           tx_ref: string
         }[]
       }
@@ -1495,9 +1625,11 @@ export type Database = {
           amount_minor: number
           currency: string
           estate_name: string
+          fee_percent: number
           house_number: string
           ok: boolean
           reason: string
+          subaccount_ref: string
           tx_ref: string
         }[]
       }

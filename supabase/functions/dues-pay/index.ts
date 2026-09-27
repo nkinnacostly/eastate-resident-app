@@ -64,6 +64,8 @@ Deno.serve(async (req) => {
       email,
       title: `${row.estate_name} dues`,
       description: `Monthly dues, house ${row.house_number ?? ''}`.trim(),
+      subaccountRef: row.subaccount_ref,
+      feePercent: Number(row.fee_percent ?? 0),
     });
     return json({ link, tx_ref: row.tx_ref });
   } catch (e) {

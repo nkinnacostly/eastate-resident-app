@@ -1,6 +1,7 @@
 import { formatMoney } from '@estate/core';
 import { useCallback, useEffect, useState } from 'react';
 
+import { SettlementCard } from '../components/settlement-card';
 import { Button, Card, Chip, Empty, HeadActions, PageHead, Stat } from '../components/ui';
 import {
   getDuesConfig,
@@ -33,6 +34,10 @@ export function Dues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [basis, setBasis] = useState('');
+  // Whether the estate has somewhere for the money to land. Billing cannot be
+  // switched on without it, so the control below is disabled rather than
+  // letting the admin press Save and collect a constraint error.
+  const [settled, setSettled] = useState(false);
   // Kept in MAJOR units in the form and converted on save. An admin types
   // 25000, not 2500000 -- and money is stored as integer minor units precisely
   // so the conversion happens once, here, rather than everywhere.
@@ -171,6 +176,19 @@ export function Dues() {
         <Stat label="CHARGES RAISED" value={rows.length} />
       </div>
 
+      {/*
+        Above the billing settings, deliberately. An estate cannot switch dues
+        on without a payout account -- the database refuses outright -- so the
+        account has to be the first thing on the page, not a detail further
+        down that the admin meets as an unexplained error at the Save button.
+      */}
+      {activeEstateId ? (
+        <SettlementCard
+          estateId={activeEstateId}
+          onChange={(s) => setSettled(Boolean(s?.account_mask))}
+        />
+      ) : null}
+
       <Card className="mt-6 p-5">
         <div className="text-[10.5px] font-extrabold tracking-label text-muted">
           WHO PAYS THE DUES
@@ -238,12 +256,19 @@ export function Dues() {
             onClick={() => void saveConfig()}
             disabled={
               !draft ||
-              (draft.mode !== 'none' && (!Number(draft.amount) || Number(draft.amount) <= 0))
+              (draft.mode !== 'none' &&
+                (!settled || !Number(draft.amount) || Number(draft.amount) <= 0))
             }
           >
             Save
           </Button>
         </div>
+
+        {!settled && draft?.mode !== 'none' ? (
+          <div className="mt-3 text-[12.5px] font-semibold text-muted">
+            Add the estate&apos;s bank account above before you start billing.
+          </div>
+        ) : null}
 
         {config ? (
           <div className="mt-3 text-[12.5px] text-muted">

@@ -63,7 +63,14 @@ Deno.serve(async (req) => {
       email,
       title: 'Estate dues',
       description: 'Monthly estate dues',
+      // The estate's own bank account. start_dues_payment reads it from the
+      // same row as the amount, so the destination cannot belong to a
+      // different estate than the charge does.
+      subaccountRef: row.subaccount_ref,
+      feePercent: Number(row.fee_percent ?? 0),
     });
+    // Only the link. The subaccount reference and our commission rate stay
+    // server-side -- a resident has no use for either.
     return json({ link, tx_ref: row.tx_ref });
   } catch (e) {
     // The payment row stays 'initiated'. The reconciliation sweep will verify

@@ -42,9 +42,22 @@ insert into public.profiles (id, full_name) values
   ('c0000000-0000-4000-8000-000000000007', 'Gbemi'),
   ('c0000000-0000-4000-8000-00000000000a', 'Admin');
 
-insert into public.estates (id, name, dues_billing_mode, dues_amount_minor, dues_currency, dues_grace_days) values
-  ('e2000000-0000-4000-8000-000000000001', 'Landlord Estate', 'per_house',    2500000, 'NGN', 7),
-  ('e2000000-0000-4000-8000-000000000002', 'Flats Estate',    'per_resident',  750000, 'NGN', 7);
+-- Both dues-enabled estates carry settlement details, because since
+-- 20260927190000 an estate CANNOT bill without them -- estates_dues_need_
+-- settlement_ck rejects the row outright. That is the invariant working: a
+-- fixture that could still be written would mean charges could be raised with
+-- nowhere for the money to go.
+insert into public.estates (id, name, dues_billing_mode, dues_amount_minor, dues_currency, dues_grace_days,
+                            settlement_country, settlement_bank_code, settlement_bank_name,
+                            settlement_account_number, settlement_account_name,
+                            settlement_account_verified, settlement_subaccount_ref,
+                            settlement_subaccount_id, settlement_verified_at, platform_fee_percent) values
+  ('e2000000-0000-4000-8000-000000000001', 'Landlord Estate', 'per_house',    2500000, 'NGN', 7,
+   'NG', '044', 'Access Bank', '0690000032', 'Landlord Estate Residents Association',
+   true, 'RS_LANDLORDESTATE0000000000000001', '90001', now(), 0.0300),
+  ('e2000000-0000-4000-8000-000000000002', 'Flats Estate',    'per_resident',  750000, 'NGN', 7,
+   'NG', '058', 'GTBank', '0123456789', 'Flats Estate Body Corporate',
+   true, 'RS_FLATSESTATE00000000000000001', '90002', now(), 0);
 insert into public.estates (id, name) values
   ('e2000000-0000-4000-8000-000000000003', 'Free Estate');
 

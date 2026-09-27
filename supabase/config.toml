@@ -415,6 +415,12 @@ verify_jwt = false
 # checks in constant time. Note that header is a shared secret, not a signature,
 # so the function ALSO re-queries Flutterwave before crediting anything -- see
 # the comment at the top of dues-webhook.
+# The estate's payout account. Needs a signed-in admin, so verify_jwt stays on
+# (the default) -- unlike the dues-* payment endpoints, which a landlord with no
+# account has to be able to reach.
+[functions.estate-settlement]
+enabled = true
+
 [functions.dues-webhook]
 enabled = true
 verify_jwt = false
