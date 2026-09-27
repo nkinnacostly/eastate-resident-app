@@ -68,6 +68,14 @@ insert into results select 5, 'access_codes <-> memberships ambiguous, api.ts na
   'fks='||pg_temp.fk_count('public.access_codes','public.memberships')::text,
   pg_temp.fk_count('public.access_codes','public.memberships') > 1;
 
+insert into results select 10, 'dues_charges <-> memberships ambiguous, api.ts names the constraint',
+  'fks='||pg_temp.fk_count('public.dues_charges','public.memberships')::text,
+  pg_temp.fk_count('public.dues_charges','public.memberships') > 1;
+
+insert into results select 11, 'dues_charges_membership_id_fkey exists (named by api.ts)',
+  'n='||count(*)::text, count(*) = 1
+  from pg_constraint where conname = 'dues_charges_membership_id_fkey';
+
 -- ─── Constraint names the clients hard-code ──────────────────────────────────
 --
 -- A rename is a silent break: the query still parses and starts 400ing.
@@ -107,8 +115,16 @@ insert into results select 9, 'no unreviewed ambiguous pair involving membership
      group by 1
     having count(*) > 1
   ) t
-  -- access_codes and dues_charges are known-ambiguous and either named at the
-  -- call site or not embedded at all. Anything else here is new and unreviewed.
+  -- Known-ambiguous AND named at every call site that embeds them:
+  --   access_codes  -> api.ts uses !access_codes_membership_id_fkey
+  --   dues_charges  -> api.ts uses !dues_charges_membership_id_fkey
+  -- Anything else appearing here is new and unreviewed.
+  --
+  -- An earlier version of this comment claimed dues_charges was not embedded
+  -- anywhere. It was -- on the admin Dues page -- and that query was broken in
+  -- production while this file asserted everything was fine. Which is why the
+  -- authority on what the apps query is scripts/test-client-queries.mjs, which
+  -- reads the app sources, not a comment.
   where other not in ('access_codes', 'dues_charges');
 
 select seq, case when pass then 'PASS' else 'FAIL' end as status, name, detail

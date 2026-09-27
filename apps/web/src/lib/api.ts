@@ -482,8 +482,13 @@ export async function getDuesConfig(estateId: string): Promise<DuesConfig> {
 export async function listDuesCharges(estateId: string): Promise<AdminDuesCharge[]> {
   const { data, error } = await supabase
     .from('dues_charges')
+    // `memberships` is NAMED via its constraint. dues_charges points at
+    // memberships twice -- membership_id (who is billed) and
+    // waived_by_membership_id (who waived it) -- so an inferred embed is
+    // ambiguous and PostgREST refuses the whole query with 300 PGRST201.
+    // We want the person BILLED, which is the first of those.
     .select(
-      'id, period, amount_minor, currency, due_on, status, paid_at, waive_reason, houses(house_number), memberships(profiles(full_name))',
+      'id, period, amount_minor, currency, due_on, status, paid_at, waive_reason, houses(house_number), memberships!dues_charges_membership_id_fkey(profiles(full_name))',
     )
     .eq('estate_id', estateId)
     .order('period', { ascending: false })
