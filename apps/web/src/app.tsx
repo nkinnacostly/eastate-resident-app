@@ -10,6 +10,7 @@ import { AgencyOfficers } from './pages/agency/officers';
 import { Audit } from './pages/audit';
 import { ChangePassword } from './pages/change-password';
 import { Codes } from './pages/codes';
+import { Dues } from './pages/dues';
 import { Flagged } from './pages/flagged';
 import { Guards } from './pages/guards';
 import { Houses } from './pages/houses';
@@ -41,6 +42,7 @@ function EstateRoutes({ base = '' }: { base?: string }) {
         <Route path="flagged" element={<Flagged />} />
         <Route path="guards" element={<Guards />} />
         <Route path="codes" element={<Codes />} />
+        <Route path="dues" element={<Dues />} />
         <Route path="audit" element={<Audit />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to={base || '/'} replace />} />

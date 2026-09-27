@@ -66,6 +66,33 @@ export const SYNC_INTERVAL_SECONDS = 45;
 /** Cap on the guard's local reject queue so a faulty device can't flood the log (§2.5). */
 export const MAX_QUEUED_REJECTIONS = 200;
 
+// ─── Estate dues ──────────────────────────────────────────────────────────────
+
+export type DuesBillingMode = 'none' | 'per_house' | 'per_resident';
+export type DuesChargeStatus = 'open' | 'paid' | 'waived';
+
+/**
+ * Format an amount held in minor units.
+ *
+ * Money is stored as an integer number of kobo/cents everywhere and divided
+ * only for display. Never the other way round: 0.1 + 0.2 is not 0.3 in binary
+ * floating point, and dues that do not add up are dues an estate will not
+ * trust.
+ */
+export function formatMoney(minor: number, currency: string): string {
+  const major = minor / 100;
+  try {
+    return new Intl.NumberFormat(currency === 'ZAR' ? 'en-ZA' : 'en-NG', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: major % 1 === 0 ? 0 : 2,
+    }).format(major);
+  } catch {
+    // An unknown currency code must not take a payment screen down.
+    return `${currency} ${major.toLocaleString()}`;
+  }
+}
+
 // ─── Enums — must match the Postgres types exactly ────────────────────────────
 
 export type MembershipRole = 'resident' | 'guard' | 'admin';
@@ -94,7 +121,16 @@ export type MintResult =
   | { result: 'rate_limited'; code: null; expires_at: null }
   | { result: 'code_collision'; code: null; expires_at: null }
   | { result: 'not_a_resident'; code: null; expires_at: null }
-  | { result: 'note_too_long'; code: null; expires_at: null };
+  | { result: 'note_too_long'; code: null; expires_at: null }
+  /**
+   * Estate dues are overdue.
+   *
+   * Only ever blocks MINTING. A code already issued still verifies at the gate,
+   * the resident's own access is untouched, and the guard's admit-and-flag
+   * override still works -- which is both the architectural line (a verify path
+   * that had to read a balance could not verify offline) and the legal one.
+   */
+  | { result: 'dues_unpaid'; code: null; expires_at: null };
 
 /** One queued offline verification, pushed via rpc('ingest_verification_events'). */
 export interface PendingVerification {

@@ -1,4 +1,10 @@
-import { displayStatus, type DisplayStatus, type MintResult } from '@estate/core';
+import {
+  displayStatus,
+  type DisplayStatus,
+  type DuesBillingMode,
+  type DuesChargeStatus,
+  type MintResult,
+} from '@estate/core';
 
 import { supabase } from './supabase';
 
@@ -155,4 +161,67 @@ export async function registerPushToken(
     p_device_id: deviceId,
   });
   if (error) throw new Error(error.message);
+}
+
+// ─── Estate dues ─────────────────────────────────────────────────────────────
+
+export interface DuesCharge {
+  charge_id: string;
+  period: string;
+  amount_minor: number;
+  currency: string;
+  due_on: string;
+  status: DuesChargeStatus;
+  is_overdue: boolean;
+  billing_mode: DuesBillingMode;
+  /** 'house' when the whole house is billed, 'resident' when each person is. */
+  subject: string;
+  /**
+   * Shareable link token for this charge.
+   *
+   * Returned to the resident as well as emailed to a landlord, deliberately. In
+   * a house-billed estate a tenant often settles and squares up privately, and
+   * routing them through the landlord would serve nobody.
+   */
+  pay_token: string;
+}
+
+/**
+ * One cast, in one place, with a reason.
+ *
+ * packages/db types are generated FROM the live database, and the dues
+ * migrations have not been applied to it yet, so supabase-js rejects the
+ * function name at the type level. Kept to a single line that is easy to find
+ * and delete: once the migrations land and `npm run db:types` runs, this goes
+ * and the call below types itself. DuesCharge above is hand-written to match
+ * the SQL exactly and is what the rest of the app sees.
+ */
+async function duesRpc<T>(fn: string, args: Record<string, unknown>): Promise<T[]> {
+  const client = supabase as unknown as {
+    rpc: (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: Error | null }>;
+  };
+  const { data, error } = await client.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as T[];
+}
+
+export async function listMyDues(estateId: string): Promise<DuesCharge[]> {
+  return duesRpc<DuesCharge>('my_dues', { p_estate_id: estateId });
+}
+
+/**
+ * Start a payment and get the hosted checkout link.
+ *
+ * Goes through an Edge Function, not straight to Flutterwave: the secret key
+ * can do anything on the account and must never be in a phone bundle. The
+ * amount is never sent from here either -- it is read from the charge row
+ * inside the database, which is what stops a client choosing its own price.
+ */
+export async function startDuesPayment(chargeId: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('dues-checkout', {
+    body: { charge_id: chargeId },
+  });
+  if (error) throw new Error(error.message);
+  if (!data?.link) throw new Error(data?.error ?? 'Could not start the payment');
+  return data.link as string;
 }

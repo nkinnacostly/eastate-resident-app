@@ -54,6 +54,12 @@ export default function Home() {
         case 'not_a_resident':
           Alert.alert('No access', 'You are not an active resident at this estate.');
           break;
+        // Sent to the screen that fixes it rather than shown a dead end. An
+        // alert saying "you cannot do this" with no route to paying is the
+        // version of this feature residents would rightly resent.
+        case 'dues_unpaid':
+          router.push('/dues');
+          break;
         case 'note_too_long':
           Alert.alert(
             'Instructions too long',

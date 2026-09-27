@@ -7,6 +7,7 @@ import {
   Brand,
   Chevron,
   CodesIcon,
+  EstatesIcon,
   GuardsIcon,
   HomeIcon,
   LogIcon,
@@ -39,6 +40,7 @@ const NAV = [
   },
   { to: 'guards', label: 'Guards', Icon: GuardsIcon },
   { to: 'codes', label: 'Codes', Icon: CodesIcon },
+  { to: 'dues', label: 'Dues', Icon: EstatesIcon },
   { to: 'audit', label: 'Audit log', Icon: LogIcon },
   { to: 'settings', label: 'Settings', Icon: SettingsIcon },
 ];

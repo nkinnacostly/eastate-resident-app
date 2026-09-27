@@ -440,3 +440,111 @@ export async function rotateJoinCode(estateId: string): Promise<string> {
   if (error) throw new Error(error.message);
   return data as unknown as string;
 }
+
+// ─── Estate dues ─────────────────────────────────────────────────────────────
+
+export interface DuesConfig {
+  dues_billing_mode: 'none' | 'per_house' | 'per_resident';
+  dues_amount_minor: number | null;
+  dues_currency: string | null;
+  dues_grace_days: number;
+  dues_enforcement_authorised_at: string | null;
+  dues_enforcement_basis: string | null;
+}
+
+export interface AdminDuesCharge {
+  id: string;
+  period: string;
+  amount_minor: number;
+  currency: string;
+  due_on: string;
+  status: 'open' | 'paid' | 'waived';
+  paid_at: string | null;
+  waive_reason: string | null;
+  house_number: string | null;
+  resident_name: string | null;
+}
+
+/**
+ * ONE untyped accessor for the dues surface, not a cast per call site.
+ *
+ * packages/db types are generated FROM the live database, and the dues
+ * migrations have not been applied to it yet -- so supabase-js knows neither
+ * the new tables nor the new columns and rejects them at the type level.
+ * Confining that to a single named thing keeps it easy to find and delete:
+ * after `npm run db:types` this helper goes and the callers below type
+ * themselves. The row interfaces above are hand-written to match the SQL and
+ * are what the rest of the app sees.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const duesClient = supabase as any;
+
+async function duesRpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await duesClient.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+export async function getDuesConfig(estateId: string): Promise<DuesConfig> {
+  const { data, error } = await duesClient
+    .from('estates')
+    .select(
+      'dues_billing_mode, dues_amount_minor, dues_currency, dues_grace_days, dues_enforcement_authorised_at, dues_enforcement_basis',
+    )
+    .eq('id', estateId)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as unknown as DuesConfig;
+}
+
+export async function listDuesCharges(estateId: string): Promise<AdminDuesCharge[]> {
+  const { data, error } = await duesClient
+    .from('dues_charges')
+    .select(
+      'id, period, amount_minor, currency, due_on, status, paid_at, waive_reason, houses(house_number), memberships(profiles(full_name))',
+    )
+    .eq('estate_id', estateId)
+    .order('period', { ascending: false })
+    .limit(300);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const house = row.houses as { house_number: string } | null;
+    const member = row.memberships as { profiles: { full_name: string | null } | null } | null;
+    return {
+      id: row.id as string,
+      period: row.period as string,
+      amount_minor: Number(row.amount_minor),
+      currency: row.currency as string,
+      due_on: row.due_on as string,
+      status: row.status as AdminDuesCharge['status'],
+      paid_at: (row.paid_at as string) ?? null,
+      waive_reason: (row.waive_reason as string) ?? null,
+      house_number: house?.house_number ?? null,
+      resident_name: member?.profiles?.full_name ?? null,
+    };
+  });
+}
+
+export async function waiveDuesCharge(chargeId: string, reason: string): Promise<void> {
+  await duesRpc('waive_dues_charge', { p_charge_id: chargeId, p_reason: reason });
+}
+
+/**
+ * Record — or withdraw — the estate's authority to withhold code generation.
+ *
+ * Separate from configuring an amount on purpose. Billing is an administrative
+ * decision; restricting a service over arrears is a legal one, and in South
+ * Africa the CSOS classifies a rule doing so as undesirable. An estate that has
+ * not recorded a basis bills normally and restricts nobody.
+ */
+export async function setDuesEnforcement(
+  estateId: string,
+  authorised: boolean,
+  basis?: string,
+): Promise<void> {
+  await duesRpc('set_dues_enforcement', {
+    p_estate_id: estateId,
+    p_authorised: authorised,
+    p_basis: basis ?? null,
+  });
+}
