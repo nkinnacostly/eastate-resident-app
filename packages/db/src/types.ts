@@ -597,15 +597,7 @@ export type Database = {
           settlement_subaccount_ref?: string | null
           settlement_verified_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "estates_dues_enforcement_authorised_by_fkey"
-            columns: ["dues_enforcement_authorised_by"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       guard_shifts: {
         Row: {

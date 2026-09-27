@@ -10,6 +10,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [estates, setEstates] = useState<AdminMembership[]>([]);
   const [estatesLoaded, setEstatesLoaded] = useState(false);
+  const [estatesError, setEstatesError] = useState<string | null>(null);
   const [activeEstateId, setActiveEstateId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
@@ -48,7 +49,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // the ceiling; the query still has to ask for the right thing.
     const { data, error } = await supabase
       .from('memberships')
-      .select('id, estate_id, estates(name, join_code)')
+      // The constraint is NAMED rather than left to PostgREST to infer.
+      //
+      // `estates(...)` used to be enough. It stopped being enough the moment a
+      // second foreign key existed between these two tables -- an audit column
+      // on estates pointing back at memberships -- at which point PostgREST
+      // refused to choose and answered 300 PGRST201, logging every admin,
+      // resident and guard out at once. Naming it means a future key cannot do
+      // that again. supabase/tests/embeds.sql guards the whole class.
+      .select('id, estate_id, estates!memberships_estate_id_fkey(name, join_code)')
       .eq('user_id', userId)
       .eq('role', 'admin')
       .eq('is_active', true);
@@ -56,8 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.warn('[auth] estate lookup failed:', error.message);
       setEstates([]);
-      return; // not proof of "no estates" — leave estatesLoaded alone
+      // Still not proof of "no estates", so estatesLoaded stays false and the
+      // person is not booted to a "you have no access" screen over a network
+      // blip. But the failure IS recorded, because the gate cannot otherwise
+      // distinguish a slow answer from one that will never come -- and when it
+      // could not, a permanently failing query left the app on a blank screen
+      // with nothing to press.
+      setEstatesError(error.message);
+      return;
     }
+    setEstatesError(null);
 
     const rows: AdminMembership[] = (data ?? []).map((m) => {
       const e = m.estates as { name: string; join_code: string } | null;
@@ -164,13 +181,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(
     () => ({
-      session, loading, estates, estatesLoaded, activeEstateId,
+      session, loading, estates, estatesLoaded, estatesError, activeEstateId,
       setActiveEstateId, activeEstate, refreshEstates, signIn, signOut,
       isPlatformAdmin, rolesLoaded, mustChangePassword, changePassword,
       agencies, agenciesLoaded,
     }),
     [
-      session, loading, estates, estatesLoaded, activeEstateId,
+      session, loading, estates, estatesLoaded, estatesError, activeEstateId,
       activeEstate, refreshEstates, signIn, signOut,
       isPlatformAdmin, rolesLoaded, mustChangePassword, changePassword,
       agencies, agenciesLoaded,

@@ -14,6 +14,7 @@ import { Dues } from './pages/dues';
 import { Flagged } from './pages/flagged';
 import { Guards } from './pages/guards';
 import { Houses } from './pages/houses';
+import { LoadFailed } from './pages/load-failed';
 import { NoAccess } from './pages/no-access';
 import { Admins } from './pages/operator/admins';
 import { Estates } from './pages/operator/estates';
@@ -100,7 +101,7 @@ function AgencyRoutes() {
  */
 export function App() {
   const {
-    session, loading, estates, estatesLoaded, isPlatformAdmin, rolesLoaded,
+    session, loading, estates, estatesLoaded, estatesError, isPlatformAdmin, rolesLoaded,
     mustChangePassword, agencies, agenciesLoaded,
   } = useAuth();
 
@@ -118,6 +119,13 @@ export function App() {
   // agenciesLoaded joins the other two for the same reason: the agency list
   // starts empty, so an agency-only admin would be shown NoAccess for the
   // moment before the answer lands — a dead end for a legitimate user.
+  // A permanent failure must not look like a slow one. estatesLoaded stays
+  // false on error by design -- a blip should not boot someone to "no access"
+  // -- but without this the app sits on the blank screen below forever, which
+  // is exactly what a PostgREST embed ambiguity did to every user of every
+  // surface. Give them the reason, a retry and a way out.
+  if (estatesError && !estatesLoaded) return <LoadFailed detail={estatesError} />;
+
   if (!estatesLoaded || !rolesLoaded || !agenciesLoaded) {
     return <div className="min-h-screen bg-ink" />;
   }

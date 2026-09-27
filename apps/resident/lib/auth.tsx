@@ -236,7 +236,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // RLS scopes this to the caller's own rows — no client-side filter needed.
     const { data, error } = await supabase
       .from('memberships')
-      .select('id, estate_id, role, estates(name), houses(house_number, house_code)')
+      // `estates` is NAMED via its constraint. Left to inference it broke
+      // outright the day a second foreign key appeared between memberships and
+      // estates: PostgREST cannot choose between two relationships and answers
+      // 300 PGRST201, so this lookup failed for every resident at once and the
+      // app sat on a blank screen. supabase/tests/embeds.sql guards the class.
+      .select(
+        'id, estate_id, role, estates!memberships_estate_id_fkey(name), houses(house_number, house_code)',
+      )
       .eq('role', 'resident')
       .eq('is_active', true);
 

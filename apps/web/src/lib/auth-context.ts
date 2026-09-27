@@ -30,6 +30,15 @@ export interface AuthState {
   /** Estates where this user is an ACTIVE ADMIN. Empty for everyone else. */
   estates: AdminMembership[];
   estatesLoaded: boolean;
+  /**
+   * Why the estate lookup failed, if it did.
+   *
+   * Exists because `estatesLoaded` alone cannot tell "still loading" from
+   * "will never load". The gate renders a blank screen until it flips, so a
+   * permanent failure -- a broken query, a revoked grant -- showed the user an
+   * empty black page with nothing to press. See app.tsx.
+   */
+  estatesError: string | null;
   activeEstateId: string | null;
   setActiveEstateId: (id: string) => void;
   activeEstate: AdminMembership | null;

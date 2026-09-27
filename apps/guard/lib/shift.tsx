@@ -131,7 +131,10 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       // estates got a different post on each launch.
       const { data, error } = await supabase
         .from('memberships')
-        .select('id, estate_id, created_at, estates(name)')
+        // Constraint named deliberately -- see the note in the resident app's
+        // auth.tsx. An inferred embed here broke every guard's shift start the
+        // day a second memberships<->estates foreign key was added.
+        .select('id, estate_id, created_at, estates!memberships_estate_id_fkey(name)')
         .eq('user_id', session.user.id)
         .eq('role', 'guard')
         .eq('is_active', true)

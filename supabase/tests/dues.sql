@@ -165,8 +165,11 @@ set test.uid = 'c0000000-0000-4000-8000-00000000000a';
 select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000001', true, 'MOI clause 11.4, AGM 2026-03-14');
 select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000002', true, 'House rules 7(b)');
 
+-- The PERSON, not their membership. Changed in 20260927210000, which moved
+-- this key off memberships -- an estate's record of its own decision must not
+-- decay when a committee member moves out and their membership is deactivated.
 select pg_temp.check('authorising records who and on what basis', (
-  select dues_enforcement_authorised_by = 'a2000000-0000-4000-8000-00000000000a'
+  select dues_enforcement_authorised_by = 'c0000000-0000-4000-8000-00000000000a'
      and dues_enforcement_basis = 'MOI clause 11.4, AGM 2026-03-14'
      and dues_enforcement_authorised_at is not null
   from public.estates where id = 'e2000000-0000-4000-8000-000000000001'));
