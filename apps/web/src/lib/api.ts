@@ -618,6 +618,12 @@ export interface EstateSettlement {
 const settlementError = (code: string) =>
   ({
     invalid_account: 'That account number is not valid at the bank you chose. Check both and try again.',
+    test_mode_real_account:
+      'This platform is still on Flutterwave TEST keys, which can only look up '
+      + 'Flutterwave’s own sandbox accounts — a real bank account will always be '
+      + 'rejected here, however correct it is. To try the flow, use Access Bank '
+      + 'with account number 0690000032. To add the estate’s real account, the '
+      + 'live Flutterwave keys need to be deployed first.',
     not_an_admin_at_this_estate: 'You are not an administrator of this estate.',
     account_name_required: 'We could not verify this account, so please type the account name exactly as the bank has it.',
     banks_unavailable: 'We could not reach the bank list just now. Try again in a moment.',
@@ -636,13 +642,15 @@ export async function listSettlementBanks(
   return r.banks;
 }
 
-export async function getEstateSettlement(estateId: string): Promise<EstateSettlement | null> {
-  const r = await callEdgeFunction<{ settlement: EstateSettlement | null }>(
+export async function getEstateSettlement(
+  estateId: string,
+): Promise<{ settlement: EstateSettlement | null; testMode: boolean }> {
+  const r = await callEdgeFunction<{ settlement: EstateSettlement | null; test_mode?: boolean }>(
     'estate-settlement',
     { action: 'read', estate_id: estateId },
     settlementError,
   );
-  return r.settlement;
+  return { settlement: r.settlement, testMode: Boolean(r.test_mode) };
 }
 
 /**

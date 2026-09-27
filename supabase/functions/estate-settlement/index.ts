@@ -30,6 +30,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import {
   createSubaccount,
+  isTestKey,
   deleteSubaccount,
   getSubaccount,
   listBanks,
@@ -95,7 +96,12 @@ Deno.serve(async (req) => {
 
   const existing = Array.isArray(current) ? current[0] : current;
 
-  if (action === 'read') return json({ settlement: existing ?? null });
+  // `test_mode` rides along so the dashboard can say so plainly. An admin
+  // typing their real account into a sandbox-backed form gets a rejection they
+  // cannot act on, and no amount of care with the account number fixes it.
+  if (action === 'read') {
+    return json({ settlement: existing ?? null, test_mode: isTestKey() });
+  }
 
   // ─── resolve: show the admin whose account this is, before they commit ─────
   //
@@ -112,10 +118,14 @@ Deno.serve(async (req) => {
     const name = await resolveAccountName(String(account_number), String(bank_code));
     if (name) return json({ account_name: name, verified: true });
     // South Africa has no name lookup, so a null here is expected and is not a
-    // rejection. Nigeria does, so a null there means the account is not real.
+    // rejection. Nigeria does, so a null there means the account is not real...
     if (country === 'ZA') {
       return json({ account_name: null, verified: false, unverifiable: true });
     }
+    // ...UNLESS we are on a sandbox key, where the lookup only knows
+    // Flutterwave's own test accounts and every real account fails the same
+    // way. Reporting "that number is wrong" there is simply untrue.
+    if (isTestKey()) return json({ error: 'test_mode_real_account' }, 400);
     return json({ error: 'invalid_account' }, 400);
   }
 
@@ -130,7 +140,9 @@ Deno.serve(async (req) => {
   // the resolve step. Otherwise the confirmation is theatre: a caller could
   // show one name to the admin and save another.
   const resolved = await resolveAccountName(String(account_number), String(bank_code));
-  if (!resolved && country === 'NG') return json({ error: 'invalid_account' }, 400);
+  if (!resolved && country === 'NG') {
+    return json({ error: isTestKey() ? 'test_mode_real_account' : 'invalid_account' }, 400);
+  }
   if (!resolved && !account_name) return json({ error: 'account_name_required' }, 400);
 
   const finalName = resolved ?? String(account_name);

@@ -36,16 +36,41 @@ const env = Object.fromEntries(
     }),
 );
 
-const KEY = env.FLUTTERWAVE_SECRET_KEY;
+// ─── Which key, and the refusal that protects the live account ──────────────
+//
+// FLUTTERWAVE_TEST_SECRET_KEY first, so the app can hold LIVE keys while the
+// tests keep a sandbox one. Once live keys go into .env.local there is
+// otherwise no test key left anywhere and this whole suite goes dark --
+// exactly when payments start mattering most.
+//
+// A live key here would create REAL checkout sessions and REAL subaccounts
+// against the estate's own bank details. The suite refuses rather than trusts
+// itself to stay read-only.
+const KEY = env.FLUTTERWAVE_TEST_SECRET_KEY || env.FLUTTERWAVE_SECRET_KEY;
+
 if (!KEY) {
-  console.error('FLUTTERWAVE_SECRET_KEY missing from .env.local');
+  console.error('No Flutterwave key in .env.local '
+    + '(FLUTTERWAVE_TEST_SECRET_KEY or FLUTTERWAVE_SECRET_KEY).');
   process.exit(2);
 }
-// Flutterwave test secret keys carry _TEST. Refusing to proceed without it is
-// the difference between a test run and creating live checkout sessions.
+
 if (!KEY.includes('_TEST')) {
-  console.error('Refusing to run: FLUTTERWAVE_SECRET_KEY is not a _TEST key.');
-  process.exit(2);
+  // Skipped, not failed, and loudly. A hard failure here makes `npm run
+  // test:all` permanently red the day live keys land, and a suite that is
+  // always red is a suite people stop reading. Exit 0 so the rest of the run
+  // still reports, but make the gap impossible to miss.
+  console.error('');
+  console.error('  ████  FLUTTERWAVE TESTS SKIPPED  ████');
+  console.error('');
+  console.error('  The only Flutterwave key available is a LIVE key, and this suite');
+  console.error('  creates checkout sessions and subaccounts. Running it against live');
+  console.error('  credentials would move real money and touch real bank details.');
+  console.error('');
+  console.error('  PAYMENTS ARE NOW UNTESTED. To restore coverage, put a sandbox key in');
+  console.error('  .env.local as FLUTTERWAVE_TEST_SECRET_KEY — it sits alongside the live');
+  console.error('  FLUTTERWAVE_SECRET_KEY and is used only by tests.');
+  console.error('');
+  process.exit(0);
 }
 
 // The shared client is Deno source. Shim the one global it touches rather than
@@ -144,6 +169,41 @@ if (sub) {
   ok('a non-existent Nigerian account resolves to nothing',
      (await fw.resolveAccountName('0000000000', '044')) === null);
 }
+
+// ─── What a SANDBOX key can and cannot see ───────────────────────────────────
+//
+// DOCUMENTING A LIVE FINDING, and the reason the dashboard has a test-mode
+// banner. On a test key Flutterwave's account lookup only knows its OWN
+// sandbox accounts. A real Nigerian bank account comes back `400 invalid
+// account` -- byte-for-byte the same answer as a genuine typo -- and creating
+// a subaccount against one is refused outright.
+//
+// The consequence is the whole point: A REAL ESTATE CANNOT BE ONBOARDED ON
+// TEST KEYS. Without saying so, an admin entering their true account number
+// gets "that account is not valid" and goes looking for a transposed digit
+// that does not exist.
+ok('the client knows it is on a sandbox key', fw.isTestKey() === true);
+
+// A real OPay account, reported from the dashboard on 27 Sep 2026.
+ok('a REAL bank account does not resolve on a test key',
+   (await fw.resolveAccountName('8122204698', '100004')) === null);
+
+let realSubaccountRefused = false;
+try {
+  await fw.createSubaccount({
+    country: 'NG', bankCode: '100004', accountNumber: '8122204698',
+    businessName: 'Sandbox Reality Check', businessEmail: 'dues-test@myestateaccess.com',
+    feePercent: 0,
+  });
+} catch {
+  realSubaccountRefused = true;
+}
+ok('...and a subaccount cannot be created against it either', realSubaccountRefused);
+
+// The control. If this ever fails, the sandbox stopped resolving its own test
+// account and every assertion above is meaningless.
+ok('a SANDBOX account still resolves, so the lookup itself works',
+   (await fw.resolveAccountName('0690000032', '044')) !== null);
 
 // South Africa has no name lookup at all -- a well-formed ZA account returns
 // 400 "invalid account" exactly as a bad one does. That is why

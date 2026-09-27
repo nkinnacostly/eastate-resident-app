@@ -45,6 +45,11 @@ export function SettlementCard({
   onChange?: (settlement: EstateSettlement | null) => void;
 }) {
   const [current, setCurrent] = useState<EstateSettlement | null>(null);
+  // Whether the server is holding Flutterwave SANDBOX keys. Surfaced because
+  // in that mode no real bank account can be added at all -- the lookup and the
+  // subaccount call both refuse one -- and an admin has no way to tell that
+  // apart from having mistyped something.
+  const [testMode, setTestMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +72,9 @@ export function SettlementCard({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const s = await getEstateSettlement(estateId);
+      const { settlement: s, testMode: t } = await getEstateSettlement(estateId);
       setCurrent(s);
+      setTestMode(t);
       if (s?.country) setCountry(s.country);
       onChangeRef.current?.(s);
     } catch (e) {
@@ -179,6 +185,20 @@ export function SettlementCard({
           </Chip>
         ) : null}
       </div>
+
+      {testMode ? (
+        <div className="mt-4 rounded-[14px] bg-field px-4 py-3">
+          <div className="text-[11px] font-extrabold tracking-label text-muted">
+            TEST MODE
+          </div>
+          <p className="mt-1 max-w-prose text-[12.5px] leading-[19px] text-muted">
+            Payments are running on Flutterwave test keys. A real bank account cannot be added
+            yet — the bank lookup only knows Flutterwave&apos;s sandbox, so any real account is
+            rejected no matter how correct it is. Use Access Bank / 0690000032 to try the flow.
+            Nothing here moves real money until the live keys are deployed.
+          </p>
+        </div>
+      ) : null}
 
       {configured && !editing ? (
         <div className="mt-4">

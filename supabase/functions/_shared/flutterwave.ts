@@ -46,6 +46,21 @@ function authHeaders() {
   return { Authorization: `Bearer ${SECRET_KEY}`, 'Content-Type': 'application/json' };
 }
 
+/**
+ * Are we on a sandbox key?
+ *
+ * Matters far more than it looks. On a test key Flutterwave's account lookup
+ * only knows ITS OWN sandbox accounts: a real bank account returns
+ * `400 invalid account`, identical to a genuine typo, and subaccount creation
+ * refuses it outright with "kindly pass a valid account number".
+ *
+ * So in test mode a real estate CANNOT be onboarded, and the honest thing is to
+ * say that rather than report a wrong account number -- which sends an admin
+ * hunting for a transposed digit that does not exist. Verified against the
+ * sandbox on 27 Sep 2026 with a real OPay account.
+ */
+export const isTestKey = (): boolean => (SECRET_KEY ?? '').includes('_TEST');
+
 export interface CheckoutRequest {
   txRef: string;
   amountMinor: number;
