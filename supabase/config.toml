@@ -405,6 +405,27 @@ allow_dynamic_registration = false
 enabled = true
 verify_jwt = false
 
+# The Flutterwave webhook. Same reasoning as auth-emails: it is called
+# SERVER-SIDE by Flutterwave, with no user and no JWT, so the platform's JWT
+# gate would reject it with a 401 before a line of our code runs -- and because
+# that happens outside the function it produces no log, so it looks exactly like
+# the webhook was never sent.
+#
+# It authenticates with the `verif-hash` header instead, which the function
+# checks in constant time. Note that header is a shared secret, not a signature,
+# so the function ALSO re-queries Flutterwave before crediting anything -- see
+# the comment at the top of dues-webhook.
+[functions.dues-webhook]
+enabled = true
+verify_jwt = false
+
+# The pay-by-link path for a landlord, who has no account by design (`houses`
+# carries them as data and says they never sign in). The unguessable pay token
+# is the authorisation; there is no JWT to verify.
+[functions.dues-pay]
+enabled = true
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

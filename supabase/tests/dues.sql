@@ -60,7 +60,10 @@ insert into public.memberships (id, user_id, estate_id, role, house_id) values
   ('a2000000-0000-4000-8000-000000000005','c0000000-0000-4000-8000-000000000005','e2000000-0000-4000-8000-000000000002','resident',null),
   ('a2000000-0000-4000-8000-000000000006','c0000000-0000-4000-8000-000000000006','e2000000-0000-4000-8000-000000000003','resident',null),
   ('a2000000-0000-4000-8000-000000000007','c0000000-0000-4000-8000-000000000007','e2000000-0000-4000-8000-000000000001','resident',null),
-  ('a2000000-0000-4000-8000-00000000000a','c0000000-0000-4000-8000-00000000000a','e2000000-0000-4000-8000-000000000001','admin',null);
+  ('a2000000-0000-4000-8000-00000000000a','c0000000-0000-4000-8000-00000000000a','e2000000-0000-4000-8000-000000000001','admin',null),
+  -- Same human, admin at both billing estates. Authority is per estate, so the
+  -- second membership is required rather than implied by the first.
+  ('a2000000-0000-4000-8000-00000000000b','c0000000-0000-4000-8000-00000000000a','e2000000-0000-4000-8000-000000000002','admin',null);
 
 -- ─── Configuration is coherent or absent ─────────────────────────────────────
 
@@ -116,6 +119,56 @@ update public.estates set dues_amount_minor = 2500000
  where id = 'e2000000-0000-4000-8000-000000000001';
 
 -- ─── The gate ────────────────────────────────────────────────────────────────
+
+-- ─── Enforcement needs recorded authority ────────────────────────────────────
+--
+-- Configuring an amount is a billing decision; withholding a service over
+-- arrears is a legal one. CSOS classifies a rule denying access for unpaid
+-- levies as undesirable and will refuse to register it, so an estate that has
+-- not recorded a basis must bill normally and restrict nobody.
+update public.dues_charges set due_on = current_date - 1;
+select pg_temp.check('arrears do NOT block until enforcement is authorised', (
+  select not public.dues_in_arrears('a2000000-0000-4000-8000-000000000001')));
+
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+do $$
+begin
+  perform public.set_dues_enforcement('e2000000-0000-4000-8000-000000000001', true, '  ');
+  raise exception 'FAIL  enforcement was authorised with no basis';
+exception when sqlstate '22023' then
+  raise notice 'PASS  authorising enforcement requires a recorded basis';
+end $$;
+
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+do $$
+begin
+  perform public.set_dues_enforcement('e2000000-0000-4000-8000-000000000001', true, 'MOI 11.4');
+  raise exception 'FAIL  a resident authorised enforcement';
+exception when insufficient_privilege then
+  raise notice 'PASS  only an admin may authorise enforcement';
+end $$;
+
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000001', true, 'MOI clause 11.4, AGM 2026-03-14');
+select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000002', true, 'House rules 7(b)');
+
+select pg_temp.check('authorising records who and on what basis', (
+  select dues_enforcement_authorised_by = 'a2000000-0000-4000-8000-00000000000a'
+     and dues_enforcement_basis = 'MOI clause 11.4, AGM 2026-03-14'
+     and dues_enforcement_authorised_at is not null
+  from public.estates where id = 'e2000000-0000-4000-8000-000000000001'));
+
+select pg_temp.check('...and now arrears bite', (
+  select public.dues_in_arrears('a2000000-0000-4000-8000-000000000001')));
+
+-- Withdrawing it clears the basis: a stale one left behind would later read as
+-- authority nobody currently claims.
+select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000001', false);
+select pg_temp.check('withdrawing authority stops enforcement and clears the basis', (
+  select not public.dues_in_arrears('a2000000-0000-4000-8000-000000000001')
+     and (select dues_enforcement_basis is null from public.estates
+           where id = 'e2000000-0000-4000-8000-000000000001')));
+select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000001', true, 'MOI clause 11.4, AGM 2026-03-14');
 
 -- Due dates are set explicitly from here on. Relying on "this month's charge
 -- is still inside its grace period" would make the whole suite pass only in
@@ -404,3 +457,74 @@ select pg_temp.check('...but the amount and status are', (
 
 select pg_temp.check('a payer''s email is not readable by other residents', (
   select not has_column_privilege('authenticated', 'public.dues_payments', 'payer_email', 'select')));
+
+-- ─── Arrears must never block paying ─────────────────────────────────────────
+--
+-- Every US product surveyed ships "enforcement" that works the wrong way round:
+-- Vantaca blockPayments, CINC BlockPaymentsFlag, PayHOA Lock Account ("will not
+-- be able to see any balance... or checkout page"), AppFolio ("won't be able to
+-- submit any new payments"). They make it HARDER for a delinquent owner to
+-- settle, which is perverse and, in South Africa, hands a resident the
+-- strongest possible answer to an arrears complaint.
+--
+-- Being in arrears here restricts exactly one thing -- minting -- and nothing
+-- about the path to fixing it.
+
+insert into public.dues_charges (id, estate_id, period, membership_id, amount_minor, currency, due_on)
+values ('cc200000-0000-4000-8000-00000000000f', 'e2000000-0000-4000-8000-000000000002',
+        (date_trunc('month', current_date) - interval '3 months')::date,
+        'a2000000-0000-4000-8000-000000000005', 750000, 'NGN', current_date - 60);
+
+select pg_temp.check('this resident is genuinely in arrears', (
+  select public.dues_in_arrears('a2000000-0000-4000-8000-000000000005')));
+
+set test.uid = 'c0000000-0000-4000-8000-000000000005';
+select ok as o, reason as r from public.start_dues_payment('cc200000-0000-4000-8000-00000000000f') \gset arr_
+select pg_temp.check('...and can still start a payment', :'arr_o');
+
+select result as r from public.mint_access_code('e2000000-0000-4000-8000-000000000002') \gset arrmint_
+select pg_temp.check('...while minting stays blocked', :'arrmint_r' = 'dues_unpaid');
+
+-- ─── A realistic provider payload ────────────────────────────────────────────
+--
+-- The shape Flutterwave actually returns, so the jsonb column and the amount
+-- extraction are exercised against real data rather than '{}'. charged_amount
+-- is in MAJOR units and decimal -- the conversion to integer minor units
+-- happens in the Edge Function, and 25000.07 * 100 is 2500006.9999999995 in
+-- binary floating point, which is why it goes via a rounded string.
+
+set test.uid = 'c0000000-0000-4000-8000-000000000005';
+select tx_ref from public.start_dues_payment('cc200000-0000-4000-8000-00000000000f') \gset real_
+
+select public.settle_dues_payment(
+  :'real_tx_ref', '8742901', 750000, 'NGN', 'successful',
+  jsonb_build_object(
+    'id', 8742901, 'tx_ref', :'real_tx_ref', 'flw_ref', 'FLW-MOCK-a1b2c3',
+    'amount', 7500, 'charged_amount', 7500, 'currency', 'NGN',
+    'app_fee', 105, 'merchant_fee', 0, 'status', 'successful',
+    'payment_type', 'card', 'processor_response', 'Approved',
+    'created_at', '2026-09-27T10:04:11.000Z',
+    -- card.token is redacted in the Edge Function before it ever reaches here.
+    'card', jsonb_build_object('first_6digits','553188','last_4digits','2950',
+                               'issuer','MASTERCARD','country','NG','type','MASTERCARD'),
+    'customer', jsonb_build_object('id', 991, 'email','efe@example.com'))
+) as r \gset realr_
+
+select pg_temp.check('a realistic payload settles', :'realr_r' = 'settled');
+
+select pg_temp.check('the stored payload keeps what support needs', (
+  select raw_payload->'card'->>'last_4digits' = '2950'
+     and raw_payload->>'flw_ref' = 'FLW-MOCK-a1b2c3'
+  from public.dues_payments where tx_ref = :'real_tx_ref'));
+
+-- This resident has TWO overdue charges by now. Settling one must NOT clear
+-- them, because the test is "any charge past its due date", not "the most
+-- recent one". Clearing on a single payment is how a resident pays one month
+-- and quietly writes off the rest.
+select pg_temp.check('settling one of two arrears does not unblock', (
+  select public.dues_in_arrears('a2000000-0000-4000-8000-000000000005')));
+
+update public.dues_charges set status = 'paid', paid_at = now()
+ where membership_id = 'a2000000-0000-4000-8000-000000000005' and status = 'open';
+select pg_temp.check('clearing every arrear unblocks minting', (
+  select not public.dues_in_arrears('a2000000-0000-4000-8000-000000000005')));
