@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     .from('estates').select('name').eq('id', estateId).maybeSingle();
   const estateName = estateRow?.name ?? 'Estate';
 
-  let made: { id: string; ref: string; bankName: string | null } | null = null;
+  let made: { id: string; ref: string; bankName: string | null; created: boolean } | null = null;
   try {
     made = await createSubaccount({
       country,
@@ -171,6 +171,9 @@ Deno.serve(async (req) => {
     // charges that silently settle to us.
     const confirmed = await getSubaccount(made.id);
     if (!confirmed) throw new Error('subaccount did not verify after creation');
+    // getSubaccount always reports created:false, so keep the flag from the
+    // create/adopt step -- it is what decides whether rollback may delete.
+    confirmed.created = made.created;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     const { error } = await admin.rpc('set_estate_settlement', {
@@ -196,11 +199,12 @@ Deno.serve(async (req) => {
       bank_name: made.bankName ?? bank_name ?? null,
     });
   } catch (e) {
-    // Roll back the subaccount if the database write failed. Leaving it behind
-    // would litter the Flutterwave account with orphans nothing references,
-    // and one of them pointing at a real bank account is a payout destination
-    // with no record of why it exists.
-    if (made) await deleteSubaccount(made.id).catch(() => {});
+    // Roll back ONLY what we created. An orphan we made is litter; a
+    // subaccount we merely adopted belongs to something else -- this estate's
+    // Flutterwave account already had two against the same bank account, put
+    // there by an unrelated product -- and deleting one would take down a
+    // payout destination we do not own and cannot restore.
+    if (made?.created) await deleteSubaccount(made.id).catch(() => {});
     console.error('[estate-settlement] save', (e as Error).message);
     return json({ error: 'could_not_save_settlement' }, 502);
   }

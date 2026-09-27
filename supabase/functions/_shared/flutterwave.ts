@@ -274,6 +274,17 @@ export function secretMatches(header: string | null, expected: string | undefine
 export interface Subaccount {
   /** Numeric id, as a string. The only id that GET and DELETE accept. */
   id: string;
+  /**
+   * False when this subaccount ALREADY EXISTED and we adopted it.
+   *
+   * Load-bearing, not informational. The caller rolls back a half-finished
+   * save by deleting the subaccount, and deleting one we merely adopted would
+   * destroy a payout destination belonging to something else entirely -- the
+   * estate's own Flutterwave account had two, created by an unrelated product,
+   * against the very bank account being onboarded. Only ever delete what you
+   * created.
+   */
+  created: boolean;
   /** RS_... reference. The only id a charge accepts. */
   ref: string;
   /** For NG this is the bank's own record of the holder; for ZA, what we sent. */
@@ -328,6 +339,38 @@ export async function resolveAccountName(
   return typeof name === 'string' && name.trim() ? name.trim() : null;
 }
 
+/**
+ * Find an existing subaccount for a bank account we already have one for.
+ *
+ * ⚠️ FLUTTERWAVE ALLOWS ONE SUBACCOUNT PER (account_number, bank), ACCOUNT-WIDE.
+ * A second create returns `400 A subaccount with the account number and bank
+ * already exists`. That is not an edge case -- it is the NORMAL outcome for
+ * anyone who has ever used their Flutterwave account for anything else, and it
+ * is what a real estate hit on the first attempt to onboard: two subaccounts
+ * already existed for the same bank account, created by an unrelated product.
+ *
+ * Matched on `account_bank`, the bank CODE, not `bank_name`. The list endpoint
+ * returns both, and a name is a display string that can be punctuated or cased
+ * differently between endpoints -- "Opay" here, "OPay" there -- while the code
+ * is the same value we posted.
+ */
+async function findSubaccount(
+  accountNumber: string,
+  bankCode: string,
+): Promise<Subaccount | null> {
+  const r = await fw('GET', `/subaccounts?account_number=${encodeURIComponent(accountNumber)}`);
+  if (!r.ok || !Array.isArray(r.json?.data)) return null;
+
+  const hit = (r.json.data as Record<string, unknown>[]).find(
+    (d) => String(d.account_bank) === bankCode && String(d.account_number) === accountNumber,
+  );
+  if (!hit) return null;
+
+  // Re-fetched by numeric id rather than trusting the list row, so an adopted
+  // subaccount goes through exactly the same existence proof as a created one.
+  return getSubaccount(String(hit.id));
+}
+
 export async function createSubaccount(opts: {
   country: 'NG' | 'ZA';
   bankCode: string;
@@ -349,6 +392,20 @@ export async function createSubaccount(opts: {
     split_value: opts.feePercent,
   });
   if (!r.ok) {
+    // Already ours, from some earlier life. Adopt it rather than fail: there is
+    // no way to create a second one, so refusing here would make it impossible
+    // to ever onboard this bank account.
+    //
+    // Safe because every charge we build passes an EXPLICIT transaction_charge,
+    // so the subaccount's own stored split -- which another product set and may
+    // change -- never decides what an estate receives. That explicitness was
+    // already the rule; this is the case that makes it load-bearing.
+    const message = String(r.json?.message ?? '');
+    if (/already exist/i.test(message)) {
+      const existing = await findSubaccount(opts.accountNumber, opts.bankCode);
+      // created:false — this one is NOT ours to delete on rollback.
+      if (existing) return { ...existing, created: false };
+    }
     throw new Error(`could not create subaccount: ${r.json?.message ?? r.status}`);
   }
   const d = r.json.data;
@@ -357,6 +414,7 @@ export async function createSubaccount(opts: {
     ref: String(d.subaccount_id),
     fullName: String(d.full_name ?? opts.businessName),
     bankName: d.bank_name ? String(d.bank_name) : null,
+    created: true,
   };
 }
 
@@ -370,6 +428,9 @@ export async function getSubaccount(numericId: string): Promise<Subaccount | nul
     ref: String(d.subaccount_id),
     fullName: String(d.full_name ?? ''),
     bankName: d.bank_name ? String(d.bank_name) : null,
+    // A fetch never created anything. A caller that deleted on the strength of
+    // this would be deleting something it merely looked at.
+    created: false,
   };
 }
 

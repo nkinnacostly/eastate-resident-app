@@ -152,6 +152,37 @@ try {
   ok(`a subaccount can be created — ${e.message}`, false);
 }
 
+// ─── Adopting, not duplicating ───────────────────────────────────────────────
+//
+// Flutterwave allows ONE subaccount per (account_number, bank) across the whole
+// merchant account. A second create returns 400 "already exists". That is the
+// NORMAL case for any account that has been used before -- a real estate hit it
+// on its very first onboarding, with two subaccounts already present for the
+// same bank account from an unrelated product.
+//
+// createSubaccount therefore adopts the existing one. The `created` flag is
+// what keeps that safe: the caller rolls a failed save back by deleting the
+// subaccount, and deleting one we merely adopted would destroy a payout
+// destination belonging to somebody else, unrecoverably.
+if (sub) {
+  const again = await fw.createSubaccount({
+    country: 'NG', bankCode: '044', accountNumber: '0690000032',
+    businessName: 'Second Attempt', businessEmail: 'dues-test@myestateaccess.com',
+    feePercent: 0,
+  });
+  ok('creating the same account twice adopts rather than duplicating', again.id === sub.id);
+  ok('the first one is flagged as ours to clean up', sub.created === true);
+  ok('...and the adopted one is NOT, so rollback will never delete it',
+     again.created === false);
+
+  // The property that actually protects the estate: no second subaccount was
+  // made, so the merchant account did not quietly grow a duplicate.
+  const list = await fw.getSubaccount(again.id);
+  ok('the adopted subaccount is the same live record', list?.ref === sub.ref);
+  // A fetch created nothing, so it must never claim otherwise.
+  ok('a fetched subaccount never claims to be ours', list?.created === false);
+}
+
 if (sub) {
   const fetched = await fw.getSubaccount(sub.id);
   ok('a subaccount can be fetched back by its numeric id', fetched?.ref === sub.ref);
