@@ -25,6 +25,20 @@ const mockCodesState = () => ({
   refresh: jest.fn(),
   mint: mockMint,
 });
+// Home reads dues status to decide whether to warn before a resident is
+// refused. Mocked like @/lib/codes so these tests do not drag in the real
+// Supabase client (and with it AsyncStorage) through lib/api.
+const mockDuesRefresh = jest.fn();
+let mockDues: Record<string, unknown> = {};
+jest.mock('@/lib/dues-status', () => ({
+  useDuesStatus: () => ({
+    overdue: [], outstanding: [], totalOwedMinor: 0, currency: 'NGN',
+    blocked: false, owesButNotBlocked: false, loading: false,
+    refresh: mockDuesRefresh,
+    ...mockDues,
+  }),
+}));
+
 jest.mock('@/lib/codes', () => ({
   useCodes: () => mockCodesState(),
   // Screens read through the focus-aware wrapper so switching tabs refetches.
@@ -128,5 +142,61 @@ describe('Home', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith('Could not generate a code', 'network down'),
     );
+  });
+});
+
+// ─── The reported dead end ───────────────────────────────────────────────────
+//
+// A resident with overdue dues pressed Generate and was told "Could not
+// generate a code. Please try again." Trying again could never have worked.
+// The refusal was correct; every word around it was wrong.
+describe('a refusal for unpaid dues', () => {
+  const generate = async () => {
+    render(<Home />);
+    fireEvent.press(screen.getByText('Generate code'));
+    // The delivery sheet is asked BEFORE anything is minted.
+    fireEvent.press(await screen.findByText(/^No$|Not a delivery|A visitor$/i));
+  };
+
+  it('says why, and offers the way out', async () => {
+    mockMint.mockResolvedValue({ result: 'dues_unpaid', code: null, expires_at: null });
+    await generate();
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    const [title, body, buttons] = (Alert.alert as jest.Mock).mock.calls.at(-1);
+
+    // Never the old wording. "Try again" invites a retry that cannot succeed.
+    expect(title).not.toMatch(/try again/i);
+    expect(title).toMatch(/dues/i);
+    expect(body).toMatch(/paused until your estate dues are paid/i);
+
+    // And the two reassurances, because being locked out of your own home is
+    // the fear this message exists to remove.
+    expect(body).toMatch(/own access to the estate is not affected/i);
+    expect(body).toMatch(/already shared still work/i);
+
+    // A route to paying, not just an apology.
+    const pay = buttons.find((b: any) => /owed|pay/i.test(b.text));
+    expect(pay).toBeTruthy();
+    pay.onPress();
+    expect(mockPush).toHaveBeenCalledWith('/dues');
+  });
+
+  it('refreshes dues so the banner is there once the alert is dismissed', async () => {
+    mockMint.mockResolvedValue({ result: 'dues_unpaid', code: null, expires_at: null });
+    await generate();
+    // Otherwise dismissing returns them to a home screen that still looks as
+    // though nothing is wrong.
+    await waitFor(() => expect(mockDuesRefresh).toHaveBeenCalled());
+  });
+
+  it('names an unexpected result instead of saying "try again"', async () => {
+    mockMint.mockResolvedValue({ result: 'code_collision', code: null, expires_at: null });
+    await generate();
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    const [, body] = (Alert.alert as jest.Mock).mock.calls.at(-1);
+    // A support message that quotes the actual result is actionable; "it
+    // didn't work" is not.
+    expect(body).toMatch(/code_collision/);
   });
 });

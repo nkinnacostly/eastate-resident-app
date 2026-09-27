@@ -4,6 +4,21 @@ import { Alert } from 'react-native';
 import Home from '@/app/(tabs)/index';
 import { DeliveryPrompt } from '@/components/delivery-prompt';
 
+// Home reads dues status to decide whether to warn before a resident is
+// refused. Mocked like @/lib/codes so these tests do not drag in the real
+// Supabase client (and with it AsyncStorage) through lib/api.
+const mockDuesRefresh = jest.fn();
+let mockDues: Record<string, unknown> = {};
+jest.mock('@/lib/dues-status', () => ({
+  useDuesStatus: () => ({
+    overdue: [], outstanding: [], totalOwedMinor: 0, currency: 'NGN',
+    blocked: false, owesButNotBlocked: false, loading: false,
+    refresh: mockDuesRefresh,
+    ...mockDues,
+  }),
+}));
+
+
 // jest.mock factories are hoisted, so anything they close over must be
 // `mock`-prefixed.
 const mockPush = jest.fn();

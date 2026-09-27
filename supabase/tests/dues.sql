@@ -784,3 +784,45 @@ select pg_temp.check('...and that person is the resident, with no pay link', (
    where charge_id = 'cc200000-0000-4000-8000-0000000000cc' limit 1));
 
 reset test.uid;
+
+-- ─── Does the app know whether arrears actually BLOCK this resident? ─────────
+--
+-- Added after a real report: a resident with overdue dues pressed Generate, was
+-- refused, and saw "Could not generate a code. Please try again." Trying again
+-- could never have worked, and nothing before that moment said anything was
+-- owed.
+--
+-- The app was not at fault -- my_dues did not tell it whether the estate
+-- enforces arrears, so it could not distinguish "you owe money, codes still
+-- work" from "codes are paused until you pay". Those need different words, and
+-- saying the wrong one is either a lie or a dead end.
+
+-- Estate 1 authorised enforcement earlier in this file; estate 2 did too. Turn
+-- estate 2 back off so both states are covered rather than assumed.
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000002', false);
+
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+select enforcement_on as e, is_overdue as o
+  from public.my_dues('e2000000-0000-4000-8000-000000000001') limit 1 \gset on_
+
+select pg_temp.check('my_dues reports enforcement ON where the estate authorised it',
+  :'on_e' = 't');
+
+set test.uid = 'c0000000-0000-4000-8000-000000000004';
+select enforcement_on as e
+  from public.my_dues('e2000000-0000-4000-8000-000000000002') limit 1 \gset off_
+
+select pg_temp.check('...and OFF where it did not', :'off_e' = 'f');
+
+-- The flag has to agree with the gate, or the app tells a resident one thing
+-- and mint_access_code does another -- which is exactly the mismatch that
+-- produced an unexplained refusal.
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+select pg_temp.check('the flag agrees with what the gate actually does', (
+  select (:'on_e' = 't' and :'on_o' = 't')
+     =  public.dues_in_arrears('a2000000-0000-4000-8000-000000000001')));
+
+-- Restore, so anything appended after this sees the state the file set up.
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000002', true, 'House rules 7(b)');

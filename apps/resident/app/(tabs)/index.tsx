@@ -5,15 +5,18 @@ import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { DeliveryPrompt } from '@/components/delivery-prompt';
+import { DuesBanner } from '@/components/dues-banner';
 import { Card, Chip, CodeText, Eyebrow, PrimaryButton, Screen } from '@/components/ui';
 import type { DeliveryDetails } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCodesOnFocus } from '@/lib/codes';
+import { useDuesStatus } from '@/lib/dues-status';
 import { madeAt, timeLeft } from '@/lib/format';
 
 export default function Home() {
   const { session, memberships, activeEstateId } = useAuth();
   const { live, loading, refresh, mint } = useCodesOnFocus();
+  const dues = useDuesStatus(activeEstateId);
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
   const router = useRouter();
@@ -54,11 +57,30 @@ export default function Home() {
         case 'not_a_resident':
           Alert.alert('No access', 'You are not an active resident at this estate.');
           break;
-        // Sent to the screen that fixes it rather than shown a dead end. An
-        // alert saying "you cannot do this" with no route to paying is the
-        // version of this feature residents would rightly resent.
+        // Say WHY, then offer the way out. Routing straight to /dues was the
+        // earlier behaviour and it was still a dead end of a different kind:
+        // the resident pressed Generate and silently landed on a screen they
+        // did not ask for, with nothing connecting the two. Being moved
+        // without explanation reads as a bug, not a rule.
+        //
+        // The banner on the home screen means most residents never reach this
+        // at all; this is the backstop for the one who was already mid-tap
+        // when the charge fell due.
         case 'dues_unpaid':
-          router.push('/dues');
+          // Refreshed first so the banner is already there behind the alert —
+          // dismissing it must not return them to a screen that still looks
+          // like nothing is wrong.
+          void dues.refresh();
+          Alert.alert(
+            'Your dues are unpaid',
+            'New visitor codes are paused until your estate dues are paid. Your own '
+              + 'access to the estate is not affected, and codes you have already '
+              + 'shared still work.',
+            [
+              { text: 'Not now', style: 'cancel' },
+              { text: 'See what is owed', onPress: () => router.push('/dues') },
+            ],
+          );
           break;
         case 'note_too_long':
           Alert.alert(
@@ -66,8 +88,16 @@ export default function Home() {
             'Shorten the delivery instructions and try again.',
           );
           break;
+        // Only genuinely unexpected results land here now. It names the
+        // result so a support message says something actionable instead of
+        // "it didn't work" — the old wording invited a resident to retry
+        // something that could never succeed.
         default:
-          Alert.alert('Could not generate a code', 'Please try again.');
+          Alert.alert(
+            'Could not generate a code',
+            `The estate system returned "${res.result}". If this keeps happening, `
+              + 'show this message to your estate admin.',
+          );
       }
     } catch (e) {
       setAsking(false);
@@ -93,6 +123,11 @@ export default function Home() {
           </View>
           <View className="h-11 w-11 rounded-full bg-hair" />
         </View>
+
+        {/* Above the Generate card, deliberately. Below it, the resident taps
+            first and reads second — which is precisely the order that produced
+            an unexplained refusal. */}
+        <DuesBanner status={dues} />
 
         <Card className="mt-6 bg-ink p-5">
           <Eyebrow className="text-lime">EXPECTING SOMEONE?</Eyebrow>

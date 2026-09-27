@@ -1375,6 +1375,7 @@ export type Database = {
           charge_id: string
           currency: string
           due_on: string
+          enforcement_on: boolean
           is_overdue: boolean
           landlord_email: string
           landlord_name: string

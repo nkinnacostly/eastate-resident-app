@@ -2,6 +2,7 @@ import { formatMoney } from '@estate/core';
 import { useCallback, useEffect, useState } from 'react';
 
 import { SettlementCard } from '../components/settlement-card';
+import { Toast } from '../components/toast';
 import { Button, Card, Chip, Empty, HeadActions, PageHead, Stat } from '../components/ui';
 import {
   getDuesConfig,
@@ -34,6 +35,7 @@ export function Dues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [basis, setBasis] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
   // Whether the estate has somewhere for the money to land. Billing cannot be
   // switched on without it, so the control below is disabled rather than
   // letting the admin press Save and collect a constraint error.
@@ -82,6 +84,11 @@ export function Dues() {
     try {
       await setDuesEnforcement(activeEstateId, on, basis);
       await load();
+      setNotice(
+        on
+          ? 'Enforcement on — residents with overdue dues cannot generate new codes.'
+          : 'Enforcement off — dues are still billed, but nobody is restricted.',
+      );
     } catch (e) {
       setError((e as Error).message);
     }
@@ -101,15 +108,26 @@ export function Dues() {
       // Raise this month straight away. An estate configured on the 8th would
       // otherwise show an empty ledger until the 1st, which reads as broken on
       // the very screen the admin just used.
-      if (draft.mode !== 'none') await raiseCurrentDues(activeEstateId);
+      // How many charges this raised is the honest confirmation. "Saved" alone
+      // was the old behaviour and it said nothing at all -- the admin pressed
+      // Save, the page did not visibly change, and there was no way to tell a
+      // successful save from a silently swallowed error.
+      let raised = 0;
+      if (draft.mode !== 'none') raised = await raiseCurrentDues(activeEstateId);
       await load();
+      setNotice(
+        draft.mode === 'none'
+          ? 'Saved — this estate no longer bills dues through the app.'
+          : raised > 0
+            ? `Saved. ${raised} ${raised === 1 ? 'charge' : 'charges'} raised for this month.`
+            : 'Saved. This month was already billed, so no new charges were raised.',
+      );
     } catch (e) {
       setError((e as Error).message);
     }
   };
 
   const [reminding, setReminding] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const remind = async (charge: AdminDuesCharge) => {
     setReminding(charge.id);
@@ -139,6 +157,7 @@ export function Dues() {
     try {
       await waiveDuesCharge(charge.id, reason.trim());
       await load();
+      setNotice(`Waived ${formatMoney(charge.amount_minor, charge.currency)} for ${monthLabel(charge.period)}.`);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -164,11 +183,11 @@ export function Dues() {
         </div>
       ) : null}
 
-      {notice ? (
-        <div className="mt-5 rounded-[14px] bg-field px-4 py-3 text-[13px] font-semibold text-muted">
-          {notice}
-        </div>
-      ) : null}
+      {/* A viewport-fixed toast, NOT a block at the top of the page. The
+          Remind buttons sit at the bottom of the charges table, and a
+          confirmation rendered up here was simply never seen -- so the admin
+          pressed again, sending a second email. */}
+      <Toast message={notice} onDone={() => setNotice(null)} />
 
       <div className="mt-6 grid grid-cols-3 gap-3">
         <Stat label="OUTSTANDING" value={formatMoney(owed, currency)} />
@@ -298,9 +317,11 @@ export function Dues() {
               {enforcing ? 'On' : 'Off — dues are billed, nobody is restricted'}
             </div>
             <p className="mt-2 max-w-prose text-[12.5px] leading-[19px] text-muted">
-              When on, a resident with an overdue charge cannot generate new visitor codes. Their
-              own access to the estate is never affected, codes already issued still work, and a
-              guard can still admit a visitor at the gate.
+              <strong className="text-ink">This applies automatically.</strong> Once on, any
+              resident whose dues go overdue is paused as soon as the grace period ends, and
+              unpaused the moment they pay — there is nothing to switch on per resident. Their own
+              access to the estate is never affected, codes already issued still work, and a guard
+              can still admit a visitor at the gate.
             </p>
             <p className="mt-2 max-w-prose text-[12.5px] leading-[19px] text-muted">
               Withholding a service over unpaid levies is a decision your scheme&apos;s rules have

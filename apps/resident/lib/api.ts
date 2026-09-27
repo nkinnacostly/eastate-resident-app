@@ -195,6 +195,15 @@ export interface DuesCharge {
   landlord_name: string | null;
   landlord_phone: string | null;
   landlord_email: string | null;
+  /**
+   * Whether this estate has authorised withholding code generation for arrears.
+   *
+   * Not "am I blocked" -- that is this AND is_overdue. Kept separate because
+   * the two states need different words: an estate can bill dues and restrict
+   * nobody, and telling that resident "codes are paused" is a lie their next
+   * tap disproves.
+   */
+  enforcement_on: boolean;
 }
 
 export async function listMyDues(estateId: string): Promise<DuesCharge[]> {
