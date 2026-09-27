@@ -658,6 +658,8 @@ export type Database = {
         Row: {
           created_at: string
           deactivated_at: string | null
+          dues_amount_minor: number | null
+          dues_payer: Database["public"]["Enums"]["house_dues_payer"] | null
           estate_id: string
           house_code: string
           house_number: string
@@ -670,6 +672,8 @@ export type Database = {
         Insert: {
           created_at?: string
           deactivated_at?: string | null
+          dues_amount_minor?: number | null
+          dues_payer?: Database["public"]["Enums"]["house_dues_payer"] | null
           estate_id: string
           house_code?: string
           house_number: string
@@ -682,6 +686,8 @@ export type Database = {
         Update: {
           created_at?: string
           deactivated_at?: string | null
+          dues_amount_minor?: number | null
+          dues_payer?: Database["public"]["Enums"]["house_dues_payer"] | null
           estate_id?: string
           house_code?: string
           house_number?: string
@@ -1191,6 +1197,8 @@ export type Database = {
       }
       create_house: {
         Args: {
+          p_dues_amount_minor?: number
+          p_dues_payer?: Database["public"]["Enums"]["house_dues_payer"]
           p_estate_id: string
           p_house_number: string
           p_landlord_email?: string
@@ -1312,6 +1320,15 @@ export type Database = {
       has_membership: {
         Args: { p_estate_id: string; p_role?: string }
         Returns: boolean
+      }
+      house_dues_terms: {
+        Args: { p_house_id: string }
+        Returns: {
+          amount_minor: number
+          currency: string
+          grace_days: number
+          payer: Database["public"]["Enums"]["house_dues_payer"]
+        }[]
       }
       ingest_verification_events: {
         Args: { p_estate_id: string; p_events: Json }
@@ -1537,6 +1554,7 @@ export type Database = {
         Returns: undefined
       }
       remind_dues_charge: { Args: { p_charge_id: string }; Returns: number }
+      remind_house_dues: { Args: { p_house_id: string }; Returns: number }
       request_house_access: {
         Args: { p_estate_code: string; p_house_code: string }
         Returns: {
@@ -1600,6 +1618,14 @@ export type Database = {
           p_estate_id: string
           p_subaccount_id: string
           p_subaccount_ref: string
+        }
+        Returns: undefined
+      }
+      set_house_dues: {
+        Args: {
+          p_amount_minor?: number
+          p_house_id: string
+          p_payer?: Database["public"]["Enums"]["house_dues_payer"]
         }
         Returns: undefined
       }
@@ -1690,6 +1716,7 @@ export type Database = {
         | "manual"
       event_outcome: "pending" | "admitted" | "collision" | "rejected"
       event_source: "online" | "offline_replay"
+      house_dues_payer: "landlord" | "residents"
       join_request_status: "pending" | "approved" | "declined"
       membership_role: "resident" | "guard" | "admin"
       reject_reason: "unknown_code" | "expired" | "already_used" | "revoked"
@@ -1840,6 +1867,7 @@ export const Constants = {
       ],
       event_outcome: ["pending", "admitted", "collision", "rejected"],
       event_source: ["online", "offline_replay"],
+      house_dues_payer: ["landlord", "residents"],
       join_request_status: ["pending", "approved", "declined"],
       membership_role: ["resident", "guard", "admin"],
       reject_reason: ["unknown_code", "expired", "already_used", "revoked"],

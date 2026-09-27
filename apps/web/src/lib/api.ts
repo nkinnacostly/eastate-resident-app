@@ -241,20 +241,32 @@ export async function deactivateMembership(membershipId: string): Promise<void> 
   if (error) throw new Error(error.message);
 }
 
+/** Who settles a house's dues. Null follows the estate's own billing mode. */
+export type HouseDuesPayer = 'landlord' | 'residents';
+
 export interface HouseRow {
   id: string;
   house_code: string;
   house_number: string;
   landlord_name: string | null;
   landlord_phone: string | null;
+  landlord_email: string | null;
   is_active: boolean;
   residents: number;
+  /** Null means this house follows the estate. Not a copy of it — a link. */
+  dues_payer: HouseDuesPayer | null;
+  /** Per RESIDENT when dues_payer is 'residents', never a total to split. */
+  dues_amount_minor: number | null;
 }
 
 export async function listHouses(estateId: string): Promise<HouseRow[]> {
   const { data, error } = await supabase
     .from('houses')
-    .select('id, house_code, house_number, landlord_name, landlord_phone, is_active')
+    // ONE string literal, not a concatenation. supabase-js infers the row type
+    // from the select text at compile time, and a built-up string defeats that
+    // entirely -- `data` degrades to GenericStringError[] and every field on it
+    // stops existing.
+    .select('id, house_code, house_number, landlord_name, landlord_phone, landlord_email, is_active, dues_payer, dues_amount_minor')
     .eq('estate_id', estateId)
     .order('house_number', { ascending: true });
   if (error) throw new Error(error.message);
@@ -280,12 +292,24 @@ export async function createHouse(
   houseNumber: string,
   landlordName: string,
   landlordPhone: string,
+  /**
+   * The landlord's email, and it matters more than it looks.
+   *
+   * It was never collected here, and dues reminders to a landlord are EMAIL —
+   * so every landlord-billed house added through this form was unreachable by
+   * the one mechanism built to chase it. The bill would simply go nowhere.
+   */
+  landlordEmail = '',
+  dues?: { payer: HouseDuesPayer | null; amountMinor: number | null },
 ): Promise<{ house_code: string; house_number: string }> {
   const { data, error } = await supabase.rpc('create_house', {
     p_estate_id: estateId,
     p_house_number: houseNumber,
     p_landlord_name: landlordName || undefined,
     p_landlord_phone: landlordPhone || undefined,
+    p_landlord_email: landlordEmail || undefined,
+    p_dues_payer: dues?.payer ?? undefined,
+    p_dues_amount_minor: dues?.amountMinor ?? undefined,
   });
   if (error) throw new Error(error.message);
   const row = Array.isArray(data) ? data[0] : data;
@@ -702,4 +726,46 @@ export async function saveEstateSettlement(opts: {
 export async function clearEstateSettlement(estateId: string): Promise<void> {
   const { error } = await supabase.rpc('clear_estate_settlement', { p_estate_id: estateId });
   if (error) throw new Error(error.message);
+}
+
+// ─── A house's own dues terms ────────────────────────────────────────────────
+
+/**
+ * Change who pays for one house, and how much.
+ *
+ * Passing nulls clears the override and the house follows the estate again —
+ * which is a link, not a copy, so a later change to the estate's rate reaches
+ * it. Copying at the time of setting would quietly freeze a house at whatever
+ * the estate charged that month.
+ */
+export async function setHouseDues(
+  houseId: string,
+  payer: HouseDuesPayer | null,
+  amountMinor: number | null,
+): Promise<void> {
+  const { error } = await supabase.rpc('set_house_dues', {
+    p_house_id: houseId,
+    p_payer: payer ?? undefined,
+    p_amount_minor: amountMinor ?? undefined,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Chase a whole house in one press.
+ *
+ * Where the landlord pays there is one charge. Where the RESIDENTS pay there
+ * is a charge each, and an admin would otherwise have to find and press every
+ * resident's row — tedious for three, half-done for six. Each person is
+ * reminded about their own charge; naming a housemate's debt would share it
+ * with people it does not belong to.
+ *
+ * Returns how many people were actually written to, which is the only honest
+ * number: a house with no landlord email and no resident accounts reminds
+ * nobody.
+ */
+export async function remindHouseDues(houseId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('remind_house_dues', { p_house_id: houseId });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
 }
