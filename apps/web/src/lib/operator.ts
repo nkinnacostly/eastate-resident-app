@@ -143,6 +143,10 @@ export async function onboardEstate(input: {
   contact_info?: string;
   admin_email: string;
   admin_name?: string;
+  /** Chosen at onboarding because it decides what a blocked resident is shown. */
+  dues_billing_mode?: 'none' | 'per_house' | 'per_resident';
+  dues_amount_minor?: number;
+  dues_currency?: string;
 }): Promise<OnboardResult> {
   return callEdgeFunction<OnboardResult>('onboard-estate', input, describe);
 }

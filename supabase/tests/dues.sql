@@ -570,3 +570,102 @@ select pg_temp.check('the arrears predicate is not callable by anon', (
   select not has_function_privilege('anon', 'public.dues_in_arrears(uuid)', 'execute')));
 select pg_temp.check('...nor by a signed-in user', (
   select not has_function_privilege('authenticated', 'public.dues_in_arrears(uuid)', 'execute')));
+
+-- ─── Who does a resident chase? ──────────────────────────────────────────────
+--
+-- "Your dues are unpaid" is useless to a tenant in a house-billed estate: they
+-- cannot settle a bill they were never given. The app must be able to say who
+-- to call, so my_dues carries the landlord on a house charge.
+
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+select billing_mode as m, landlord_email as le, subject as s
+  from public.my_dues('e2000000-0000-4000-8000-000000000001') limit 1 \gset ll_
+
+select pg_temp.check('a house charge reports the per_house mode', :'ll_m' = 'per_house');
+select pg_temp.check('...and carries the landlord to contact', :'ll_le' = 'landlord@example.com');
+select pg_temp.check('...and is labelled as a house charge', :'ll_s' = 'house');
+
+-- A resident-billed estate has no landlord in the arrangement, and must not
+-- invent one.
+set test.uid = 'c0000000-0000-4000-8000-000000000004';
+-- coalesce, because psql UNSETS a variable when the column is NULL rather than
+-- setting it empty -- so an unguarded :'rr_le' is left unsubstituted and the
+-- statement fails to parse.
+select billing_mode as m, coalesce(landlord_email, '') as le, subject as s
+  from public.my_dues('e2000000-0000-4000-8000-000000000002') limit 1 \gset rr_
+
+select pg_temp.check('a resident charge reports the per_resident mode', :'rr_m' = 'per_resident');
+select pg_temp.check('...and carries no landlord', :'rr_le' = '');
+select pg_temp.check('...and is labelled as a resident charge', :'rr_s' = 'resident');
+
+-- A house with no landlord recorded must still return the charge. The app
+-- branches on the mode, not on the contact being present, and falls back to
+-- the estate office.
+set test.uid = 'c0000000-0000-4000-8000-000000000003';
+select count(*) as n from public.my_dues('e2000000-0000-4000-8000-000000000001') \gset nolord_
+select pg_temp.check('a house with no landlord on record still returns its charges', :nolord_n > 0);
+
+-- A resident of one estate must not see another estate's dues through it.
+do $$
+begin
+  perform * from public.my_dues('e2000000-0000-4000-8000-000000000002');
+  raise exception 'FAIL  a non-resident read another estate''s dues';
+exception when insufficient_privilege then
+  raise notice 'PASS  my_dues refuses an estate you do not live at';
+end $$;
+
+reset test.uid;
+
+-- ─── Configuring dues ────────────────────────────────────────────────────────
+
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+do $$
+begin
+  perform public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'per_resident', 100000, 'NGN');
+  raise exception 'FAIL  a resident reconfigured their estate''s dues';
+exception when insufficient_privilege then
+  raise notice 'PASS  only an admin may configure dues';
+end $$;
+
+set test.uid = 'c0000000-0000-4000-8000-00000000000a';
+do $$
+begin
+  perform public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'per_house', null, 'NGN');
+  raise exception 'FAIL  a billing mode with no amount was accepted';
+exception when sqlstate '22023' then
+  raise notice 'PASS  a billing mode needs an amount';
+end $$;
+
+do $$
+begin
+  perform public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'per_house', 100000, 'USD');
+  raise exception 'FAIL  an unsupported currency was accepted';
+exception when sqlstate '22023' then
+  raise notice 'PASS  an unsupported currency is refused';
+end $$;
+
+select public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'per_house', 3000000, 'NGN', 10);
+select pg_temp.check('the configuration is saved', (
+  select dues_billing_mode = 'per_house' and dues_amount_minor = 3000000
+     and dues_currency = 'NGN' and dues_grace_days = 10
+  from public.estates where id = 'e2000000-0000-4000-8000-000000000001'));
+
+-- Switching off must clear the money. A stale amount left behind would
+-- reappear silently if billing were switched on again months later, at a rate
+-- nobody agreed to.
+select public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'none');
+select pg_temp.check('switching billing off clears the amount', (
+  select dues_amount_minor is null and dues_currency is null
+  from public.estates where id = 'e2000000-0000-4000-8000-000000000001'));
+
+-- ...and with billing off, nobody is in arrears whatever they owed before.
+select pg_temp.check('no billing mode means nobody is blocked', (
+  select not public.dues_in_arrears('a2000000-0000-4000-8000-000000000001')));
+
+select public.set_dues_config('e2000000-0000-4000-8000-000000000001', 'per_house', 2500000, 'NGN', 7);
+
+-- Raising the first month on demand: an estate configured on the 8th would
+-- otherwise show nothing until the 1st, which reads as "it is not working".
+select public.raise_current_dues('e2000000-0000-4000-8000-000000000001') as n \gset first_
+select pg_temp.check('raising the current month is idempotent', (
+  select public.raise_current_dues('e2000000-0000-4000-8000-000000000001') = 0));

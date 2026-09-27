@@ -5,6 +5,8 @@ import { Button, Card, Chip, Empty, HeadActions, PageHead, Stat } from '../compo
 import {
   getDuesConfig,
   listDuesCharges,
+  raiseCurrentDues,
+  setDuesConfig,
   setDuesEnforcement,
   waiveDuesCharge,
   type AdminDuesCharge,
@@ -30,6 +32,15 @@ export function Dues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [basis, setBasis] = useState('');
+  // Kept in MAJOR units in the form and converted on save. An admin types
+  // 25000, not 2500000 -- and money is stored as integer minor units precisely
+  // so the conversion happens once, here, rather than everywhere.
+  const [draft, setDraft] = useState<{
+    mode: DuesConfig['dues_billing_mode'];
+    amount: string;
+    currency: string;
+    grace: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (!activeEstateId) return;
@@ -42,6 +53,12 @@ export function Dues() {
       setConfig(c);
       setRows(r);
       setBasis(c.dues_enforcement_basis ?? '');
+      setDraft({
+        mode: c.dues_billing_mode,
+        amount: c.dues_amount_minor ? String(c.dues_amount_minor / 100) : '',
+        currency: c.dues_currency ?? 'NGN',
+        grace: String(c.dues_grace_days),
+      });
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -58,6 +75,27 @@ export function Dues() {
     if (!activeEstateId) return;
     try {
       await setDuesEnforcement(activeEstateId, on, basis);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const saveConfig = async () => {
+    if (!activeEstateId || !draft) return;
+    try {
+      const minor = draft.mode === 'none' ? null : Math.round(Number(draft.amount) * 100);
+      await setDuesConfig(
+        activeEstateId,
+        draft.mode,
+        minor,
+        draft.mode === 'none' ? null : draft.currency,
+        Number(draft.grace),
+      );
+      // Raise this month straight away. An estate configured on the 8th would
+      // otherwise show an empty ledger until the 1st, which reads as broken on
+      // the very screen the admin just used.
+      if (draft.mode !== 'none') await raiseCurrentDues(activeEstateId);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -104,14 +142,85 @@ export function Dues() {
       </div>
 
       <Card className="mt-6 p-5">
-        <div className="text-[10.5px] font-extrabold tracking-label text-muted">BILLING</div>
-        <div className="mt-2 text-[14px] font-bold">
-          {config ? MODE_COPY[config.dues_billing_mode] : '—'}
+        <div className="text-[10.5px] font-extrabold tracking-label text-muted">
+          WHO PAYS THE DUES
         </div>
-        {config?.dues_amount_minor ? (
-          <div className="mt-1 text-[13px] text-muted">
-            {formatMoney(config.dues_amount_minor, config.dues_currency ?? 'NGN')} a month, due{' '}
-            {config.dues_grace_days} days after the 1st.
+        <p className="mt-2 max-w-prose text-[12.5px] leading-[19px] text-muted">
+          This decides who is billed and, in the app, what a resident is told when dues are
+          overdue. Bill the house and a tenant is shown their landlord&apos;s contact details to
+          chase; bill the resident and they are shown a button to pay.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold text-muted">Billed to</span>
+            <select
+              value={draft?.mode ?? 'none'}
+              onChange={(e) =>
+                setDraft((d) =>
+                  d ? { ...d, mode: e.target.value as DuesConfig['dues_billing_mode'] } : d,
+                )
+              }
+              className="h-11 rounded-[14px] bg-field px-3 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-lime"
+            >
+              <option value="none">Not collecting dues</option>
+              <option value="per_house">The landlord / owner of each house</option>
+              <option value="per_resident">Each resident</option>
+            </select>
+          </label>
+
+          {draft?.mode !== 'none' ? (
+            <>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold text-muted">Currency</span>
+                <select
+                  value={draft?.currency ?? 'NGN'}
+                  onChange={(e) => setDraft((d) => (d ? { ...d, currency: e.target.value } : d))}
+                  className="h-11 rounded-[14px] bg-field px-3 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-lime"
+                >
+                  <option value="NGN">NGN</option>
+                  <option value="ZAR">ZAR</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold text-muted">Amount a month</span>
+                <input
+                  value={draft?.amount ?? ''}
+                  onChange={(e) => setDraft((d) => (d ? { ...d, amount: e.target.value } : d))}
+                  inputMode="decimal"
+                  placeholder="25000"
+                  className="h-11 w-36 rounded-[14px] bg-field px-4 text-[13px] outline-none focus:ring-2 focus:ring-lime"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold text-muted">Days to pay</span>
+                <input
+                  value={draft?.grace ?? '7'}
+                  onChange={(e) => setDraft((d) => (d ? { ...d, grace: e.target.value } : d))}
+                  inputMode="numeric"
+                  className="h-11 w-24 rounded-[14px] bg-field px-4 text-[13px] outline-none focus:ring-2 focus:ring-lime"
+                />
+              </label>
+            </>
+          ) : null}
+
+          <Button
+            onClick={() => void saveConfig()}
+            disabled={
+              !draft ||
+              (draft.mode !== 'none' && (!Number(draft.amount) || Number(draft.amount) <= 0))
+            }
+          >
+            Save
+          </Button>
+        </div>
+
+        {config ? (
+          <div className="mt-3 text-[12.5px] text-muted">
+            Now: {MODE_COPY[config.dues_billing_mode]}
+            {config.dues_amount_minor
+              ? ` · ${formatMoney(config.dues_amount_minor, config.dues_currency ?? 'NGN')} a month, due ${config.dues_grace_days} days after the 1st`
+              : ''}
           </div>
         ) : null}
       </Card>

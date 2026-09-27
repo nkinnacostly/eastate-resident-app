@@ -1222,6 +1222,9 @@ export type Database = {
           currency: string
           due_on: string
           is_overdue: boolean
+          landlord_email: string
+          landlord_name: string
+          landlord_phone: string
           pay_token: string
           period: string
           status: Database["public"]["Enums"]["dues_charge_status"]
@@ -1341,6 +1344,7 @@ export type Database = {
         Returns: string
       }
       purge_password_reset_attempts: { Args: never; Returns: undefined }
+      raise_current_dues: { Args: { p_estate_id: string }; Returns: number }
       record_psira_registration: {
         Args: {
           p_expires_at?: string
@@ -1386,6 +1390,16 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      set_dues_config: {
+        Args: {
+          p_amount_minor?: number
+          p_billing_mode: Database["public"]["Enums"]["dues_billing_mode"]
+          p_currency?: string
+          p_estate_id: string
+          p_grace_days?: number
+        }
+        Returns: undefined
       }
       set_dues_enforcement: {
         Args: { p_authorised: boolean; p_basis?: string; p_estate_id: string }

@@ -76,7 +76,21 @@ export function Estates() {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: '', address: '', adminName: '', adminEmail: '' });
+  const BLANK = {
+    name: '',
+    address: '',
+    adminName: '',
+    adminEmail: '',
+    // Dues are chosen here because who pays decides what a resident sees the
+    // first time they are blocked: their landlord's number to chase, or a Pay
+    // button. 'none' is a real and common answer, and the estate admin can
+    // change it later on the Dues page. Amount is in MAJOR units -- the
+    // operator types 25000, not 2500000.
+    duesMode: 'none' as 'none' | 'per_house' | 'per_resident',
+    duesAmount: '',
+    duesCurrency: 'NGN',
+  };
+  const [form, setForm] = useState(BLANK);
   const [result, setResult] = useState<OnboardResult | null>(null);
 
   const load = useCallback(async () => {
@@ -108,9 +122,13 @@ export function Estates() {
         address: form.address.trim() || undefined,
         admin_email: form.adminEmail.trim(),
         admin_name: form.adminName.trim() || undefined,
+        dues_billing_mode: form.duesMode,
+        dues_amount_minor:
+          form.duesMode === 'none' ? undefined : Math.round(Number(form.duesAmount) * 100),
+        dues_currency: form.duesMode === 'none' ? undefined : form.duesCurrency,
       });
       setResult(res);
-      setForm({ name: '', address: '', adminName: '', adminEmail: '' });
+      setForm(BLANK);
       setOpen(false);
       await load();
     } catch (e) {
@@ -186,6 +204,45 @@ export function Estates() {
                 className={field}
               />
             </label>
+            <label className={label}>
+              ESTATE DUES
+              <select
+                value={form.duesMode}
+                onChange={(e) =>
+                  setForm({ ...form, duesMode: e.target.value as typeof form.duesMode })
+                }
+                className={field}
+              >
+                <option value="none">Not collected through the app</option>
+                <option value="per_house">Paid by the landlord / owner of each house</option>
+                <option value="per_resident">Paid by each resident</option>
+              </select>
+            </label>
+            {form.duesMode !== 'none' ? (
+              <div className="flex gap-3">
+                <label className={`${label} flex-none`}>
+                  CURRENCY
+                  <select
+                    value={form.duesCurrency}
+                    onChange={(e) => setForm({ ...form, duesCurrency: e.target.value })}
+                    className={field}
+                  >
+                    <option value="NGN">NGN</option>
+                    <option value="ZAR">ZAR</option>
+                  </select>
+                </label>
+                <label className={`${label} flex-1`}>
+                  AMOUNT A MONTH
+                  <input
+                    value={form.duesAmount}
+                    onChange={(e) => setForm({ ...form, duesAmount: e.target.value })}
+                    inputMode="decimal"
+                    placeholder="25000"
+                    className={field}
+                  />
+                </label>
+              </div>
+            ) : null}
             <label className={label}>
               ESTATE ADMIN EMAIL
               <input

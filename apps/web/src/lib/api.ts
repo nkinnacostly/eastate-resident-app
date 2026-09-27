@@ -539,3 +539,35 @@ export async function setDuesEnforcement(
   });
   if (error) throw new Error(error.message);
 }
+
+/**
+ * Who is billed and how much.
+ *
+ * Deliberately separate from setDuesEnforcement. Choosing a billing model is an
+ * administrative decision an estate makes freely; withholding a service over
+ * arrears is a legal one it has to justify. One call that did both would let
+ * enforcement switch on as a side effect of editing an amount.
+ */
+export async function setDuesConfig(
+  estateId: string,
+  mode: DuesConfig['dues_billing_mode'],
+  amountMinor: number | null,
+  currency: string | null,
+  graceDays: number,
+): Promise<void> {
+  const { error } = await supabase.rpc('set_dues_config', {
+    p_estate_id: estateId,
+    p_billing_mode: mode,
+    p_amount_minor: amountMinor ?? undefined,
+    p_currency: currency ?? undefined,
+    p_grace_days: graceDays,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Raise this month's charges now, rather than waiting for the 1st. */
+export async function raiseCurrentDues(estateId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('raise_current_dues', { p_estate_id: estateId });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}

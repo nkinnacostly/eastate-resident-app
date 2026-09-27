@@ -184,6 +184,17 @@ export interface DuesCharge {
    * routing them through the landlord would serve nobody.
    */
   pay_token: string;
+  /**
+   * Who to chase when the landlord is the one billed.
+   *
+   * Null in a per_resident estate, and null for a house whose landlord was
+   * never recorded -- the screen branches on billing_mode, not on these being
+   * present, so a missing landlord falls back to the estate office rather than
+   * rendering blanks.
+   */
+  landlord_name: string | null;
+  landlord_phone: string | null;
+  landlord_email: string | null;
 }
 
 export async function listMyDues(estateId: string): Promise<DuesCharge[]> {

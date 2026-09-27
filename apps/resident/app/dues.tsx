@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { LandlordCard } from '@/components/landlord-card';
 import { Card, Chip, Eyebrow, PrimaryButton, Screen, SecondaryButton } from '@/components/ui';
 import { listMyDues, startDuesPayment, type DuesCharge } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -25,7 +26,7 @@ function periodLabel(iso: string): string {
 }
 
 export default function Dues() {
-  const { activeEstateId } = useAuth();
+  const { activeEstateId, memberships } = useAuth();
   const router = useRouter();
   const [rows, setRows] = useState<DuesCharge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +88,14 @@ export default function Dues() {
   const overdue = outstanding.filter((r) => r.is_overdue);
   const owed = outstanding.reduce((n, r) => n + r.amount_minor, 0);
   const currency = rows[0]?.currency ?? 'NGN';
-  const perHouse = rows[0]?.subject === 'house';
+
+  // WHO PAYS decides the whole screen. In a house-billed estate the resident
+  // cannot settle a bill they were never given, so leading with a Pay button
+  // would be telling them to do something that is not theirs to do.
+  const landlordPays = rows[0]?.billing_mode === 'per_house';
+  const estateName =
+    memberships.find((m) => m.estate_id === activeEstateId)?.estate_name ?? 'Your estate';
+  const blocking = overdue[0] ?? null;
 
   return (
     <Screen>
@@ -98,15 +106,29 @@ export default function Dues() {
       >
         <Text className="mt-3 font-jk-xb text-display tracking-tight text-ink">Estate dues</Text>
 
-        {/* The reason they are here, said first and without euphemism. */}
-        {overdue.length > 0 ? (
+        {/* The reason they are here, said first and without euphemism -- and
+            phrased differently depending on whether they can do anything. */}
+        {blocking ? (
           <Card className="mt-4 bg-ink p-4">
             <Eyebrow className="text-lime">CODES PAUSED</Eyebrow>
             <Text className="mt-2.5 font-jk text-sub text-canvas/75">
-              You cannot generate new visitor codes until this is settled. Your own access to the
-              estate is unaffected, and a guard can still let a visitor in at the gate.
+              {landlordPays
+                ? 'Your house has unpaid estate dues, so new visitor codes are paused. These dues are the owner\u2019s to pay, not yours.'
+                : 'You cannot generate new visitor codes until your dues are settled.'}
+              {' '}Your own access to the estate is unaffected, and a guard can still let a visitor
+              in at the gate.
             </Text>
           </Card>
+        ) : null}
+
+        {/* The action that actually resolves it, when it is not paying. */}
+        {blocking && landlordPays ? (
+          <LandlordCard
+            name={blocking.landlord_name}
+            phone={blocking.landlord_phone}
+            email={blocking.landlord_email}
+            estateName={estateName}
+          />
         ) : null}
 
         {outstanding.length > 0 ? (
@@ -115,10 +137,10 @@ export default function Dues() {
             <Text className="mt-1.5 font-jk-xb text-[32px] tracking-tight text-ink">
               {formatMoney(owed, currency)}
             </Text>
-            {perHouse ? (
+            {landlordPays ? (
               <Text className="mt-2 font-jk text-sub text-muted">
-                Billed to your house, so anyone can settle it — you, your landlord, or whoever
-                normally pays. Once it is paid, everyone in the house can generate codes again.
+                Billed to your house rather than to you. Anyone can settle it — once it is paid,
+                everyone in the house can generate codes again.
               </Text>
             ) : null}
           </Card>
@@ -151,21 +173,40 @@ export default function Dues() {
             </View>
 
             {r.status === 'open' ? (
-              <>
+              r.billing_mode === 'per_house' ? (
+                // Handing the bill over is the primary action here. Paying it
+                // stays available and secondary, because a tenant often does
+                // settle and square up privately -- but it is not what the app
+                // should be asking them to do.
+                <>
+                  <PrimaryButton
+                    title="Send this bill to the landlord"
+                    onPress={() => void shareLink(r)}
+                    className="mt-3.5"
+                  />
+                  <SecondaryButton
+                    title={
+                      paying === r.charge_id
+                        ? 'Opening…'
+                        : `Pay it yourself · ${formatMoney(r.amount_minor, r.currency)}`
+                    }
+                    onPress={() => void pay(r)}
+                    disabled={paying !== null}
+                    className="mt-2.5"
+                  />
+                </>
+              ) : (
                 <PrimaryButton
-                  title={paying === r.charge_id ? 'Opening…' : `Pay ${formatMoney(r.amount_minor, r.currency)}`}
+                  title={
+                    paying === r.charge_id
+                      ? 'Opening…'
+                      : `Pay ${formatMoney(r.amount_minor, r.currency)}`
+                  }
                   onPress={() => void pay(r)}
                   disabled={paying !== null}
                   className="mt-3.5"
                 />
-                {r.subject === 'house' ? (
-                  <SecondaryButton
-                    title="Send the bill to someone else"
-                    onPress={() => void shareLink(r)}
-                    className="mt-2.5"
-                  />
-                ) : null}
-              </>
+              )
             ) : null}
           </Card>
         ))}
