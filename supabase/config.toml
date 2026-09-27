@@ -426,6 +426,13 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# Called by the payment return page, which a landlord reaches with no account.
+# The reference authorises nothing on its own -- this only ever settles what
+# Flutterwave reports as successful.
+[functions.dues-confirm]
+enabled = true
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -19,14 +19,32 @@ do $$ begin
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
+-- pg_net and Vault are Supabase platform pieces. Stubbed so the cron migration
+-- runs byte-for-byte as it will in production.
+create schema if not exists net;
+create schema if not exists vault;
+create or replace function net.http_post(url text, headers jsonb default '{}', body jsonb default '{}',
+                                          timeout_milliseconds integer default 5000)
+  returns bigint language sql as $$ select 1::bigint $$;
+create table if not exists vault.decrypted_secrets (name text primary key, decrypted_secret text);
+
 create schema if not exists cron;
 
 -- pg_cron is not in stock Postgres. Stubbed rather than stripped from the
 -- migration, so the file under test runs byte-for-byte as it will in production.
-create or replace function cron.schedule(text, text, text) returns bigint
-  language sql as $$ select 1::bigint $$;
-create or replace function cron.unschedule(text) returns boolean
-  language sql as $$ select true $$;
+-- A real table, so a test can assert a job was actually scheduled rather than
+-- that the call did not throw.
+create table if not exists cron.job (jobid bigserial primary key, jobname text unique,
+                                     schedule text, command text);
+
+create or replace function cron.schedule(p_name text, p_sched text, p_cmd text) returns bigint
+  language sql as $$
+    insert into cron.job (jobname, schedule, command) values (p_name, p_sched, p_cmd)
+    on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command
+    returning jobid;
+  $$;
+create or replace function cron.unschedule(p_name text) returns boolean
+  language sql as $$ delete from cron.job where jobname = p_name; select true; $$;
 
 create type public.code_status    as enum ('active', 'used', 'revoked');
 create type public.event_source   as enum ('online', 'offline_replay');

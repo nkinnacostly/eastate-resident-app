@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Payment | myestateaccess</title>
+<meta name="description" content="Confirming your estate dues payment.">
+<link rel="canonical" href="https://myestateaccess.com/dues/return">
+<!-- A payment page has nothing to offer a search engine and a live payment
+     reference in a query string has no business in an index. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#16181c">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main id="main" class="wrap tight" style="max-width:520px">
+  <section>
+    <h1 id="title">Confirming your payment&hellip;</h1>
+    <p id="body" class="muted">This takes a few seconds. Please do not close this page.</p>
+  </section>
+</main>
+
+<script src="/dues/config.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  const ref = q.get('ref') || q.get('tx_ref');
+  const txId = q.get('transaction_id');
+  const title = document.getElementById('title');
+  const body = document.getElementById('body');
+
+  const show = (t, b) => { title.textContent = t; body.textContent = b; };
+
+  // The redirect is NOT evidence of payment -- its query string is whatever the
+  // browser was sent, and Flutterwave only promises tx_ref and status on the
+  // failure path. Nothing is believed here; the reference is handed to the
+  // server, which asks Flutterwave directly.
+  async function confirm(attempt) {
+    if (!ref && !txId) return show('We could not find that payment',
+      'Open the app and check your dues; if it went through it will show there.');
+    try {
+      const res = await fetch(window.__FN__ + '/dues-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tx_ref: ref, transaction_id: txId }),
+      });
+      const { status } = await res.json();
+
+      if (status === 'paid') {
+        return show('Payment received', 'Your dues are settled. You can close this page \u2014 the app will show it as paid.');
+      }
+      if (status === 'failed') {
+        return show('That payment did not go through', 'Nothing has been charged. You can try again from the app.');
+      }
+      if (status === 'needs_review') {
+        return show('We need to check this one', 'Your payment reached us but does not match the charge. The estate will be in touch \u2014 nothing further is needed from you.');
+      }
+      // Still pending. A bank transfer can legitimately take a minute, so retry
+      // a few times before saying anything discouraging.
+      if (attempt < 5) return setTimeout(() => confirm(attempt + 1), 3000);
+      show('Still confirming', 'Your bank has not finished yet. It will appear in the app once it clears \u2014 you do not need to pay again.');
+    } catch {
+      if (attempt < 5) return setTimeout(() => confirm(attempt + 1), 3000);
+      show('We could not confirm right now', 'If money left your account, it will still be recorded. Check the app shortly before paying again.');
+    }
+  }
+  confirm(0);
+</script>
+</body>
+</html>

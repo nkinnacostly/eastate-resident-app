@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Pay estate dues | myestateaccess</title>
+<meta name="description" content="Settle a house’s monthly estate dues.">
+<link rel="canonical" href="https://myestateaccess.com/dues/pay">
+<!-- A payment page has nothing to offer a search engine and a live payment
+     reference in a query string has no business in an index. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#16181c">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<main id="main" class="wrap tight" style="max-width:520px">
+  <section>
+    <h1>Estate dues</h1>
+    <div id="detail" class="muted">Loading the charge&hellip;</div>
+
+    <form id="form" hidden style="margin-top:22px">
+      <label for="email" style="display:block;font-weight:700;margin-bottom:6px">Your email</label>
+      <input id="email" type="email" required autocomplete="email"
+             placeholder="you@example.com"
+             style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid #d8dbe0;font:inherit">
+      <p class="muted" style="font-size:13px;margin-top:8px">
+        The receipt goes here. You do not need an account.
+      </p>
+      <button id="go" type="submit"
+              style="margin-top:16px;width:100%;padding:14px;border:0;border-radius:999px;background:#16181c;color:#fff;font:inherit;font-weight:700;cursor:pointer">
+        Continue to payment
+      </button>
+    </form>
+
+    <p id="err" hidden class="muted" style="margin-top:16px;color:#b3261e"></p>
+
+    <p class="muted" style="margin-top:28px;font-size:13px">
+      Payments are handled by Flutterwave. We never see or store your card details.
+    </p>
+  </section>
+</main>
+
+<script src="/dues/config.js"></script>
+<script>
+  // The token is a bearer capability over ONE charge. It authorises paying a
+  // specific bill and nothing else, which is why a landlord -- who has no
+  // account, by design -- can use it.
+  const token = new URLSearchParams(location.search).get('t');
+  const detail = document.getElementById('detail');
+  const form = document.getElementById('form');
+  const err = document.getElementById('err');
+
+  const fail = (msg) => { err.textContent = msg; err.hidden = false; };
+
+  if (!token) {
+    detail.textContent = 'This link is missing its reference. Ask for a fresh one.';
+  } else {
+    detail.textContent = 'Enter your email to continue. The amount is confirmed on the next screen.';
+    form.hidden = false;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.hidden = true;
+    const btn = document.getElementById('go');
+    btn.disabled = true;
+    btn.textContent = 'Opening\u2026';
+    try {
+      const res = await fetch(window.__FN__ + '/dues-pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pay_token: token, email: document.getElementById('email').value }),
+      });
+      const body = await res.json();
+      if (!body.link) throw new Error(
+        body.error === 'charge_unavailable'
+          ? 'This charge has already been settled, or the link is no longer valid.'
+          : 'We could not start the payment. Please try again.');
+      location.href = body.link;
+    } catch (e) {
+      fail(e.message);
+      btn.disabled = false;
+      btn.textContent = 'Continue to payment';
+    }
+  });
+</script>
+</body>
+</html>

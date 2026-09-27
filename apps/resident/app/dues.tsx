@@ -2,7 +2,15 @@ import { formatMoney } from '@estate/core';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Share,
+  Text,
+  View,
+} from 'react-native';
 
 import { Card, Chip, Eyebrow, PrimaryButton, Screen, SecondaryButton } from '@/components/ui';
 import { listMyDues, startDuesPayment, type DuesCharge } from '@/lib/api';
@@ -54,6 +62,25 @@ export default function Dues() {
     } finally {
       setPaying(null);
     }
+  };
+
+  /**
+   * Hand the bill to whoever actually pays it.
+   *
+   * The link needs no account, which is the point: `houses` carries a landlord
+   * as name/phone/email and says outright they never sign in. Shown to the
+   * tenant as well, because in a house-billed estate the tenant often settles
+   * and squares up privately -- routing them through the landlord would serve
+   * nobody.
+   */
+  const shareLink = async (charge: DuesCharge) => {
+    const url = `https://myestateaccess.com/dues/pay?t=${encodeURIComponent(charge.pay_token)}`;
+    const amount = formatMoney(charge.amount_minor, charge.currency);
+    await Share.share({
+      message:
+        `Estate dues for ${periodLabel(charge.period)}: ${amount}.\n\n` +
+        `Pay here — no account needed:\n${url}`,
+    });
   };
 
   const outstanding = rows.filter((r) => r.status === 'open');
@@ -124,12 +151,21 @@ export default function Dues() {
             </View>
 
             {r.status === 'open' ? (
-              <PrimaryButton
-                title={paying === r.charge_id ? 'Opening…' : `Pay ${formatMoney(r.amount_minor, r.currency)}`}
-                onPress={() => void pay(r)}
-                disabled={paying !== null}
-                className="mt-3.5"
-              />
+              <>
+                <PrimaryButton
+                  title={paying === r.charge_id ? 'Opening…' : `Pay ${formatMoney(r.amount_minor, r.currency)}`}
+                  onPress={() => void pay(r)}
+                  disabled={paying !== null}
+                  className="mt-3.5"
+                />
+                {r.subject === 'house' ? (
+                  <SecondaryButton
+                    title="Send the bill to someone else"
+                    onPress={() => void shareLink(r)}
+                    className="mt-2.5"
+                  />
+                ) : null}
+              </>
             ) : null}
           </Card>
         ))}

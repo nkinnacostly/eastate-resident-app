@@ -27,7 +27,7 @@
     "check:deps": "node scripts/check-deps.mjs",
     "test:db:delivery": "supabase db query -f supabase/tests/delivery.sql --linked",
     "test:migrations": "node scripts/test-migration.mjs supabase/tests/schema-harness.sql supabase/migrations/20260926100000_retention.sql supabase/migrations/20260926110000_agencies.sql supabase/migrations/20260926120000_psira_return.sql supabase/migrations/20260926130000_agency_writes.sql supabase/migrations/20260926140000_agency_reporting.sql supabase/migrations/20260926150000_revoke_trigger_functions.sql supabase/tests/retention.sql supabase/tests/agencies.sql",
-    "test:dues": "node scripts/test-migration.mjs supabase/tests/schema-harness.sql supabase/migrations/20260927100000_estate_dues.sql supabase/migrations/20260927110000_dues_functions.sql supabase/migrations/20260927120000_dues_payments.sql supabase/migrations/20260927130000_dues_enforcement_authority.sql supabase/tests/dues.sql",
+    "test:dues": "node scripts/test-migration.mjs supabase/tests/schema-harness.sql supabase/migrations/20260927100000_estate_dues.sql supabase/migrations/20260927110000_dues_functions.sql supabase/migrations/20260927120000_dues_payments.sql supabase/migrations/20260927130000_dues_enforcement_authority.sql supabase/migrations/20260927140000_dues_reconcile_cron.sql supabase/tests/dues.sql",
     "test:flutterwave": "node --no-warnings scripts/test-flutterwave.mjs"
   },
   "devDependencies": {

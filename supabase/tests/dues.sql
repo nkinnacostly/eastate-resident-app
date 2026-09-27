@@ -528,3 +528,38 @@ update public.dues_charges set status = 'paid', paid_at = now()
  where membership_id = 'a2000000-0000-4000-8000-000000000005' and status = 'open';
 select pg_temp.check('clearing every arrear unblocks minting', (
   select not public.dues_in_arrears('a2000000-0000-4000-8000-000000000005')));
+
+-- ─── The pay token has to survive a URL ──────────────────────────────────────
+--
+-- It exists to be emailed to a landlord as a query parameter. Standard base64
+-- emits '+' and '/', and '+' decodes as a space -- so a plain-base64 token
+-- would work in testing and fail for roughly one link in four in the wild,
+-- which is the worst possible failure shape.
+
+select pg_temp.check('every pay token is URL-safe', (
+  select bool_and(pay_token ~ '^[A-Za-z0-9_-]+$') from public.dues_charges));
+
+select pg_temp.check('tokens are long enough to be unguessable', (
+  select bool_and(char_length(pay_token) >= 24) from public.dues_charges));
+
+select pg_temp.check('tokens are unique', (
+  select count(distinct pay_token) = count(*) from public.dues_charges));
+
+-- ─── Reconciliation is scheduled and closed ──────────────────────────────────
+
+select pg_temp.check('the reconciliation tick is scheduled', (
+  select count(*) = 1 from cron.job where jobname = 'dues-reconcile'));
+
+select pg_temp.check('...and is not callable by a signed-in user', (
+  select not has_function_privilege('authenticated', 'public.dues_reconcile_tick()', 'execute')));
+
+-- Missing secrets must WARN, not raise: a raise on a schedule fills the cron
+-- log with identical failures and tells nobody, and nothing is lost by
+-- skipping a tick.
+do $$
+begin
+  perform public.dues_reconcile_tick();
+  raise notice 'PASS  a tick with no vault secrets warns rather than raising';
+exception when others then
+  raise exception 'FAIL  dues_reconcile_tick raised with no secrets: %', sqlerrm;
+end $$;

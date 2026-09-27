@@ -114,7 +114,13 @@ create table public.dues_charges (
   -- Bearer token for the pay-by-link path. Its own column rather than reusing
   -- the id, so the identifier that appears in logs and foreign keys is not also
   -- the thing that authorises payment.
-  pay_token  text not null default encode(extensions.gen_random_bytes(18), 'base64'),
+  --
+  -- base64URL, not plain base64. Standard base64 emits '+' and '/', and this
+  -- token's whole purpose is to travel in a query string -- where '+' decodes
+  -- as a space and silently yields a different token. 18 bytes gives 144 bits
+  -- of entropy in 24 characters with no padding to strip.
+  pay_token  text not null default translate(
+                encode(extensions.gen_random_bytes(18), 'base64'), '+/=', '-_'),
 
   created_at timestamptz not null default now(),
 
