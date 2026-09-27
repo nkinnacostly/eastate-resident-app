@@ -320,8 +320,8 @@ export function Dues() {
               <strong className="text-ink">This applies automatically.</strong> Once on, any
               resident whose dues go overdue is paused as soon as the grace period ends, and
               unpaused the moment they pay — there is nothing to switch on per resident. Their own
-              access to the estate is never affected, codes already issued still work, and a guard
-              can still admit a visitor at the gate.
+              access to the estate is never affected, and codes they have already issued keep
+              working until they expire.
             </p>
             <p className="mt-2 max-w-prose text-[12.5px] leading-[19px] text-muted">
               Withholding a service over unpaid levies is a decision your scheme&apos;s rules have

@@ -22,6 +22,20 @@
   <section>
     <h1 id="title">Confirming your payment&hellip;</h1>
     <p id="body" class="muted">This takes a few seconds. Please do not close this page.</p>
+    <!--
+      The way back.
+
+      This page is opened in an IN-APP BROWSER launched by the resident app, and
+      the browser's own back arrow returns to the payment provider, not to the
+      app. "You can close this page" was the only instruction and there was
+      nothing to press: a resident paid successfully and was stranded on a
+      confirmation screen. Hidden until an outcome is known, and only when the
+      app actually sent us here -- a landlord paying from an emailed link has
+      no app to return to.
+    -->
+    <p id="backwrap" hidden style="margin-top:22px">
+      <a id="back" class="btn btn-primary" href="residentapp://dues">Return to the app</a>
+    </p>
   </section>
 </main>
 
@@ -33,7 +47,32 @@
   const title = document.getElementById('title');
   const body = document.getElementById('body');
 
-  const show = (t, b) => { title.textContent = t; body.textContent = b; };
+  // Only the app sends from=app. A landlord following an emailed link has
+  // nothing to return to, and offering them a dead button is worse than
+  // offering nothing.
+  const fromApp = q.get('from') === 'app';
+  const backwrap = document.getElementById('backwrap');
+
+  const show = (t, b, done) => {
+    title.textContent = t;
+    body.textContent = b;
+    // Shown on ANY settled outcome, not just success. Someone whose payment
+    // failed needs to get back to the app more urgently than someone whose
+    // worked.
+    if (done && fromApp) backwrap.hidden = false;
+  };
+
+  /**
+   * Bring them back without making them find a control.
+   *
+   * Only on success, and only after a beat long enough to read the words --
+   * yanking someone out of a screen they are still reading is its own kind of
+   * rude, and on a failure they may want to re-read what happened.
+   *
+   * If the app is not installed this silently does nothing, which is why the
+   * button stays on screen regardless.
+   */
+  const returnToApp = () => setTimeout(() => { location.href = 'residentapp://dues'; }, 1800);
 
   // The redirect is NOT evidence of payment -- its query string is whatever the
   // browser was sent, and Flutterwave only promises tx_ref and status on the
@@ -41,7 +80,7 @@
   // server, which asks Flutterwave directly.
   async function confirm(attempt) {
     if (!ref && !txId) return show('We could not find that payment',
-      'Open the app and check your dues; if it went through it will show there.');
+      'Open the app and check your dues; if it went through it will show there.', true);
     try {
       const res = await fetch(window.__FN__ + '/dues-confirm', {
         method: 'POST',
@@ -51,21 +90,22 @@
       const { status } = await res.json();
 
       if (status === 'paid') {
-        return show('Payment received', 'Your dues are settled. You can close this page \u2014 the app will show it as paid.');
+        show('Payment received', 'Your dues are settled \u2014 taking you back to the app.', true);
+        return returnToApp();
       }
       if (status === 'failed') {
-        return show('That payment did not go through', 'Nothing has been charged. You can try again from the app.');
+        return show('That payment did not go through', 'Nothing has been charged. You can try again from the app.', true);
       }
       if (status === 'needs_review') {
-        return show('We need to check this one', 'Your payment reached us but does not match the charge. The estate will be in touch \u2014 nothing further is needed from you.');
+        return show('We need to check this one', 'Your payment reached us but does not match the charge. The estate will be in touch \u2014 nothing further is needed from you.', true);
       }
       // Still pending. A bank transfer can legitimately take a minute, so retry
       // a few times before saying anything discouraging.
       if (attempt < 5) return setTimeout(() => confirm(attempt + 1), 3000);
-      show('Still confirming', 'Your bank has not finished yet. It will appear in the app once it clears \u2014 you do not need to pay again.');
+      show('Still confirming', 'Your bank has not finished yet. It will appear in the app once it clears \u2014 you do not need to pay again.', true);
     } catch {
       if (attempt < 5) return setTimeout(() => confirm(attempt + 1), 3000);
-      show('We could not confirm right now', 'If money left your account, it will still be recorded. Check the app shortly before paying again.');
+      show('We could not confirm right now', 'If money left your account, it will still be recorded. Check the app shortly before paying again.', true);
     }
   }
   confirm(0);

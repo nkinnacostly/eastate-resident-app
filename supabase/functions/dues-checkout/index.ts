@@ -59,7 +59,13 @@ Deno.serve(async (req) => {
       // tx_ref rides on the redirect so the return page can verify by reference
       // even when Flutterwave omits transaction_id, which it does on the
       // failure path.
-      redirectUrl: `${SITE_URL}?ref=${encodeURIComponent(row.tx_ref)}`,
+      // `from=app` tells the return page to offer a way BACK into the app.
+      // It is opened in an in-app browser whose back arrow returns to the
+      // payment provider, not to us -- so without this a resident who has just
+      // paid successfully is stranded on a confirmation screen with nothing to
+      // press. The landlord path (dues-pay) deliberately omits it: someone
+      // following an emailed link has no app to return to.
+      redirectUrl: `${SITE_URL}?ref=${encodeURIComponent(row.tx_ref)}&from=app`,
       email,
       title: 'Estate dues',
       description: 'Monthly estate dues',

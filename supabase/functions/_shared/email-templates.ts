@@ -632,7 +632,7 @@ export function duesReminder(v: {
         'You can settle it with the button below. No account or sign-in is needed.',
       ) +
       muted(
-        'If it is not paid, the people living at the house will not be able to generate visitor codes. Their own access to the estate is unaffected, and a guard can still let a visitor in at the gate.',
+        'If it is not paid, the people living at the house will not be able to generate NEW visitor codes. Their own access to the estate is unaffected, and any code they have already shared keeps working until it expires.',
       );
 
     return {
@@ -653,8 +653,8 @@ export function duesReminder(v: {
         v.payUrl ? `Pay here (no account needed): ${v.payUrl}` : '',
         '',
         'If it is not paid, the people living at the house will not be able to generate',
-        'visitor codes. Their own access to the estate is unaffected, and a guard can',
-        'still let a visitor in at the gate.',
+        'NEW visitor codes. Their own access to the estate is unaffected, and any code',
+        'they have already shared keeps working until it expires.',
         '',
         'If you no longer own this property, reply and we will pass it on to the estate.',
         '',
@@ -678,7 +678,7 @@ export function duesReminder(v: {
         'These dues are billed to the owner of the house rather than to you. We have written to them as well.',
       ) +
       muted(
-        'If they are not settled, you will not be able to generate visitor codes until they are. Your own access to the estate is unaffected, and a guard can still let a visitor in at the gate. The app shows the owner’s contact details if you need to chase it.',
+        'If they are not settled, you will not be able to generate NEW visitor codes until they are. Your own access to the estate is unaffected, and any code you have already shared keeps working until it expires. The app shows the owner’s contact details if you need to chase it.',
       );
 
     return {
@@ -699,9 +699,9 @@ export function duesReminder(v: {
         'These dues are billed to the owner of the house rather than to you.',
         'We have written to them as well.',
         '',
-        'If they are not settled, you will not be able to generate visitor codes until',
-        'they are. Your own access to the estate is unaffected, and a guard can still',
-        'let a visitor in at the gate.',
+        'If they are not settled, you will not be able to generate NEW visitor codes',
+        'until they are. Your own access to the estate is unaffected, and any code you',
+        'have already shared keeps working until it expires.',
         '',
         `Open the app: ${v.appUrl}`,
         '',
@@ -719,7 +719,7 @@ export function duesReminder(v: {
     ) +
     p('You can pay in the app in a few taps.') +
     muted(
-      'If they are not settled you will not be able to generate visitor codes until they are. Your own access to the estate is unaffected, and a guard can still let a visitor in at the gate.',
+      'If they are not settled you will not be able to generate NEW visitor codes until they are. Your own access to the estate is unaffected, and any code you have already shared keeps working until it expires.',
     );
 
   return {
@@ -739,9 +739,9 @@ export function duesReminder(v: {
       '',
       `Pay in the app: ${v.appUrl}`,
       '',
-      'If they are not settled you will not be able to generate visitor codes until',
-      'they are. Your own access to the estate is unaffected, and a guard can still',
-      'let a visitor in at the gate.',
+      'If they are not settled you will not be able to generate NEW visitor codes',
+      'until they are. Your own access to the estate is unaffected, and any code you',
+      'have already shared keeps working until it expires.',
       '',
       '—',
       'Privacy policy: https://myestateaccess.com/privacy',
