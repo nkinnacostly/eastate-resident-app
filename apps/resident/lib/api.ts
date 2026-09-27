@@ -206,6 +206,45 @@ export interface DuesCharge {
   enforcement_on: boolean;
 }
 
+/**
+ * The numbers the Dues tab opens with.
+ *
+ * Separate from listMyDues because of one case that list cannot serve: an
+ * estate with dues configured but no charges raised yet returns ZERO ROWS, and
+ * a screen built only from that list would tell a resident who owes money from
+ * the 1st that there is nothing here. The summary always returns one row.
+ *
+ * The arithmetic stays server-side. When the next charge falls due depends on
+ * the estate's grace period and on when charges are raised, and a client
+ * reimplementing that is a client that disagrees with the gate the first time
+ * either changes.
+ */
+export interface DuesSummary {
+  billing_mode: DuesBillingMode;
+  /** The estate's monthly rate. Null when it does not bill through the app. */
+  monthly_minor: number | null;
+  currency: string | null;
+  grace_days: number;
+  enforcement_on: boolean;
+  outstanding_minor: number;
+  outstanding_count: number;
+  overdue_minor: number;
+  overdue_count: number;
+  paid_count: number;
+  /** Overdue AND enforced. One definition, shared by the banner, tab and gate. */
+  blocked: boolean;
+  /** The next month not yet billed, and when it falls due. Null if not billing. */
+  next_period: string | null;
+  next_due_on: string | null;
+}
+
+export async function myDuesSummary(estateId: string): Promise<DuesSummary | null> {
+  const { data, error } = await supabase.rpc('my_dues_summary', { p_estate_id: estateId });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row ?? null) as DuesSummary | null;
+}
+
 export async function listMyDues(estateId: string): Promise<DuesCharge[]> {
   const { data, error } = await supabase.rpc('my_dues', { p_estate_id: estateId });
   if (error) throw new Error(error.message);

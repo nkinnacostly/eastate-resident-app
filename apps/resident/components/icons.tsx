@@ -49,6 +49,19 @@ export const PersonIcon = (p: IconProps) => (
   </S>
 );
 
+/**
+ * Dues. A banknote rather than a coin or a card: a coin reads as a token at
+ * 21px and a card reads as "payment method", while the bill is what the tab is
+ * actually about -- what is owed, not how it is settled.
+ */
+export const NoteIcon = (p: IconProps) => (
+  <S {...p}>
+    <Rect x="2.8" y="6" width="18.4" height="12" rx="2.4" />
+    <Circle cx="12" cy="12" r="2.6" />
+    <Path d="M6.2 9.6v4.8M17.8 9.6v4.8" />
+  </S>
+);
+
 export const WhatsAppIcon = (p: IconProps) => (
   <S {...p}>
     <Path d="M12 3.4a8.4 8.4 0 0 0-7.2 12.7L3.7 20.3l4.4-1.1A8.4 8.4 0 1 0 12 3.4Z" />

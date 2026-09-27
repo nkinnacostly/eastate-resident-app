@@ -20,6 +20,9 @@ beforeEach(() => {
 });
 
 const status = (over: Partial<DuesStatus> = {}): DuesStatus => ({
+  summary: null,
+  all: [],
+  settled: [],
   overdue: [],
   outstanding: [],
   totalOwedMinor: 0,

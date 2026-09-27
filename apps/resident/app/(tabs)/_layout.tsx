@@ -4,12 +4,16 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { ClockIcon, HomeIcon, KeyIcon, PersonIcon } from '@/components/icons';
+import { ClockIcon, HomeIcon, KeyIcon, NoteIcon, PersonIcon } from '@/components/icons';
 import { useCodes } from '@/lib/codes';
 
 const TABS = [
   { name: 'index', label: 'Home', Icon: HomeIcon },
   { name: 'codes', label: 'Codes', Icon: KeyIcon },
+  // A destination, not a screen you are sent to when something goes wrong.
+  // It used to be reachable only by being refused a code, which made money
+  // owed feel like an error state rather than an ordinary part of living here.
+  { name: 'dues', label: 'Dues', Icon: NoteIcon },
   { name: 'history', label: 'History', Icon: ClockIcon },
   { name: 'you', label: 'You', Icon: PersonIcon },
 ] as const;

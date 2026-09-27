@@ -1386,6 +1386,24 @@ export type Database = {
           subject: string
         }[]
       }
+      my_dues_summary: {
+        Args: { p_estate_id: string }
+        Returns: {
+          billing_mode: Database["public"]["Enums"]["dues_billing_mode"]
+          blocked: boolean
+          currency: string
+          enforcement_on: boolean
+          grace_days: number
+          monthly_minor: number
+          next_due_on: string
+          next_period: string
+          outstanding_count: number
+          outstanding_minor: number
+          overdue_count: number
+          overdue_minor: number
+          paid_count: number
+        }[]
+      }
       my_pending_join_requests: {
         Args: never
         Returns: {

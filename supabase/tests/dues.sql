@@ -826,3 +826,97 @@ select pg_temp.check('the flag agrees with what the gate actually does', (
 -- Restore, so anything appended after this sees the state the file set up.
 set test.uid = 'c0000000-0000-4000-8000-00000000000a';
 select public.set_dues_enforcement('e2000000-0000-4000-8000-000000000002', true, 'House rules 7(b)');
+
+-- ─── The Dues tab's opening numbers ──────────────────────────────────────────
+--
+-- my_dues_summary exists for one case my_dues cannot serve: an estate that
+-- bills but has not raised charges yet returns ZERO ROWS, and a list-only
+-- screen would render "nothing here" to a resident who owes money from the
+-- 1st. That is the same class of silence that produced the "could not generate
+-- a code" dead end, so it gets its own assertions rather than trust.
+
+set test.uid = 'c0000000-0000-4000-8000-000000000001';
+select billing_mode as bm, monthly_minor as mm, currency as cur, enforcement_on as en,
+       outstanding_minor as out, overdue_minor as ovm, overdue_count as ovc,
+       blocked as blk, coalesce(next_period::text,'') as np,
+       coalesce(next_due_on::text,'') as nd
+  from public.my_dues_summary('e2000000-0000-4000-8000-000000000001') \gset s1_
+
+select pg_temp.check('the summary carries the estate''s own terms',
+  :'s1_bm' = 'per_house' and :'s1_mm' = '2500000' and :'s1_cur' = 'NGN' and :'s1_en' = 't');
+
+select pg_temp.check('what is outstanding matches the open charges', (
+  select :'s1_out'::bigint = coalesce(sum(c.amount_minor), 0)
+    from public.dues_charges c
+   where c.estate_id = 'e2000000-0000-4000-8000-000000000001'
+     and c.house_id = 'f2000000-0000-4000-8000-000000000001'
+     and c.status = 'open'));
+
+-- The number the gate acts on. If this disagreed with dues_in_arrears the tab
+-- would tell a resident one thing while the Generate button did another --
+-- which is exactly the mismatch this whole area has already produced once.
+select pg_temp.check('"blocked" agrees with the gate itself',
+  (:'s1_blk' = 't') = public.dues_in_arrears('a2000000-0000-4000-8000-000000000001'));
+
+select pg_temp.check('the next unbilled month is in the future, due after grace',
+  :'s1_np' <> '' and :'s1_np'::date > current_date - interval '1 month'
+  and :'s1_nd'::date = :'s1_np'::date + 7);
+
+-- ★ THE CASE IT EXISTS FOR ★
+--
+-- Dues configured, not one charge raised. my_dues gives nothing; the summary
+-- must still state the terms, or the screen says "you owe nothing" to someone
+-- who is about to owe ₦9,000.
+-- Configured by UPDATE rather than through set_dues_config: this estate has no
+-- admin fixture and no settlement account, and both are set_dues_config's
+-- business, not this test's. Settlement columns included because
+-- estates_dues_need_settlement_ck makes billing-with-nowhere-to-settle
+-- unrepresentable -- which is the constraint doing its job.
+update public.estates set
+  dues_billing_mode = 'per_resident', dues_amount_minor = 900000,
+  dues_currency = 'NGN', dues_grace_days = 5,
+  settlement_country = 'NG', settlement_bank_code = '044',
+  settlement_bank_name = 'Access Bank', settlement_account_number = '0690000032',
+  settlement_account_name = 'Free Estate Residents Association',
+  settlement_account_verified = true,
+  settlement_subaccount_ref = 'RS_FREEESTATE000000000000000001',
+  settlement_subaccount_id = '90003', settlement_verified_at = now()
+ where id = 'e2000000-0000-4000-8000-000000000003';
+
+set test.uid = 'c0000000-0000-4000-8000-000000000006';
+select count(*) as n from public.my_dues('e2000000-0000-4000-8000-000000000003') \gset nocharge_
+select pg_temp.check('...my_dues has nothing to say here', :'nocharge_n'::int = 0);
+
+select billing_mode as bm, monthly_minor as mm, outstanding_minor as out,
+       blocked as blk, coalesce(next_period::text,'') as np, coalesce(next_due_on::text,'') as nd
+  from public.my_dues_summary('e2000000-0000-4000-8000-000000000003') \gset s3_
+
+select pg_temp.check('...but the summary still states the terms',
+  :'s3_bm' = 'per_resident' and :'s3_mm' = '900000');
+select pg_temp.check('...owes nothing yet, and is not blocked',
+  :'s3_out'::bigint = 0 and :'s3_blk' = 'f');
+select pg_temp.check('...and names the month about to be billed',
+  :'s3_np'::date = date_trunc('month', current_date)::date
+  and :'s3_nd'::date = date_trunc('month', current_date)::date + 5);
+
+-- An estate that does not bill at all still gets a row, with no next date to
+-- show. A screen must never have to ask "did I get a row" before it can speak.
+update public.estates set dues_billing_mode = 'none',
+  dues_amount_minor = null, dues_currency = null
+ where id = 'e2000000-0000-4000-8000-000000000003';
+
+set test.uid = 'c0000000-0000-4000-8000-000000000006';
+select billing_mode as bm, coalesce(next_period::text,'-') as np, blocked as blk
+  from public.my_dues_summary('e2000000-0000-4000-8000-000000000003') \gset s4_
+
+select pg_temp.check('an estate that does not bill still returns exactly one row',
+  :'s4_bm' = 'none' and :'s4_np' = '-' and :'s4_blk' = 'f');
+
+-- Same tenancy rule as everything else here.
+do $$
+begin
+  perform * from public.my_dues_summary('e2000000-0000-4000-8000-000000000001');
+  raise exception 'FAIL  the summary leaked another estate';
+exception when sqlstate '42501' then
+  raise notice 'PASS  the summary refuses an estate you do not live at';
+end $$;
