@@ -61,6 +61,16 @@ export function SignIn() {
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+
+        {/* Only landlords can create their own account here. Estate admins and
+            guards arrive by invitation, so this is not a general sign-up and
+            says so rather than inviting everyone to try. */}
+        <a
+          href="/landlord/signup"
+          className="mt-4 block text-center text-[12.5px] font-bold text-muted hover:text-ink"
+        >
+          Own a property at an estate? Create a landlord account
+        </a>
       </form>
     </div>
   );

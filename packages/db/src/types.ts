@@ -1232,6 +1232,7 @@ export type Database = {
           started_at: string
         }[]
       }
+      current_verified_email: { Args: never; Returns: string }
       deactivate_membership: {
         Args: { p_membership_id: string }
         Returns: undefined
@@ -1358,7 +1359,25 @@ export type Database = {
         }
       }
       is_agency_admin: { Args: { p_agency_id: string }; Returns: boolean }
+      is_landlord: { Args: never; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      landlord_dues: {
+        Args: never
+        Returns: {
+          amount_minor: number
+          charge_id: string
+          currency: string
+          due_on: string
+          estate_name: string
+          house_id: string
+          house_number: string
+          is_overdue: boolean
+          paid_at: string
+          period: string
+          status: Database["public"]["Enums"]["dues_charge_status"]
+          waive_reason: string
+        }[]
+      }
       mask_account_number: { Args: { p_number: string }; Returns: string }
       mint_access_code: {
         Args: {
@@ -1419,6 +1438,22 @@ export type Database = {
           overdue_count: number
           overdue_minor: number
           paid_count: number
+        }[]
+      }
+      my_landlord_houses: {
+        Args: never
+        Returns: {
+          currency: string
+          dues_amount_minor: number
+          dues_payer: Database["public"]["Enums"]["house_dues_payer"]
+          estate_id: string
+          estate_name: string
+          house_code: string
+          house_id: string
+          house_number: string
+          outstanding_minor: number
+          overdue_minor: number
+          residents: number
         }[]
       }
       my_pending_join_requests: {
@@ -1664,6 +1699,18 @@ export type Database = {
           estate_name: string
           fee_percent: number
           house_number: string
+          ok: boolean
+          reason: string
+          subaccount_ref: string
+          tx_ref: string
+        }[]
+      }
+      start_landlord_dues_payment: {
+        Args: { p_charge_id: string }
+        Returns: {
+          amount_minor: number
+          currency: string
+          fee_percent: number
           ok: boolean
           reason: string
           subaccount_ref: string

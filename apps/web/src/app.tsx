@@ -14,6 +14,9 @@ import { Dues } from './pages/dues';
 import { Flagged } from './pages/flagged';
 import { Guards } from './pages/guards';
 import { Houses } from './pages/houses';
+import { LandlordShell } from './components/landlord-shell';
+import { LandlordDashboard } from './pages/landlord/dashboard';
+import { LandlordSignUp } from './pages/landlord/sign-up';
 import { LoadFailed } from './pages/load-failed';
 import { NoAccess } from './pages/no-access';
 import { Admins } from './pages/operator/admins';
@@ -68,6 +71,25 @@ function OperatorRoutes() {
   );
 }
 
+/**
+ * The landlord's portal: their own properties, across whatever estates they
+ * happen to own in.
+ *
+ * One destination, so the shell carries no nav. A landlord is not a membership
+ * — they are linked to a house by the email the estate recorded on it — which
+ * is why this tree sits beside the others rather than inside EstateRoutes.
+ */
+function LandlordRoutes() {
+  return (
+    <Routes>
+      <Route element={<LandlordShell />}>
+        <Route index element={<LandlordDashboard />} />
+        <Route path="*" element={<Navigate to="/landlord" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
 /** The security agency's portal: across its own estates, never inside one. */
 function AgencyRoutes() {
   return (
@@ -101,12 +123,25 @@ function AgencyRoutes() {
  */
 export function App() {
   const {
-    session, loading, estates, estatesLoaded, estatesError, isPlatformAdmin, rolesLoaded,
-    mustChangePassword, agencies, agenciesLoaded,
+    session, loading, estates, estatesLoaded, estatesError, isPlatformAdmin, isLandlord,
+    rolesLoaded, mustChangePassword, agencies, agenciesLoaded,
   } = useAuth();
 
   if (loading) return <div className="min-h-screen bg-ink" />;
-  if (!session) return <SignIn />;
+
+  // Signed out. Sign-up is a REAL ROUTE rather than a flag on the sign-in
+  // screen, so the link in a dues reminder can point straight at it and
+  // survive a reload. It is the only self-service sign-up here: every other
+  // account on this dashboard arrives by invitation, and a landlord has
+  // nobody to invite them.
+  if (!session) {
+    return (
+      <Routes>
+        <Route path="/landlord/signup" element={<LandlordSignUp />} />
+        <Route path="*" element={<SignIn />} />
+      </Routes>
+    );
+  }
 
   // Before anything else. An account still on its handover password should not
   // be looking at estate data, let alone the platform's.
@@ -129,7 +164,12 @@ export function App() {
   if (!estatesLoaded || !rolesLoaded || !agenciesLoaded) {
     return <div className="min-h-screen bg-ink" />;
   }
-  if (!isPlatformAdmin && estates.length === 0 && agencies.length === 0) return <NoAccess />;
+  // isLandlord joins the others: someone who owns property but administers
+  // nothing is a legitimate user with somewhere to be, and NoAccess would turn
+  // them away from the dashboard built for them.
+  if (!isPlatformAdmin && estates.length === 0 && agencies.length === 0 && !isLandlord) {
+    return <NoAccess />;
+  }
 
   if (isPlatformAdmin) {
     return (
@@ -139,6 +179,7 @@ export function App() {
             dead end. */}
         {estates.length > 0 ? <Route path="/estate/*" element={<EstateRoutes base="/estate" />} /> : null}
         {agencies.length > 0 ? <Route path="/agency/*" element={<AgencyRoutes />} /> : null}
+        {isLandlord ? <Route path="/landlord/*" element={<LandlordRoutes />} /> : null}
         <Route path="*" element={<OperatorRoutes />} />
       </Routes>
     );
@@ -151,17 +192,33 @@ export function App() {
     return (
       <Routes>
         {agencies.length > 0 ? <Route path="/agency/*" element={<AgencyRoutes />} /> : null}
+        {/* An estate admin can own property in someone ELSE's estate. The two
+            are unrelated roles and the landlord view must not be reachable
+            from inside an estate they administer, or the hats blur. */}
+        {isLandlord ? <Route path="/landlord/*" element={<LandlordRoutes />} /> : null}
         <Route path="*" element={<EstateRoutes />} />
       </Routes>
     );
   }
 
-  // Agency only: /agency is home, and anything else redirects there rather
-  // than 404ing someone who has exactly one place to be.
+  if (agencies.length > 0) {
+    // Agency: /agency is home, and anything else redirects there rather than
+    // 404ing someone who has exactly one place to be.
+    return (
+      <Routes>
+        <Route path="/agency/*" element={<AgencyRoutes />} />
+        {isLandlord ? <Route path="/landlord/*" element={<LandlordRoutes />} /> : null}
+        <Route path="*" element={<Navigate to="/agency" replace />} />
+      </Routes>
+    );
+  }
+
+  // Landlord only, which is the common case: they administer nothing, own one
+  // or more houses, and have exactly one page to be on.
   return (
     <Routes>
-      <Route path="/agency/*" element={<AgencyRoutes />} />
-      <Route path="*" element={<Navigate to="/agency" replace />} />
+      <Route path="/landlord/*" element={<LandlordRoutes />} />
+      <Route path="*" element={<Navigate to="/landlord" replace />} />
     </Routes>
   );
 }

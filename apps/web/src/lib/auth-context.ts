@@ -48,6 +48,17 @@ export interface AuthState {
   /** True for a platform owner. Resolved per session, never from a JWT claim. */
   isPlatformAdmin: boolean;
   /**
+   * True when this account's CONFIRMED email is recorded as the landlord of at
+   * least one active house.
+   *
+   * Not a membership: a landlord holds no role at an estate, and the estate's
+   * own record of their address is the designation. Resolved per session for
+   * the same reason as every other role here — an admin recording a sale must
+   * take the old owner's dashboard away at once, and a JWT claim would leave
+   * it working until the token refreshed.
+   */
+  isLandlord: boolean;
+  /**
    * False until the ownership check has answered once.
    *
    * The gate must not route on `isPlatformAdmin` before this: it starts false,

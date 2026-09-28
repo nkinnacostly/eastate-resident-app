@@ -13,6 +13,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [estatesError, setEstatesError] = useState<string | null>(null);
   const [activeEstateId, setActiveEstateId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [isLandlord, setIsLandlord] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -129,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) {
       setIsPlatformAdmin(false);
+      setIsLandlord(false);
       setMustChangePassword(false);
       setRolesLoaded(true);
       return;
@@ -136,13 +138,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRolesLoaded(false);
     let live = true;
     void (async () => {
-      const [owner, profile] = await Promise.all([
+      const [owner, profile, landlord] = await Promise.all([
         supabase.rpc('is_platform_admin'),
         supabase.from('profiles').select('must_change_password').eq('id', userId).single(),
+        // Resolved per session like every other role, never from a claim. A
+        // landlord's link to a house is the estate's own record of their
+        // email, so it can change the moment an admin records a sale — and a
+        // stale claim would keep the old owner's dashboard alive.
+        supabase.rpc('is_landlord'),
       ]);
       if (!live) return;
       if (owner.error) console.warn('[auth] ownership check failed:', owner.error.message);
       else setIsPlatformAdmin(Boolean(owner.data));
+      if (landlord.error) console.warn('[auth] landlord check failed:', landlord.error.message);
+      else setIsLandlord(Boolean(landlord.data));
       if (!profile.error) setMustChangePassword(Boolean(profile.data?.must_change_password));
       // Marked loaded even on error. Leaving it false would hold the app on a
       // blank screen forever; proceeding treats a failed check as "not an
@@ -183,13 +192,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session, loading, estates, estatesLoaded, estatesError, activeEstateId,
       setActiveEstateId, activeEstate, refreshEstates, signIn, signOut,
-      isPlatformAdmin, rolesLoaded, mustChangePassword, changePassword,
+      isPlatformAdmin, isLandlord, rolesLoaded, mustChangePassword, changePassword,
       agencies, agenciesLoaded,
     }),
     [
       session, loading, estates, estatesLoaded, estatesError, activeEstateId,
       activeEstate, refreshEstates, signIn, signOut,
-      isPlatformAdmin, rolesLoaded, mustChangePassword, changePassword,
+      isPlatformAdmin, isLandlord, rolesLoaded, mustChangePassword, changePassword,
       agencies, agenciesLoaded,
     ],
   );

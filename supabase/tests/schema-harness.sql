@@ -71,7 +71,16 @@ create schema if not exists auth;
 
 create table auth.users (
   id    uuid primary key,
-  email text
+  email text,
+  -- Real Supabase has this and landlord access depends on it: an account is
+  -- linked to a house by its CONFIRMED email matching what the estate
+  -- recorded. A stub without it would let every fixture user pass as verified
+  -- and quietly retire the most important test in supabase/tests/landlord.sql.
+  --
+  -- Defaulted to now() so the hundreds of existing fixtures across the other
+  -- suites stay confirmed without being rewritten; the landlord tests pass
+  -- NULL explicitly where an unconfirmed account is the point.
+  email_confirmed_at timestamptz default now()
 );
 
 -- auth.uid() is what every definer function derives identity from. Backed by a

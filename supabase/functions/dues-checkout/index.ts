@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
   const auth = req.headers.get('Authorization');
   if (!auth) return json({ error: 'unauthorised' }, 401);
 
-  const { charge_id } = await req.json().catch(() => ({}));
+  const { charge_id, as_landlord } = await req.json().catch(() => ({}));
   if (!charge_id) return json({ error: 'charge_id_required' }, 400);
 
   // The caller's OWN token, deliberately -- not the service role. That keeps
@@ -41,7 +41,15 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: auth } },
   });
 
-  const { data, error } = await supabase.rpc('start_dues_payment', { p_charge_id: charge_id });
+  // A landlord holds no membership at the estate, so the resident path's
+  // current_membership() check would refuse them outright. Both functions
+  // derive identity from auth.uid() -- the landlord one by way of the
+  // CONFIRMED email on the account -- so this flag selects which OWNERSHIP
+  // RULE applies, never who the caller is. Asking to be treated as a landlord
+  // gets you nothing unless the estate recorded your address on the house.
+  const { data, error } = as_landlord
+    ? await supabase.rpc('start_landlord_dues_payment', { p_charge_id: charge_id })
+    : await supabase.rpc('start_dues_payment', { p_charge_id: charge_id });
   if (error) return json({ error: error.message }, 400);
 
   const row = Array.isArray(data) ? data[0] : data;
