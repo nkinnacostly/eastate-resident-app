@@ -13,6 +13,7 @@ import { Codes } from './pages/codes';
 import { Dues } from './pages/dues';
 import { DuesPayments } from './pages/dues-payments';
 import { Flagged } from './pages/flagged';
+import { GuardProfile } from './pages/guard-profile';
 import { Guards } from './pages/guards';
 import { Houses } from './pages/houses';
 import { LandlordShell } from './components/landlord-shell';
@@ -47,6 +48,7 @@ function EstateRoutes({ base = '' }: { base?: string }) {
         <Route path="residents" element={<Residents />} />
         <Route path="flagged" element={<Flagged />} />
         <Route path="guards" element={<Guards />} />
+        <Route path="guards/:membershipId" element={<GuardProfile />} />
         <Route path="codes" element={<Codes />} />
         <Route path="dues" element={<Dues />} />
         <Route path="payments" element={<DuesPayments />} />

@@ -110,6 +110,65 @@ export interface OnboardGuardResult {
  * caller really administers `estateId` — the JWT proves who they are, not what
  * they may do, and the estate id travels from the client.
  */
+export interface GuardProfile {
+  membership_id: string;
+  user_id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  is_active: boolean;
+  joined_at: string;
+  /** Null when the account has never been signed into -- a handover that never happened. */
+  last_sign_in_at: string | null;
+  agency_name: string | null;
+  psira_registration_number: string | null;
+  psira_grade: string | null;
+  psira_expires_at: string | null;
+  psira_verified_at: string | null;
+  on_duty_since: string | null;
+  shifts_30d: number;
+  hours_on_duty_30d: number;
+  last_shift_at: string | null;
+  verifications_30d: number;
+  admitted_30d: number;
+  rejected_30d: number;
+  offline_30d: number;
+  flagged_30d: number;
+  last_verification_at: string | null;
+}
+
+export interface GuardShift {
+  shift_id: string;
+  started_at: string;
+  ended_at: string | null;
+  ended_by_handover: boolean;
+}
+
+/** Null when the id is not a guard at this estate -- the page shows "not found", not someone else's guard. */
+export async function getGuardProfile(
+  estateId: string,
+  guardMembershipId: string,
+): Promise<GuardProfile | null> {
+  const { data, error } = await supabase.rpc('estate_guard_profile', {
+    p_estate_id: estateId,
+    p_guard_membership_id: guardMembershipId,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? [])[0] as GuardProfile | undefined) ?? null;
+}
+
+export async function listGuardShifts(
+  estateId: string,
+  guardMembershipId: string,
+): Promise<GuardShift[]> {
+  const { data, error } = await supabase.rpc('estate_guard_shifts', {
+    p_estate_id: estateId,
+    p_guard_membership_id: guardMembershipId,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as GuardShift[];
+}
+
 export async function onboardGuard(input: {
   estate_id: string;
   email: string;
@@ -419,11 +478,16 @@ export async function revokeCode(codeId: string): Promise<RevokeResult> {
 
 // ─── audit ───────────────────────────────────────────────────────────────────
 
-export async function listEvents(estateId: string, limit = 100): Promise<EventRow[]> {
+export async function listEvents(
+  estateId: string,
+  limit = 100,
+  /** Only this guard's verifications -- the guard profile's activity list. */
+  guardMembershipId?: string,
+): Promise<EventRow[]> {
   // Ordered by synced_at, NEVER verified_at: verified_at is the device's claim
   // and one phone with a wrong clock would poison the ordering permanently
   // (§10). verified_at is what humans read; synced_at is what sorts.
-  const { data, error } = await supabase
+  let query = supabase
     .from('verification_events')
     // One string LITERAL, not a concatenation: supabase-js infers the row type
     // by parsing this at the type level, and `'a' + 'b'` widens to `string`,
@@ -431,7 +495,9 @@ export async function listEvents(estateId: string, limit = 100): Promise<EventRo
     .select(
       'id, code_attempted, outcome, reject_reason, verified_at, synced_at, source, admitted_without_match, de_identified_at, memberships!verification_events_verified_by_membership_id_fkey(profiles(full_name)), access_codes(memberships!access_codes_membership_id_fkey(unit, profiles(full_name)))',
     )
-    .eq('estate_id', estateId)
+    .eq('estate_id', estateId);
+  if (guardMembershipId) query = query.eq('verified_by_membership_id', guardMembershipId);
+  const { data, error } = await query
     .order('synced_at', { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw new Error(error.message);

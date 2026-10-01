@@ -1359,6 +1359,47 @@ export type Database = {
           platform_fee_minor: number
         }[]
       }
+      estate_guard_profile: {
+        Args: { p_estate_id: string; p_guard_membership_id: string }
+        Returns: {
+          admitted_30d: number
+          agency_name: string
+          email: string
+          flagged_30d: number
+          full_name: string
+          hours_on_duty_30d: number
+          is_active: boolean
+          joined_at: string
+          last_shift_at: string
+          last_sign_in_at: string
+          last_verification_at: string
+          membership_id: string
+          offline_30d: number
+          on_duty_since: string
+          phone: string
+          psira_expires_at: string
+          psira_grade: string
+          psira_registration_number: string
+          psira_verified_at: string
+          rejected_30d: number
+          shifts_30d: number
+          user_id: string
+          verifications_30d: number
+        }[]
+      }
+      estate_guard_shifts: {
+        Args: {
+          p_estate_id: string
+          p_guard_membership_id: string
+          p_limit?: number
+        }
+        Returns: {
+          ended_at: string
+          ended_by_handover: boolean
+          shift_id: string
+          started_at: string
+        }[]
+      }
       estate_settlement: {
         Args: { p_estate_id: string }
         Returns: {

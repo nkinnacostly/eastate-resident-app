@@ -80,7 +80,10 @@ create table auth.users (
   -- Defaulted to now() so the hundreds of existing fixtures across the other
   -- suites stay confirmed without being rewritten; the landlord tests pass
   -- NULL explicitly where an unconfirmed account is the point.
-  email_confirmed_at timestamptz default now()
+  email_confirmed_at timestamptz default now(),
+  -- Real Supabase column. The guard profile reports it: "never signed in" is
+  -- how an admin spots a guard account that was created but never handed over.
+  last_sign_in_at timestamptz
 );
 
 -- auth.uid() is what every definer function derives identity from. Backed by a

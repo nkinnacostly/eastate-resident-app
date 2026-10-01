@@ -73,7 +73,8 @@ export function Shell({ base = '' }: { base?: string }) {
 
         <nav className="flex flex-col">
           {NAV.map(({ to, label, Icon, children }) => {
-            const active = children ? inGroup : here === to;
+            // A detail page (guards/<id>) keeps its section lit.
+            const active = children ? inGroup : here === to || here.startsWith(`${to}/`);
             return (
               <div key={label}>
                 <NavLink

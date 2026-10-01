@@ -62,9 +62,12 @@ export function Overview() {
         />
       </div>
 
+      {/* Relative: this page is also mounted at /estate for an owner who
+          administers an estate, where "/residents" lands on the operator
+          dashboard's catch-all instead. */}
       {pending > 0 ? (
         <Link
-          to="/residents"
+          to="residents"
           className="mt-4 flex items-center justify-between rounded-card bg-ink px-5 py-4 text-canvas"
         >
           <div>

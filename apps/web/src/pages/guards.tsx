@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { HeadActions, Avatar, Button, Card, Chip, Empty, PageHead, Stat } from '../components/ui';
 import {
@@ -239,9 +240,12 @@ export function Guards() {
           <Empty>No guards yet. Register one to put somebody on the gate.</Empty>
         ) : (
           rows.map((g, i) => (
-            <div
+            // Relative, so it resolves under /estate too for an owner who also
+            // administers an estate.
+            <Link
               key={g.membership_id}
-              className={`flex items-center gap-3.5 p-4 ${i > 0 ? 'border-t border-hair' : ''}`}
+              to={g.membership_id}
+              className={`flex items-center gap-3.5 p-4 transition hover:bg-field/60 ${i > 0 ? 'border-t border-hair' : ''}`}
             >
               <Avatar name={g.full_name} className="h-11 w-11 rounded-[16px] text-[13px]" />
               <div className="min-w-0 flex-1">
@@ -249,7 +253,8 @@ export function Guards() {
                 <div className="mt-0.5 text-[12px] text-muted">{g.phone ?? 'No phone on file'}</div>
               </div>
               {g.is_active ? <Chip tone="good">Active</Chip> : <Chip>Removed</Chip>}
-            </div>
+              <span className="text-[12px] font-bold text-muted">View →</span>
+            </Link>
           ))
         )}
       </Card>
