@@ -347,6 +347,42 @@ export type Database = {
           },
         ]
       }
+      dues_payment_periods: {
+        Row: {
+          amount_minor: number
+          charge_id: string | null
+          payment_id: string
+          period: string
+        }
+        Insert: {
+          amount_minor: number
+          charge_id?: string | null
+          payment_id: string
+          period: string
+        }
+        Update: {
+          amount_minor?: number
+          charge_id?: string | null
+          payment_id?: string
+          period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dues_payment_periods_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "dues_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_payment_periods_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "dues_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dues_payments: {
         Row: {
           amount_minor: number
@@ -1346,11 +1382,7 @@ export type Database = {
         }[]
       }
       estate_dues_totals: {
-        Args: {
-          p_estate_id: string
-          p_since?: string
-          p_until?: string
-        }
+        Args: { p_estate_id: string; p_since?: string; p_until?: string }
         Returns: {
           collected_minor: number
           currency: string
@@ -1855,10 +1887,7 @@ export type Database = {
         Returns: string
       }
       start_dues_payment: {
-        Args: {
-          p_charge_id: string
-          p_months?: number
-        }
+        Args: { p_charge_id: string; p_months?: number }
         Returns: {
           amount_minor: number
           covers_from: string
@@ -1873,11 +1902,7 @@ export type Database = {
         }[]
       }
       start_dues_payment_by_token: {
-        Args: {
-          p_months?: number
-          p_pay_token: string
-          p_payer_email: string
-        }
+        Args: { p_months?: number; p_pay_token: string; p_payer_email: string }
         Returns: {
           amount_minor: number
           covers_from: string
@@ -1894,10 +1919,7 @@ export type Database = {
         }[]
       }
       start_landlord_dues_payment: {
-        Args: {
-          p_charge_id: string
-          p_months?: number
-        }
+        Args: { p_charge_id: string; p_months?: number }
         Returns: {
           amount_minor: number
           covers_from: string
