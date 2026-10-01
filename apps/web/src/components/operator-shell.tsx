@@ -3,7 +3,7 @@ import type { NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../lib/auth-context';
 import { initials } from '../lib/format';
-import { Brand, EstatesIcon, GridIcon, GuardsIcon, HealthIcon, SettingsIcon } from './icons';
+import { Brand, EstatesIcon, GridIcon, GuardsIcon, HealthIcon, PaymentsIcon, SettingsIcon } from './icons';
 
 /**
  * The operator's own shell.
@@ -13,14 +13,15 @@ import { Brand, EstatesIcon, GridIcon, GuardsIcon, HealthIcon, SettingsIcon } fr
  * they ARE different: an operator moves between whole subjects, an estate admin
  * drills into one estate.
  *
- * Billing is deliberately absent. The design has a Billing screen, but nothing
- * in this platform models a subscription, invoice or payment, and a nav item
- * leading to invented figures is worse than one that is not there.
+ * Billing (the platform charging estates) is still absent: nothing models a
+ * subscription or invoice, and a nav item leading to invented figures is worse
+ * than none. Dues payments ARE real money through the platform, so they get one.
  */
 const NAV = [
   { to: '/', label: 'Portfolio', Icon: GridIcon, end: true },
   { to: '/estates', label: 'Estates', Icon: EstatesIcon },
   { to: '/admins', label: 'Admins', Icon: GuardsIcon },
+  { to: '/payments', label: 'Dues payments', Icon: PaymentsIcon },
   { to: '/health', label: 'Platform health', Icon: HealthIcon },
   { to: '/settings', label: 'Settings', Icon: SettingsIcon },
 ];

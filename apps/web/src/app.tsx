@@ -22,6 +22,7 @@ import { NoAccess } from './pages/no-access';
 import { Admins } from './pages/operator/admins';
 import { Estates } from './pages/operator/estates';
 import { Health } from './pages/operator/health';
+import { Payments } from './pages/operator/payments';
 import { Portfolio } from './pages/operator/portfolio';
 import { Settings as OperatorSettings } from './pages/operator/settings';
 import { Overview } from './pages/overview';
@@ -63,6 +64,7 @@ function OperatorRoutes() {
         <Route index element={<Portfolio />} />
         <Route path="estates" element={<Estates />} />
         <Route path="admins" element={<Admins />} />
+        <Route path="payments" element={<Payments />} />
         <Route path="health" element={<Health />} />
         <Route path="settings" element={<OperatorSettings />} />
         <Route path="*" element={<Navigate to="/" replace />} />

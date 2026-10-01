@@ -118,6 +118,81 @@ export async function listDailyVolume(days = 30): Promise<VolumeDay[]> {
   return unwrap<VolumeDay[]>(data, error) ?? [];
 }
 
+/**
+ * One dues payment ATTEMPT, failures included. Provider fields are pulled out
+ * of the stored payload server-side; the payload itself never reaches here.
+ */
+export interface DuesTransaction {
+  payment_id: string;
+  created_at: string;
+  settled_at: string | null;
+  status: 'initiated' | 'successful' | 'failed' | 'abandoned';
+  estate_id: string;
+  estate_name: string;
+  house_number: string | null;
+  charge_id: string;
+  charge_period: string;
+  charge_due_on: string;
+  charge_status: string;
+  billed_to: 'house' | 'resident';
+  billed_name: string | null;
+  payer_name: string | null;
+  payer_email: string | null;
+  payer_phone: string | null;
+  /** 'resident' | 'admin' | 'guard' for an app payment; 'pay_link' for the emailed link. */
+  paid_via: string;
+  amount_minor: number;
+  currency: string;
+  charged_minor: number | null;
+  provider_fee_minor: number | null;
+  settled_minor: number | null;
+  /** Null on payments made before the rate was recorded per payment. */
+  platform_fee_percent: number | null;
+  platform_fee_minor: number | null;
+  tx_ref: string;
+  provider: string;
+  provider_tx_id: string | null;
+  provider_ref: string | null;
+  payment_type: string | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  card_issuer: string | null;
+  processor_response: string | null;
+}
+
+/** Per estate, per currency — NGN and ZAR are never added together. */
+export interface EstateDuesTotals {
+  estate_id: string;
+  estate_name: string;
+  currency: string;
+  payments: number;
+  failed: number;
+  collected_minor: number;
+  platform_fee_minor: number;
+  payers: number;
+  outstanding_minor: number;
+  open_charges: number;
+  last_payment_at: string | null;
+}
+
+export async function listDuesTransactions(opts: {
+  estateId?: string | null;
+  since?: string | null;
+} = {}): Promise<DuesTransaction[]> {
+  const { data, error } = await supabase.rpc('operator_dues_payments', {
+    p_estate_id: opts.estateId ?? undefined,
+    p_since: opts.since ?? undefined,
+  });
+  return unwrap<DuesTransaction[]>(data, error) ?? [];
+}
+
+export async function listDuesByEstate(since?: string | null): Promise<EstateDuesTotals[]> {
+  const { data, error } = await supabase.rpc('operator_dues_by_estate', {
+    p_since: since ?? undefined,
+  });
+  return unwrap<EstateDuesTotals[]>(data, error) ?? [];
+}
+
 export interface OnboardResult {
   estate_id: string;
   estate_name: string;

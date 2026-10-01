@@ -102,6 +102,13 @@ export const HealthIcon = (p: P) => (
   </S>
 );
 
+export const PaymentsIcon = (p: P) => (
+  <S {...p}>
+    <rect x="3.4" y="5.6" width="17.2" height="12.8" rx="2.4" />
+    <path d="M3.4 10h17.2M7 14.6h3.4" />
+  </S>
+);
+
 /** The lime app mark: a key, echoing the code a resident hands out. */
 export const Brand = () => (
   <svg viewBox="0 0 24 24" className="h-[17px] w-[17px] fill-none stroke-ink" strokeWidth={2.1} strokeLinecap="round">
