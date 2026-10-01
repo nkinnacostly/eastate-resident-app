@@ -1,5 +1,6 @@
 import { DUES_TERMS, estimateTermTotal, formatMoney, type DuesTermMonths } from '@estate/core';
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { Toast } from '../../components/toast';
 import { Button, Card, Chip, Empty, PageHead, Stat } from '../../components/ui';
@@ -159,9 +160,12 @@ export function LandlordDashboard() {
                     <div className="text-[10.5px] font-extrabold tracking-label text-muted">
                       {h.estate_name.toUpperCase()}
                     </div>
-                    <div className="mt-1 text-[19px] font-extrabold tracking-tight">
-                      House {h.house_number}
-                    </div>
+                    <Link
+                      to={`houses/${h.house_id}`}
+                      className="mt-1 block text-[19px] font-extrabold tracking-tight hover:underline"
+                    >
+                      House {h.house_number} →
+                    </Link>
                   </div>
                   {h.overdue_minor > 0 ? (
                     <Chip tone="bad">Overdue</Chip>

@@ -1161,6 +1161,10 @@ export type Database = {
         Args: { p_agency_membership_id: string }
         Returns: number
       }
+      agency_estate_detail: {
+        Args: { p_agency_id: string; p_estate_id: string }
+        Returns: Json
+      }
       agency_monthly_return: {
         Args: { p_agency_id: string; p_month: string }
         Returns: {
@@ -1177,6 +1181,10 @@ export type Database = {
           registration_number: string
           shifts: number
         }[]
+      }
+      agency_officer_detail: {
+        Args: { p_agency_membership_id: string }
+        Returns: Json
       }
       agency_roster: {
         Args: { p_agency_id: string }
@@ -1438,6 +1446,14 @@ export type Database = {
           started_at: string
         }[]
       }
+      estate_house_detail: {
+        Args: { p_estate_id: string; p_house_id: string }
+        Returns: Json
+      }
+      estate_resident_detail: {
+        Args: { p_estate_id: string; p_membership_id: string }
+        Returns: Json
+      }
       estate_settlement: {
         Args: { p_estate_id: string }
         Returns: {
@@ -1524,6 +1540,10 @@ export type Database = {
         }[]
       }
       mask_account_number: { Args: { p_number: string }; Returns: string }
+      landlord_house_detail: {
+        Args: { p_house_id: string }
+        Returns: Json
+      }
       mint_access_code: {
         Args: {
           p_delivery_note?: string
@@ -1703,6 +1723,10 @@ export type Database = {
           tx_ref: string
         }[]
       }
+      operator_estate_detail: {
+        Args: { p_estate_id: string }
+        Returns: Json
+      }
       operator_estates: {
         Args: never
         Returns: {
@@ -1743,6 +1767,10 @@ export type Database = {
           verifications_30d: number
           worst_lag_seconds: number
         }[]
+      }
+      operator_person_detail: {
+        Args: { p_target_user_id: string }
+        Returns: Json
       }
       operator_platform_team: {
         Args: never

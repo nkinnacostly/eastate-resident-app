@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { Avatar, Button, Card, Chip, Empty, PageHead, Stat } from '../../components/ui';
 import {
@@ -116,7 +117,7 @@ export function AgencyOfficers() {
                   r.is_active ? '' : 'opacity-50'
                 }`}
               >
-                <div className="flex min-w-0 items-center gap-2.5">
+                <Link to={r.agency_membership_id} className="flex min-w-0 items-center gap-2.5 hover:underline">
                   <Avatar name={r.full_name ?? '?'} />
                   <div className="min-w-0">
                     <div className="truncate text-[13px] font-bold">{r.full_name ?? 'Unnamed'}</div>
@@ -124,7 +125,7 @@ export function AgencyOfficers() {
                       <div className="text-[11px] font-semibold text-muted">No longer employed</div>
                     ) : null}
                   </div>
-                </div>
+                </Link>
                 <div className="text-[12.5px] tracking-code text-muted">
                   {r.registration_number ?? '—'}
                 </div>

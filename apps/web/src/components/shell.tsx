@@ -58,7 +58,9 @@ export function Shell({ base = '' }: { base?: string }) {
   const { pathname } = useLocation();
   const name = (session?.user.user_metadata?.full_name as string | undefined) ?? 'Admin';
   const here = pathname.slice(base.length).replace(/^\//, '');
-  const inGroup = GROUP_PATHS.includes(here);
+  // A detail page (houses/<id>, residents/<id>) stays inside its group, or the
+  // Overview menu folds shut the moment someone opens a record.
+  const inGroup = GROUP_PATHS.some((g) => (g ? here === g || here.startsWith(`${g}/`) : here === ''));
   const href = (seg: string) => `${base}/${seg}`.replace(/\/$/, '') || '/';
 
   return (

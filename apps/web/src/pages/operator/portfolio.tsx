@@ -226,10 +226,10 @@ export function Portfolio() {
             ) : (
               busiest.map((e) => (
                 <div key={e.id} className={`${COLS} items-center border-t border-hair px-[18px] py-3.5`}>
-                  <div className="flex min-w-0 items-center gap-[11px]">
+                  <Link to={`/estates/${e.id}`} className="flex min-w-0 items-center gap-[11px] hover:underline">
                     <Avatar name={e.name} />
                     <span className="truncate text-[13.5px] font-bold">{e.name}</span>
-                  </div>
+                  </Link>
                   <span className="text-[12.5px] text-muted">{count(e.houses)}</span>
                   <span className="text-[13px] font-extrabold">{count(e.verifications_30d)}</span>
                   <span className="text-[12.5px] text-muted">{ago(e.last_activity)}</span>

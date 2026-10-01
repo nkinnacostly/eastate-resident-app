@@ -1,5 +1,6 @@
 import { MAX_ACTIVE_CODES_PER_RESIDENT } from '@estate/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   Avatar, Button, Card, Chip, Empty, FilterChips, HeadActions, PageHead, Search, Stat, TableFoot,
@@ -238,10 +239,16 @@ export function Residents() {
           shown.map((p) => (
             <div key={p.membership_id} className={`${COLS} items-center border-t border-hair px-5 py-3.5`}>
               <div className="text-[13px] font-extrabold">{p.unit ?? '—'}</div>
-              <div className="flex min-w-0 items-center gap-3">
+              {/* The name opens the profile. Not the whole row: it carries
+                  Suspend/Restore, and a stray click on a row-link next to a
+                  destructive button is how people get suspended by accident. */}
+              <Link
+                to={p.membership_id}
+                className="flex min-w-0 items-center gap-3 hover:underline"
+              >
                 <Avatar name={p.full_name} />
                 <span className="truncate text-[13.5px] font-bold">{p.full_name}</span>
-              </div>
+              </Link>
               <div className="truncate text-[12.5px] text-muted">{p.phone ?? '—'}</div>
               <div className="text-[13px] font-extrabold">
                 {p.live_codes}

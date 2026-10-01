@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { Avatar, Card, Chip, Empty, PageHead } from '../../components/ui';
 import {
@@ -70,13 +71,13 @@ export function Admins() {
                   key={`${a.user_id}-${a.estate_id}`}
                   className={`${COLS} items-center border-t border-hair px-[18px] py-3.5`}
                 >
-                  <div className="flex min-w-0 items-center gap-[11px]">
+                  <Link to={`/people/${a.user_id}`} className="flex min-w-0 items-center gap-[11px] hover:underline">
                     <Avatar name={a.full_name ?? a.email} className="h-[30px] w-[30px] rounded-[10px]" />
                     <div className="min-w-0">
                       <div className="truncate text-[13.5px] font-bold">{a.full_name ?? '—'}</div>
                       <div className="mt-0.5 truncate text-[11px] text-muted">{a.email}</div>
                     </div>
-                  </div>
+                  </Link>
                   <span className="truncate text-[12.5px] text-muted">{a.estate_name}</span>
                   <span className="text-[12.5px] text-muted">{ago(a.last_sign_in_at)}</span>
                   <div>
@@ -107,12 +108,12 @@ export function Admins() {
                   className={`flex items-center gap-3 py-4 ${i < team.length - 1 ? 'border-b border-hair' : ''}`}
                 >
                   <Avatar name={m.full_name ?? m.email} className="h-[34px] w-[34px] rounded-[11px]" />
-                  <div className="min-w-0 flex-1">
+                  <Link to={`/people/${m.user_id}`} className="min-w-0 flex-1 hover:underline">
                     <div className="truncate text-[13.5px] font-extrabold">{m.full_name ?? m.email}</div>
                     <div className="mt-0.5 truncate text-[11.5px] text-muted">
                       {m.email} · last seen {ago(m.last_sign_in_at).toLowerCase()}
                     </div>
-                  </div>
+                  </Link>
                   <Chip tone="on">Owner</Chip>
                 </div>
               ))

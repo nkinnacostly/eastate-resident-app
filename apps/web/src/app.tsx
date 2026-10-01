@@ -5,7 +5,9 @@ import { OperatorShell } from './components/operator-shell';
 import { Shell } from './components/shell';
 import { useAuth } from './lib/auth-context';
 import { AgencyCoverage } from './pages/agency/coverage';
+import { AgencyEstate } from './pages/agency/estate';
 import { AgencyMonthlyReturn } from './pages/agency/monthly-return';
+import { AgencyOfficer } from './pages/agency/officer';
 import { AgencyOfficers } from './pages/agency/officers';
 import { Audit } from './pages/audit';
 import { ChangePassword } from './pages/change-password';
@@ -15,19 +17,24 @@ import { DuesPayments } from './pages/dues-payments';
 import { Flagged } from './pages/flagged';
 import { GuardProfile } from './pages/guard-profile';
 import { Guards } from './pages/guards';
+import { HouseProfile } from './pages/house-profile';
 import { Houses } from './pages/houses';
 import { LandlordShell } from './components/landlord-shell';
 import { LandlordDashboard } from './pages/landlord/dashboard';
+import { LandlordHouse } from './pages/landlord/house';
 import { LandlordSignUp } from './pages/landlord/sign-up';
 import { LoadFailed } from './pages/load-failed';
 import { NoAccess } from './pages/no-access';
 import { Admins } from './pages/operator/admins';
+import { EstateDetail } from './pages/operator/estate-detail';
 import { Estates } from './pages/operator/estates';
 import { Health } from './pages/operator/health';
 import { Payments } from './pages/operator/payments';
+import { Person } from './pages/operator/person';
 import { Portfolio } from './pages/operator/portfolio';
 import { Settings as OperatorSettings } from './pages/operator/settings';
 import { Overview } from './pages/overview';
+import { ResidentProfile } from './pages/resident-profile';
 import { Residents } from './pages/residents';
 import { Settings } from './pages/settings';
 import { SignIn } from './pages/sign-in';
@@ -45,7 +52,9 @@ function EstateRoutes({ base = '' }: { base?: string }) {
       <Route element={<Shell base={base} />}>
         <Route index element={<Overview />} />
         <Route path="houses" element={<Houses />} />
+        <Route path="houses/:houseId" element={<HouseProfile />} />
         <Route path="residents" element={<Residents />} />
+        <Route path="residents/:membershipId" element={<ResidentProfile />} />
         <Route path="flagged" element={<Flagged />} />
         <Route path="guards" element={<Guards />} />
         <Route path="guards/:membershipId" element={<GuardProfile />} />
@@ -67,7 +76,9 @@ function OperatorRoutes() {
       <Route element={<OperatorShell />}>
         <Route index element={<Portfolio />} />
         <Route path="estates" element={<Estates />} />
+        <Route path="estates/:estateId" element={<EstateDetail />} />
         <Route path="admins" element={<Admins />} />
+        <Route path="people/:userId" element={<Person />} />
         <Route path="payments" element={<Payments />} />
         <Route path="health" element={<Health />} />
         <Route path="settings" element={<OperatorSettings />} />
@@ -90,6 +101,7 @@ function LandlordRoutes() {
     <Routes>
       <Route element={<LandlordShell />}>
         <Route index element={<LandlordDashboard />} />
+        <Route path="houses/:houseId" element={<LandlordHouse />} />
         <Route path="*" element={<Navigate to="/landlord" replace />} />
       </Route>
     </Routes>
@@ -108,6 +120,8 @@ function AgencyRoutes() {
       <Route element={<AgencyShell />}>
         <Route index element={<AgencyCoverage />} />
         <Route path="officers" element={<AgencyOfficers />} />
+        <Route path="officers/:agencyMembershipId" element={<AgencyOfficer />} />
+        <Route path="estates/:estateId" element={<AgencyEstate />} />
         <Route path="return" element={<AgencyMonthlyReturn />} />
         <Route path="*" element={<Navigate to="/agency" replace />} />
       </Route>

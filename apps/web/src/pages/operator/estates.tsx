@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   Avatar, Button, Card, Chip, Empty, FilterChips, PageHead, Search,
@@ -292,7 +293,7 @@ export function Estates() {
         ) : (
           shown.map((e) => (
             <div key={e.id} className={`${COLS} items-center border-t border-hair px-[18px] py-3.5`}>
-              <div className="flex min-w-0 items-center gap-[11px]">
+              <Link to={`/estates/${e.id}`} className="flex min-w-0 items-center gap-[11px] hover:underline">
                 <Avatar name={e.name} />
                 <div className="min-w-0">
                   <div className="truncate text-[13.5px] font-bold">{e.name}</div>
@@ -300,7 +301,7 @@ export function Estates() {
                     {e.address ?? <span className="tracking-code">{e.join_code}</span>}
                   </div>
                 </div>
-              </div>
+              </Link>
               <span className="text-[12.5px] text-muted">{count(e.houses)}</span>
               <span className="text-[12.5px] text-muted">{count(e.residents)}</span>
               <div className="min-w-0">

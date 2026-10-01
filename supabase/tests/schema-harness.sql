@@ -62,6 +62,7 @@ create table public.estates (
   name         text not null,
   address      text,
   contact_info text,
+  join_code    text,
   is_active    boolean not null default true,
   created_at   timestamptz not null default now()
 );
@@ -173,7 +174,10 @@ create table public.access_codes (
   expires_at    timestamptz not null,
   swept_at      timestamptz,
   is_delivery   boolean not null default false,
-  delivery_note text
+  delivery_note text,
+  -- Real-schema columns the detail views read (20261001150000).
+  used_at       timestamptz,
+  revoked_at    timestamptz
 );
 
 create unique index access_codes_live_code_key

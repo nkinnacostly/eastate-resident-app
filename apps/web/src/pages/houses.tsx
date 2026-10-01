@@ -1,5 +1,6 @@
 import { formatMoney } from '@estate/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   Button, Card, Chip, Empty, HeadActions, PageHead, Search, Stat, TableFoot,
@@ -341,7 +342,10 @@ export function Houses() {
         ) : (
           shown.map((h) => (
             <div key={h.id} className={`${COLS} items-center border-t border-hair px-5 py-3.5`}>
-              <div className="text-[13px] font-extrabold">{h.house_number}</div>
+              {/* The number opens the house; the row's buttons stay buttons. */}
+              <Link to={h.id} className="text-[13px] font-extrabold underline-offset-2 hover:underline">
+                {h.house_number}
+              </Link>
               <div className="text-[13px] font-extrabold tracking-code">{h.house_code}</div>
               <div className="truncate text-[13px]">
                 {h.landlord_name ?? <span className="text-muted">Not recorded</span>}

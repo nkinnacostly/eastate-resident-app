@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { Card, Chip, Empty, FilterChips, PageHead, Stat } from '../../components/ui';
 import { listCoverage, type Coverage } from '../../lib/agency';
@@ -98,7 +99,9 @@ export function AgencyCoverage() {
         ) : (
           rows.map((r) => (
             <div key={r.estate_id} className={`${COLS} items-center border-t border-hair px-4 py-3`}>
-              <div className="truncate text-[13px] font-bold">{r.estate_name}</div>
+              <Link to={`estates/${r.estate_id}`} className="truncate text-[13px] font-bold hover:underline">
+                {r.estate_name}
+              </Link>
               <div>
                 {r.contract_live ? <Chip tone="good">Live</Chip> : <Chip>Ended</Chip>}
               </div>

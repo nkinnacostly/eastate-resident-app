@@ -57,3 +57,20 @@ export function initials(name: string): string {
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('');
 }
+
+/** "Sep 2026" from a `YYYY-MM-DD` billing period. Parsed as local midnight, not UTC. */
+export function monthLabel(isoDate: string): string {
+  const d = new Date(`${isoDate.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(d.getTime())
+    ? isoDate
+    : d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
+
+/** "8 Oct 2026" -- a day, for dates and timestamps alike. */
+export function dateLabel(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  return Number.isNaN(d.getTime())
+    ? '—'
+    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
