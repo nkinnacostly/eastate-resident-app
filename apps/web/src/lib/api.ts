@@ -3,6 +3,7 @@ import type { Json } from '@estate/db';
 
 import type { HouseInput } from './csv';
 import { callEdgeFunction } from './edge';
+import type { DuesTransaction, EstateDuesTotals } from './operator';
 import { supabase } from './supabase';
 
 /**
@@ -768,4 +769,34 @@ export async function remindHouseDues(houseId: string): Promise<number> {
   const { data, error } = await supabase.rpc('remind_house_dues', { p_house_id: houseId });
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
+}
+
+/**
+ * Every dues payment attempt at this estate -- residents' and landlords' alike,
+ * failures included. The same rows the operator sees, scoped server-side to an
+ * estate the caller actively administers.
+ */
+export async function listEstateDuesPayments(
+  estateId: string,
+  since: string | null,
+): Promise<DuesTransaction[]> {
+  const { data, error } = await supabase.rpc('estate_dues_payments', {
+    p_estate_id: estateId,
+    p_since: since ?? undefined,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DuesTransaction[];
+}
+
+/** Complete totals for the window -- the transaction list is capped, these are not. */
+export async function getEstateDuesTotals(
+  estateId: string,
+  since: string | null,
+): Promise<EstateDuesTotals[]> {
+  const { data, error } = await supabase.rpc('estate_dues_totals', {
+    p_estate_id: estateId,
+    p_since: since ?? undefined,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as EstateDuesTotals[];
 }

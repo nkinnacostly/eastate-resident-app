@@ -1296,6 +1296,69 @@ export type Database = {
         Args: { p_kind: string; p_payload: Json }
         Returns: number
       }
+      estate_dues_payments: {
+        Args: {
+          p_estate_id: string
+          p_limit?: number
+          p_since?: string
+          p_until?: string
+        }
+        Returns: {
+          amount_minor: number
+          billed_name: string
+          billed_to: string
+          card_brand: string
+          card_issuer: string
+          card_last4: string
+          charge_due_on: string
+          charge_id: string
+          charge_period: string
+          charge_status: string
+          charged_minor: number
+          created_at: string
+          currency: string
+          estate_id: string
+          estate_name: string
+          house_number: string
+          paid_via: string
+          payer_email: string
+          payer_name: string
+          payer_phone: string
+          payment_id: string
+          payment_type: string
+          platform_fee_minor: number
+          platform_fee_percent: number
+          processor_response: string
+          provider: string
+          provider_fee_minor: number
+          provider_ref: string
+          provider_tx_id: string
+          settled_at: string
+          settled_minor: number
+          status: string
+          tx_ref: string
+        }[]
+      }
+      estate_dues_totals: {
+        Args: {
+          p_estate_id: string
+          p_since?: string
+          p_until?: string
+        }
+        Returns: {
+          collected_minor: number
+          currency: string
+          estate_id: string
+          estate_name: string
+          failed: number
+          last_payment_at: string
+          open_charges: number
+          outstanding_minor: number
+          payers: number
+          payments: number
+          platform_fee_minor: number
+        }[]
+      }
       estate_settlement: {
         Args: { p_estate_id: string }
         Returns: {

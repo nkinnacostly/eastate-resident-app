@@ -20,18 +20,24 @@ begin
   end if;
 end $$;
 
+-- The "nothing raised" failure is raised OUTSIDE the block that catches. An
+-- earlier version raised it inside, where its own handler caught it -- and since
+-- that message quotes `want`, the LIKE matched and every refusal test passed
+-- whether or not anything was refused.
 create or replace function pg_temp.raises(label text, sql text, want text) returns void
 language plpgsql as $$
 begin
-  execute sql;
-  raise exception 'FAIL  % (expected %, nothing raised)', label, want;
-exception
-  when others then
-    if sqlerrm like '%' || want || '%' then
-      raise notice 'PASS  % (%)', label, want;
-    else
+  begin
+    execute sql;
+  exception
+    when others then
+      if sqlerrm like '%' || want || '%' then
+        raise notice 'PASS  % (%)', label, want;
+        return;
+      end if;
       raise exception 'FAIL  % (wanted %, got %)', label, want, sqlerrm;
-    end if;
+  end;
+  raise exception 'FAIL  % (expected %, nothing raised)', label, want;
 end $$;
 
 -- ─── Seed ────────────────────────────────────────────────────────────────────
@@ -44,13 +50,15 @@ insert into auth.users (id, email) values
   ('c6000000-0000-4000-8000-00000000000d', 'owner6@example.com'),
   ('c6000000-0000-4000-8000-00000000000a', 'admin6@example.com'),
   ('c6000000-0000-4000-8000-000000000001', 'rita@example.com'),
-  ('c6000000-0000-4000-8000-000000000002', 'sam@example.com');
+  ('c6000000-0000-4000-8000-000000000002', 'sam@example.com'),
+  ('c6000000-0000-4000-8000-00000000000e', 'exadmin6@example.com');
 
 insert into public.profiles (id, full_name, phone) values
   ('c6000000-0000-4000-8000-00000000000d', 'Platform Owner', null),
   ('c6000000-0000-4000-8000-00000000000a', 'Estate Admin', null),
   ('c6000000-0000-4000-8000-000000000001', 'Rita Resident', '+2348000000001'),
-  ('c6000000-0000-4000-8000-000000000002', 'Sam Resident', null);
+  ('c6000000-0000-4000-8000-000000000002', 'Sam Resident', null),
+  ('c6000000-0000-4000-8000-00000000000e', 'Former Admin', null);
 
 insert into public.platform_admins (user_id) values ('c6000000-0000-4000-8000-00000000000d');
 
@@ -77,6 +85,10 @@ insert into public.memberships (id, user_id, estate_id, role, house_id) values
   ('a6000000-0000-4000-8000-00000000000a','c6000000-0000-4000-8000-00000000000a','e6000000-0000-4000-8000-000000000001','admin',null),
   ('a6000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000001','e6000000-0000-4000-8000-000000000001','resident','f6000000-0000-4000-8000-000000000001'),
   ('a6000000-0000-4000-8000-000000000002','c6000000-0000-4000-8000-000000000002','e6000000-0000-4000-8000-000000000002','resident',null);
+
+-- Removed from the committee: the membership is still there, just inactive.
+insert into public.memberships (id, user_id, estate_id, role, house_id, is_active) values
+  ('a6000000-0000-4000-8000-00000000000e','c6000000-0000-4000-8000-00000000000e','e6000000-0000-4000-8000-000000000001','admin',null,false);
 
 select public.generate_dues_charges(date_trunc('month', current_date)::date);
 
@@ -212,3 +224,59 @@ select * from public.operator_dues_by_estate()
 select pg_temp.check('Baobab: the declined card collected nothing and the charge is still owed', (
   :'bb_payments'::int = 0 and :'bb_failed'::int = 1 and :'bb_collected_minor'::bigint = 0
   and :'bb_outstanding_minor'::bigint = 1000000 and :'bb_open_charges'::int = 1));
+
+-- ─── The estate admin's view ─────────────────────────────────────────────────
+--
+-- Same rows as the operator's, scoped to one estate, and only for an ACTIVE
+-- admin of that estate.
+
+set test.uid = 'c6000000-0000-4000-8000-00000000000a';
+select count(*) as n from public.estate_dues_payments('e6000000-0000-4000-8000-000000000001') \gset ea_
+select pg_temp.check('an estate admin sees every payment at their estate, resident AND landlord',
+  :'ea_n'::int = 2 and (
+    select bool_and(estate_id = 'e6000000-0000-4000-8000-000000000001')
+       and bool_or(paid_via = 'pay_link') and bool_or(paid_via = 'resident')
+      from public.estate_dues_payments('e6000000-0000-4000-8000-000000000001')));
+
+select pg_temp.check('...with the same detail the operator sees', (
+  select payer_name = 'Rita Resident' and card_last4 = '4242' and platform_fee_minor = 125000
+    from public.estate_dues_payments('e6000000-0000-4000-8000-000000000001')
+   where tx_ref = :'rita_ref'));
+
+select * from public.estate_dues_totals('e6000000-0000-4000-8000-000000000001') \gset et_
+select pg_temp.check('estate totals match the operator''s figures for that estate', (
+  :'et_collected_minor'::bigint = 5000000 and :'et_payments'::int = 2
+  and :'et_platform_fee_minor'::bigint = 250000));
+select count(*) as n from public.estate_dues_totals('e6000000-0000-4000-8000-000000000001') \gset etn_
+select pg_temp.check('...and contain no other estate', :'etn_n'::int = 1);
+
+-- ★ Tenant isolation ★
+select pg_temp.raises('an admin cannot name another estate',
+  $$select * from public.estate_dues_payments('e6000000-0000-4000-8000-000000000002')$$,
+  'not_an_estate_admin');
+select pg_temp.raises('...nor read its totals',
+  $$select * from public.estate_dues_totals('e6000000-0000-4000-8000-000000000002')$$,
+  'not_an_estate_admin');
+select pg_temp.raises('a NULL estate is refused, not read as "every estate"',
+  $$select * from public.estate_dues_payments(null)$$, 'not_an_estate_admin');
+
+set test.uid = 'c6000000-0000-4000-8000-00000000000e';
+select pg_temp.raises('a deactivated admin is refused',
+  $$select * from public.estate_dues_payments('e6000000-0000-4000-8000-000000000001')$$,
+  'not_an_estate_admin');
+
+set test.uid = 'c6000000-0000-4000-8000-000000000001';
+select pg_temp.raises('a resident cannot read their estate''s ledger',
+  $$select * from public.estate_dues_payments('e6000000-0000-4000-8000-000000000001')$$,
+  'not_an_estate_admin');
+
+reset test.uid;
+select pg_temp.check('anon cannot execute the estate RPCs, nobody can call the helpers', (
+  not has_function_privilege('anon',
+        'public.estate_dues_payments(uuid,timestamptz,timestamptz,integer)', 'execute')
+  and not has_function_privilege('anon',
+        'public.estate_dues_totals(uuid,timestamptz,timestamptz)', 'execute')
+  and not has_function_privilege('authenticated',
+        'private.dues_payment_rows(uuid,timestamptz,timestamptz,integer)', 'execute')
+  and not has_function_privilege('authenticated',
+        'private.dues_totals_rows(uuid,timestamptz,timestamptz)', 'execute')));

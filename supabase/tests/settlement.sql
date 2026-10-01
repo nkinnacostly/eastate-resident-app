@@ -22,18 +22,24 @@ end $$;
 
 -- Did the statement raise the error we expected, and not some other one? A
 -- bare "it threw" passes just as happily when the function does not exist.
+-- The "nothing raised" failure is raised OUTSIDE the block that catches. An
+-- earlier version raised it inside, where its own handler caught it -- and since
+-- that message quotes `want`, the LIKE matched and every refusal test passed
+-- whether or not anything was refused.
 create or replace function pg_temp.raises(label text, sql text, want text) returns void
 language plpgsql as $$
 begin
-  execute sql;
-  raise exception 'FAIL  % (expected %, nothing raised)', label, want;
-exception
-  when others then
-    if sqlerrm like '%' || want || '%' then
-      raise notice 'PASS  % (%)', label, want;
-    else
+  begin
+    execute sql;
+  exception
+    when others then
+      if sqlerrm like '%' || want || '%' then
+        raise notice 'PASS  % (%)', label, want;
+        return;
+      end if;
       raise exception 'FAIL  % (wanted %, got %)', label, want, sqlerrm;
-    end if;
+  end;
+  raise exception 'FAIL  % (expected %, nothing raised)', label, want;
 end $$;
 
 -- ─── Seed ────────────────────────────────────────────────────────────────────
@@ -103,6 +109,11 @@ select pg_temp.raises(
 
 -- ─── Recording a destination ─────────────────────────────────────────────────
 
+-- AS authenticated, which is what PostgREST runs a signed-in admin as. The
+-- harness connects as a superuser, which bypasses EXECUTE grants entirely: run
+-- as that, this test can only pass by accident -- and it did, through a bug in
+-- pg_temp.raises that hid the fact the call succeeded.
+set role authenticated;
 select pg_temp.raises(
   'an estate admin cannot record a settlement account directly',
   $$select public.set_estate_settlement(
@@ -110,6 +121,7 @@ select pg_temp.raises(
       '0690000032','Someone Else', true, 'RS_ATTACKERSUBACCOUNT','99999',
       'c1000000-0000-4000-8000-00000000000a')$$,
   'permission denied');
+reset role;
 
 -- The Edge Function's call, made as the owner of the definer function rather
 -- than through PostgREST. This is what the service role reaches.

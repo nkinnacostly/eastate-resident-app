@@ -11,6 +11,7 @@ import {
   GuardsIcon,
   HomeIcon,
   LogIcon,
+  PaymentsIcon,
   SettingsIcon,
 } from './icons';
 
@@ -41,6 +42,7 @@ const NAV = [
   { to: 'guards', label: 'Guards', Icon: GuardsIcon },
   { to: 'codes', label: 'Codes', Icon: CodesIcon },
   { to: 'dues', label: 'Dues', Icon: EstatesIcon },
+  { to: 'payments', label: 'Payments', Icon: PaymentsIcon },
   { to: 'audit', label: 'Audit log', Icon: LogIcon },
   { to: 'settings', label: 'Settings', Icon: SettingsIcon },
 ];
