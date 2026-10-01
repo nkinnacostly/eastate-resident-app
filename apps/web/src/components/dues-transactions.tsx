@@ -22,6 +22,12 @@ type StatusFilter = (typeof STATUSES)[number];
 const monthLabel = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
+/** "Sep 2026", or "12 months · Sep 2026 – Aug 2027" for a payment made ahead. */
+const covers = (t: DuesTransaction) =>
+  t.months > 1
+    ? `${t.months} months · ${monthLabel(t.covers_from)} – ${monthLabel(t.covers_until)}`
+    : monthLabel(t.charge_period);
+
 const money = (minor: number | null, currency: string) =>
   minor === null ? '—' : formatMoney(minor, currency);
 
@@ -54,7 +60,7 @@ function Detail({ t }: { t: DuesTransaction }) {
     <div className="grid grid-cols-4 gap-x-6 gap-y-4 border-t border-hair bg-field/50 px-4 py-4">
       <Field label="ESTATE">{t.estate_name}</Field>
       <Field label="HOUSE">{t.house_number ? `House ${t.house_number}` : null}</Field>
-      <Field label="DUES FOR">{monthLabel(t.charge_period)}</Field>
+      <Field label="DUES FOR">{covers(t)}</Field>
       <Field label="CHARGE DUE">{new Date(`${t.charge_due_on}T00:00:00`).toLocaleDateString()}</Field>
 
       <Field label="BILLED TO">
@@ -106,7 +112,8 @@ function Detail({ t }: { t: DuesTransaction }) {
 
 function exportCsv(rows: DuesTransaction[], filename: string) {
   const head = [
-    'Started', 'Settled', 'Status', 'Estate', 'House', 'Dues period', 'Billed to', 'Billed name',
+    'Started', 'Settled', 'Status', 'Estate', 'House', 'Dues period', 'Months', 'Covers from',
+    'Covers until', 'Billed to', 'Billed name',
     'Paid by', 'Payer email', 'Payer phone', 'Paid via', 'Currency', 'Dues amount',
     'Customer charged', 'Provider fee', 'Settled (net)', 'Platform fee %', 'Platform commission',
     'Method', 'Card', 'Card issuer', 'Provider response', 'Our reference', 'Provider',
@@ -116,6 +123,7 @@ function exportCsv(rows: DuesTransaction[], filename: string) {
   const major = (n: number | null) => (n === null ? '' : (n / 100).toFixed(2));
   const body = rows.map((t) => [
     t.created_at, t.settled_at, t.status, t.estate_name, t.house_number, t.charge_period,
+    String(t.months), t.covers_from, t.covers_until,
     t.billed_to, t.billed_name, t.payer_name, t.payer_email, t.payer_phone, t.paid_via,
     t.currency, major(t.amount_minor), major(t.charged_minor), major(t.provider_fee_minor),
     major(t.settled_minor), t.platform_fee_percent === null ? '' : String(t.platform_fee_percent),
@@ -201,7 +209,7 @@ export function DuesTransactions({
                 </span>
                 <span className="min-w-0 truncate text-[13px]">
                   {t.payer_name ?? t.payer_email ?? '—'}
-                  <span className="text-muted"> · {monthLabel(t.charge_period)}</span>
+                  <span className="text-muted"> · {covers(t)}</span>
                 </span>
                 <span className="text-[12.5px] font-bold">{formatMoney(t.amount_minor, t.currency)}</span>
                 <span>{statusChip(t.status)}</span>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>Pay estate dues | myestateaccess</title>
-<meta name="description" content="Settle a house’s monthly estate dues.">
+<meta name="description" content="Settle a house’s estate dues — one month or up to a year ahead.">
 <link rel="canonical" href="https://myestateaccess.com/dues/pay">
 <!-- A payment page has nothing to offer a search engine and a live payment
      reference in a query string has no business in an index. -->
@@ -16,6 +16,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/styles.css">
+<style>
+  .term { display:flex; align-items:center; gap:8px; padding:11px 12px; border:1px solid #d8dbe0;
+          border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .term:has(input:checked) { border-color:#16181c; background:#f3f4f6; }
+</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -25,6 +30,18 @@
     <div id="detail" class="muted">Loading the charge&hellip;</div>
 
     <form id="form" hidden style="margin-top:22px">
+      <!-- How far ahead to pay. Dues stay monthly; this decides how many months
+           one checkout settles, oldest unpaid first. The price is computed by
+           the server for exactly these months and shown on the next screen. -->
+      <fieldset style="border:0;padding:0;margin:0 0 18px">
+        <legend style="font-weight:700;margin-bottom:8px">Pay for</legend>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+          <label class="term"><input type="radio" name="months" value="1" checked> Monthly</label>
+          <label class="term"><input type="radio" name="months" value="3"> Quarterly · 3 months</label>
+          <label class="term"><input type="radio" name="months" value="6"> Half-yearly · 6 months</label>
+          <label class="term"><input type="radio" name="months" value="12"> Yearly · 12 months</label>
+        </div>
+      </fieldset>
       <label for="email" style="display:block;font-weight:700;margin-bottom:6px">Your email</label>
       <input id="email" type="email" required autocomplete="email"
              placeholder="you@example.com"
@@ -75,13 +92,19 @@
       const res = await fetch(window.__FN__ + '/dues-pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pay_token: token, email: document.getElementById('email').value }),
+        body: JSON.stringify({
+          pay_token: token,
+          email: document.getElementById('email').value,
+          months: Number(form.querySelector('input[name="months"]:checked').value),
+        }),
       });
       const body = await res.json();
       if (!body.link) throw new Error(
         body.error === 'charge_unavailable'
           ? 'This charge has already been settled, or the link is no longer valid.'
-          : 'We could not start the payment. Please try again.');
+          : body.error === 'cannot_pay_ahead'
+            ? 'The estate is not billing that far ahead for this house. Choose a shorter period.'
+            : 'We could not start the payment. Please try again.');
       location.href = body.link;
     } catch (e) {
       fail(e.message);

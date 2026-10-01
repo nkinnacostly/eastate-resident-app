@@ -10,6 +10,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { createCheckout } from '../_shared/flutterwave.ts';
+import { parseTerm, termDescription } from '../_shared/money.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -30,8 +31,12 @@ Deno.serve(async (req) => {
   const auth = req.headers.get('Authorization');
   if (!auth) return json({ error: 'unauthorised' }, 401);
 
-  const { charge_id, as_landlord } = await req.json().catch(() => ({}));
+  const { charge_id, as_landlord, months: rawMonths } = await req.json().catch(() => ({}));
   if (!charge_id) return json({ error: 'charge_id_required' }, 400);
+  // 1, 3, 6 or 12. The price is still computed in the database from the plan
+  // it freezes -- this only says how many months the payer chose.
+  const months = parseTerm(rawMonths);
+  if (months === null) return json({ error: 'invalid_term' }, 400);
 
   // The caller's OWN token, deliberately -- not the service role. That keeps
   // start_dues_payment deriving identity from auth.uid(), so the ownership
@@ -48,8 +53,8 @@ Deno.serve(async (req) => {
   // RULE applies, never who the caller is. Asking to be treated as a landlord
   // gets you nothing unless the estate recorded your address on the house.
   const { data, error } = as_landlord
-    ? await supabase.rpc('start_landlord_dues_payment', { p_charge_id: charge_id })
-    : await supabase.rpc('start_dues_payment', { p_charge_id: charge_id });
+    ? await supabase.rpc('start_landlord_dues_payment', { p_charge_id: charge_id, p_months: months })
+    : await supabase.rpc('start_dues_payment', { p_charge_id: charge_id, p_months: months });
   if (error) return json({ error: error.message }, 400);
 
   const row = Array.isArray(data) ? data[0] : data;
@@ -76,7 +81,7 @@ Deno.serve(async (req) => {
       redirectUrl: `${SITE_URL}?ref=${encodeURIComponent(row.tx_ref)}&from=app`,
       email,
       title: 'Estate dues',
-      description: 'Monthly estate dues',
+      description: termDescription(months, row.covers_from, row.covers_until),
       // The estate's own bank account. start_dues_payment reads it from the
       // same row as the amount, so the destination cannot belong to a
       // different estate than the charge does.
@@ -85,7 +90,11 @@ Deno.serve(async (req) => {
     });
     // Only the link. The subaccount reference and our commission rate stay
     // server-side -- a resident has no use for either.
-    return json({ link, tx_ref: row.tx_ref });
+    return json({
+      link, tx_ref: row.tx_ref,
+      months, amount_minor: Number(row.amount_minor), currency: row.currency,
+      covers_from: row.covers_from, covers_until: row.covers_until,
+    });
   } catch (e) {
     // The payment row stays 'initiated'. The reconciliation sweep will verify
     // it against Flutterwave rather than this function guessing: a checkout

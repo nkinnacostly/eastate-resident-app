@@ -355,6 +355,7 @@ export type Database = {
           currency: string
           id: string
           initiated_by_membership_id: string | null
+          months: number
           payer_email: string | null
           platform_fee_percent: number | null
           provider: string
@@ -371,6 +372,7 @@ export type Database = {
           currency: string
           id?: string
           initiated_by_membership_id?: string | null
+          months?: number
           payer_email?: string | null
           platform_fee_percent?: number | null
           provider?: string
@@ -387,6 +389,7 @@ export type Database = {
           currency?: string
           id?: string
           initiated_by_membership_id?: string | null
+          months?: number
           payer_email?: string | null
           platform_fee_percent?: number | null
           provider?: string
@@ -1315,11 +1318,14 @@ export type Database = {
           charge_period: string
           charge_status: string
           charged_minor: number
+          covers_from: string
+          covers_until: string
           created_at: string
           currency: string
           estate_id: string
           estate_name: string
           house_number: string
+          months: number
           paid_via: string
           payer_email: string
           payer_name: string
@@ -1638,11 +1644,14 @@ export type Database = {
           charge_period: string
           charge_status: string
           charged_minor: number
+          covers_from: string
+          covers_until: string
           created_at: string
           currency: string
           estate_id: string
           estate_name: string
           house_number: string
+          months: number
           paid_via: string
           payer_email: string
           payer_name: string
@@ -1846,11 +1855,17 @@ export type Database = {
         Returns: string
       }
       start_dues_payment: {
-        Args: { p_charge_id: string }
+        Args: {
+          p_charge_id: string
+          p_months?: number
+        }
         Returns: {
           amount_minor: number
+          covers_from: string
+          covers_until: string
           currency: string
           fee_percent: number
+          months: number
           ok: boolean
           reason: string
           subaccount_ref: string
@@ -1858,13 +1873,20 @@ export type Database = {
         }[]
       }
       start_dues_payment_by_token: {
-        Args: { p_pay_token: string; p_payer_email: string }
+        Args: {
+          p_months?: number
+          p_pay_token: string
+          p_payer_email: string
+        }
         Returns: {
           amount_minor: number
+          covers_from: string
+          covers_until: string
           currency: string
           estate_name: string
           fee_percent: number
           house_number: string
+          months: number
           ok: boolean
           reason: string
           subaccount_ref: string
@@ -1872,11 +1894,17 @@ export type Database = {
         }[]
       }
       start_landlord_dues_payment: {
-        Args: { p_charge_id: string }
+        Args: {
+          p_charge_id: string
+          p_months?: number
+        }
         Returns: {
           amount_minor: number
+          covers_from: string
+          covers_until: string
           currency: string
           fee_percent: number
+          months: number
           ok: boolean
           reason: string
           subaccount_ref: string

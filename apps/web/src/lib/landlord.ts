@@ -70,6 +70,9 @@ const payError = (code: string) =>
     estate_has_no_settlement_account:
       'This estate has not finished setting up its bank account, so payments cannot be taken yet. The estate office can complete it.',
     checkout_unavailable: 'We could not reach the payment provider. Please try again shortly.',
+    cannot_pay_ahead:
+      'The estate is not billing this house that far ahead. Choose a shorter period.',
+    invalid_term: 'Choose monthly, quarterly, half-yearly or yearly.',
   })[code] ?? 'We could not start that payment.';
 
 /**
@@ -80,10 +83,11 @@ const payError = (code: string) =>
  * The amount is never sent from here — it is read from the charge row inside
  * the database, which is what stops a client choosing its own price.
  */
-export async function startLandlordPayment(chargeId: string): Promise<string> {
+export async function startLandlordPayment(chargeId: string, months = 1): Promise<string> {
+  // `months` is how far ahead to pay (1, 3, 6 or 12), never a price.
   const r = await callEdgeFunction<{ link: string }>(
     'dues-checkout',
-    { charge_id: chargeId, as_landlord: true },
+    { charge_id: chargeId, as_landlord: true, months },
     payError,
   );
   return r.link;

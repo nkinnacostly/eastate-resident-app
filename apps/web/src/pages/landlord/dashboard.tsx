@@ -1,4 +1,4 @@
-import { formatMoney } from '@estate/core';
+import { DUES_TERMS, estimateTermTotal, formatMoney, type DuesTermMonths } from '@estate/core';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Toast } from '../../components/toast';
@@ -56,6 +56,8 @@ export function LandlordDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
+  // Per house: a landlord with two properties may pay one yearly and one monthly.
+  const [terms, setTerms] = useState<Record<string, DuesTermMonths>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,11 +77,11 @@ export function LandlordDashboard() {
     void load();
   }, [load]);
 
-  const pay = async (charge: LandlordCharge) => {
+  const pay = async (charge: LandlordCharge, months: number) => {
     setPaying(charge.charge_id);
     setError(null);
     try {
-      const link = await startLandlordPayment(charge.charge_id);
+      const link = await startLandlordPayment(charge.charge_id, months);
       // Same tab. A checkout opened in a new tab loses the payer whenever a
       // browser blocks the popup, and the return page brings them back here.
       window.location.href = link;
@@ -92,7 +94,13 @@ export function LandlordDashboard() {
   const owed = houses.reduce((n, h) => n + Number(h.outstanding_minor), 0);
   const overdue = houses.reduce((n, h) => n + Number(h.overdue_minor), 0);
   const currency = houses.find((h) => h.currency)?.currency ?? 'NGN';
-  const open = charges.filter((c) => c.status === 'open');
+  // Oldest first, so a term always starts at the oldest unpaid month of its
+  // house -- paying a year from a later month would leave the arrears behind.
+  const open = charges
+    .filter((c) => c.status === 'open')
+    .sort((a, b) => a.period.localeCompare(b.period));
+  const anchorOf = new Map<string, string>();
+  for (const c of open) if (!anchorOf.has(c.house_id)) anchorOf.set(c.house_id, c.charge_id);
   const settled = charges.filter((c) => c.status !== 'open');
 
   return (
@@ -202,7 +210,18 @@ export function LandlordDashboard() {
         <>
           <h2 className="mt-8 text-[15px] font-extrabold tracking-tight">To pay</h2>
           <Card className="mt-3 py-2">
-            {open.map((c) => (
+            {open.map((c) => {
+              const isAnchor = anchorOf.get(c.house_id) === c.charge_id;
+              const months = isAnchor ? (terms[c.house_id] ?? 1) : 1;
+              const house = houses.find((h) => h.house_id === c.house_id);
+              const total = months === 1
+                ? c.amount_minor
+                : estimateTermTotal(
+                    open.filter((o) => o.house_id === c.house_id).map((o) => o.amount_minor),
+                    house?.dues_amount_minor ?? null,
+                    months,
+                  );
+              return (
               <div
                 key={c.charge_id}
                 className="flex items-center gap-4 border-b border-hair px-5 py-3.5 last:border-b-0"
@@ -217,13 +236,30 @@ export function LandlordDashboard() {
                   </div>
                 </div>
                 {c.is_overdue ? <Chip tone="bad">Overdue</Chip> : null}
-                <Button onClick={() => void pay(c)} disabled={paying !== null}>
+                {isAnchor ? (
+                  <select
+                    aria-label={`How far ahead to pay for house ${c.house_number}`}
+                    value={months}
+                    onChange={(e) =>
+                      setTerms((t) => ({ ...t, [c.house_id]: Number(e.target.value) as DuesTermMonths }))
+                    }
+                    className="h-9 rounded-chip bg-field px-3 text-[12.5px] font-bold outline-none focus:ring-2 focus:ring-lime"
+                  >
+                    {DUES_TERMS.map((t) => (
+                      <option key={t.months} value={t.months}>{t.label}</option>
+                    ))}
+                  </select>
+                ) : null}
+                <Button onClick={() => void pay(c, months)} disabled={paying !== null}>
                   {paying === c.charge_id
                     ? 'Opening…'
-                    : `Pay ${formatMoney(c.amount_minor, c.currency)}`}
+                    : months === 1
+                      ? `Pay ${formatMoney(c.amount_minor, c.currency)}`
+                      : `Pay ${months} months${total === null ? '' : ` · ${formatMoney(total, c.currency)}`}`}
                 </Button>
               </div>
-            ))}
+              );
+            })}
           </Card>
         </>
       ) : null}

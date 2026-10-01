@@ -72,6 +72,39 @@ export type DuesBillingMode = 'none' | 'per_house' | 'per_resident';
 export type DuesChargeStatus = 'open' | 'paid' | 'waived';
 
 /**
+ * How far ahead a payer can settle in one checkout. Dues stay MONTHLY -- a term
+ * pays several monthly charges at once; it does not change how the estate
+ * bills. Must match the CHECK on dues_payments.months and parseTerm in the
+ * Edge Functions. No discount for longer terms (a product decision).
+ */
+export const DUES_TERMS = [
+  { months: 1, label: 'Monthly' },
+  { months: 3, label: 'Quarterly' },
+  { months: 6, label: 'Half-yearly' },
+  { months: 12, label: 'Yearly' },
+] as const;
+export type DuesTermMonths = (typeof DUES_TERMS)[number]['months'];
+
+/**
+ * What a term will cost, FOR DISPLAY on the button before checkout.
+ *
+ * The database prices the real checkout from the plan it freezes; this mirrors
+ * that plan closely enough to label a button: the open charges oldest first at
+ * their own amounts, then months not billed yet at the current monthly rate.
+ * Null when it cannot be estimated -- better no figure than a wrong one.
+ */
+export function estimateTermTotal(
+  openAmountsOldestFirst: number[],
+  monthlyMinor: number | null,
+  months: number,
+): number | null {
+  const billed = openAmountsOldestFirst.slice(0, months);
+  const unbilled = months - billed.length;
+  if (unbilled > 0 && !monthlyMinor) return null;
+  return billed.reduce((n, a) => n + a, 0) + unbilled * (monthlyMinor ?? 0);
+}
+
+/**
  * Format an amount held in minor units.
  *
  * Money is stored as an integer number of kobo/cents everywhere and divided

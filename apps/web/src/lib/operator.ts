@@ -158,6 +158,11 @@ export interface DuesTransaction {
   card_last4: string | null;
   card_issuer: string | null;
   processor_response: string | null;
+  /** 1, 3, 6 or 12 -- how far ahead this payment settled. */
+  months: number;
+  /** First and last month covered. Equal for a one-month payment. */
+  covers_from: string;
+  covers_until: string;
 }
 
 /** Per estate, per currency — NGN and ZAR are never added together. */

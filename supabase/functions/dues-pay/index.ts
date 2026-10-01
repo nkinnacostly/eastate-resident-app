@@ -16,6 +16,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { createCheckout } from '../_shared/flutterwave.ts';
+import { parseTerm, termDescription } from '../_shared/money.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
-  const { pay_token, email } = await req.json().catch(() => ({}));
+  const { pay_token, email, months: rawMonths } = await req.json().catch(() => ({}));
   if (!pay_token || typeof pay_token !== 'string') return json({ error: 'pay_token_required' }, 400);
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     // Flutterwave requires a customer email, and it is also where the receipt
@@ -42,10 +43,14 @@ Deno.serve(async (req) => {
     return json({ error: 'email_required' }, 400);
   }
 
+  const months = parseTerm(rawMonths);
+  if (months === null) return json({ error: 'invalid_term' }, 400);
+
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { data, error } = await admin.rpc('start_dues_payment_by_token', {
     p_pay_token: pay_token,
     p_payer_email: email,
+    p_months: months,
   });
   if (error) return json({ error: error.message }, 400);
 
@@ -53,6 +58,9 @@ Deno.serve(async (req) => {
   // Same response for a bad token and a settled charge, deliberately: a
   // distinguishable answer turns this endpoint into an oracle for guessing
   // valid tokens.
+  // ...with one exception: a term the charge cannot support says so, because
+  // it is not about the token and the payer needs to pick a shorter one.
+  if (row?.reason === 'cannot_pay_ahead') return json({ error: 'cannot_pay_ahead' }, 400);
   if (!row?.ok) return json({ error: 'charge_unavailable' }, 404);
 
   try {
@@ -63,7 +71,7 @@ Deno.serve(async (req) => {
       redirectUrl: `${SITE_URL}?ref=${encodeURIComponent(row.tx_ref)}`,
       email,
       title: `${row.estate_name} dues`,
-      description: `Monthly dues, house ${row.house_number ?? ''}`.trim(),
+      description: `${termDescription(months, row.covers_from, row.covers_until)}, house ${row.house_number ?? ''}`.trim(),
       subaccountRef: row.subaccount_ref,
       feePercent: Number(row.fee_percent ?? 0),
     });

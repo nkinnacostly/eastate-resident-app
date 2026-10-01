@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import Dues from '@/app/(tabs)/dues';
 import type { DuesStatus } from '@/lib/dues-status';
@@ -10,7 +10,11 @@ jest.mock('@/lib/auth', () => ({
   }),
 }));
 
-jest.mock('@/lib/api', () => ({ startDuesPayment: jest.fn() }));
+jest.mock('@/lib/api', () => ({ startDuesPayment: jest.fn(async () => 'https://checkout.test') }));
+jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn(async () => ({})) }));
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { startDuesPayment } = require('@/lib/api') as { startDuesPayment: jest.Mock };
 
 let mockStatus: DuesStatus;
 jest.mock('@/lib/dues-status', () => ({ useDuesStatus: () => mockStatus }));
@@ -141,4 +145,48 @@ it('says so plainly when the estate does not bill at all', () => {
   render(<Dues />);
   expect(screen.getByText(/does not collect dues through this app/i)).toBeTruthy();
   expect(screen.queryByText('NEXT PAYMENT')).toBeNull();
+});
+
+// ─── Paying ahead ────────────────────────────────────────────────────────────
+
+const owing = (charges: ReturnType<typeof charge>[]) => {
+  const total = charges.reduce((n, c) => n + (c.amount_minor as number), 0);
+  mockStatus = state({
+    all: charges as never, outstanding: charges as never, totalOwedMinor: total,
+    summary: summary({ outstanding_minor: total, outstanding_count: charges.length }) as never,
+  });
+};
+
+it('offers monthly, quarterly, half-yearly and yearly, monthly by default', () => {
+  owing([charge()]);
+  render(<Dues />);
+  for (const label of ['Monthly', 'Quarterly', 'Half-yearly', 'Yearly']) {
+    expect(screen.getByRole('radio', { name: label })).toBeTruthy();
+  }
+  expect(screen.getByRole('radio', { name: 'Monthly' }).props.accessibilityState.selected).toBe(true);
+  expect(screen.getByText('Pay ₦2,500')).toBeTruthy();
+});
+
+it('prices a year as twelve months and asks the server for twelve', async () => {
+  owing([charge()]);
+  render(<Dues />);
+  fireEvent.press(screen.getByRole('radio', { name: 'Yearly' }));
+  // No discount: 12 x the monthly rate.
+  fireEvent.press(screen.getByText('Pay 12 months · ₦30,000'));
+  await waitFor(() => expect(startDuesPayment).toHaveBeenCalledWith('c1', 12));
+});
+
+// ★ Arrears first. Paying a quarter from the NEWER month would leave the older
+// unpaid month -- the one that pauses codes -- exactly where it was.
+it('runs a term from the oldest unpaid month, counting the months already billed', async () => {
+  const aug = charge({ charge_id: 'aug', period: '2026-08-01', amount_minor: 200000 });
+  const sep = charge({ charge_id: 'sep', period: '2026-09-01' });
+  owing([sep, aug]);
+  render(<Dues />);
+  fireEvent.press(screen.getByRole('radio', { name: 'Quarterly' }));
+  // Aug at its own ₦2,000, Sep at ₦2,500, then one unbilled month at the rate.
+  fireEvent.press(screen.getByText('Pay 3 months · ₦7,000'));
+  await waitFor(() => expect(startDuesPayment).toHaveBeenCalledWith('aug', 3));
+  // The later month keeps its own one-month button.
+  expect(screen.getByText('Pay ₦2,500')).toBeTruthy();
 });

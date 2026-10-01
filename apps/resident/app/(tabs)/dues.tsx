@@ -1,7 +1,7 @@
-import { formatMoney } from '@estate/core';
+import { DUES_TERMS, estimateTermTotal, formatMoney, type DuesTermMonths } from '@estate/core';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 
 import { LandlordCard } from '@/components/landlord-card';
 import { Card, Chip, Eyebrow, PrimaryButton, Screen, SecondaryButton } from '@/components/ui';
@@ -48,6 +48,7 @@ export default function Dues() {
   const { activeEstateId, memberships } = useAuth();
   const dues = useDuesStatus(activeEstateId);
   const [paying, setPaying] = useState<string | null>(null);
+  const [term, setTerm] = useState<DuesTermMonths>(1);
 
   const { summary, outstanding, overdue, loading } = dues;
   const estateName =
@@ -60,10 +61,10 @@ export default function Dues() {
   const blocking = overdue[0] ?? null;
   const currency = dues.currency;
 
-  const pay = async (charge: DuesCharge) => {
+  const pay = async (charge: DuesCharge, months: number) => {
     setPaying(charge.charge_id);
     try {
-      const link = await startDuesPayment(charge.charge_id);
+      const link = await startDuesPayment(charge.charge_id, months);
       // An in-app browser, not a redirect out of the app. The resident comes
       // back here when it closes, and this screen re-reads on focus -- so the
       // list is correct whether the webhook or the return landed first.
@@ -95,6 +96,16 @@ export default function Dues() {
   };
 
   const settled = outstanding.length === 0;
+  // A term is paid from the OLDEST open month forward, so arrears are always
+  // covered first -- paying a year from next month while this month is unpaid
+  // would leave the debt that pauses codes exactly where it was.
+  const oldestFirst = [...outstanding].sort((a, b) => a.period.localeCompare(b.period));
+  const anchor = oldestFirst[0] ?? null;
+  const termTotal = estimateTermTotal(
+    oldestFirst.map((r) => r.amount_minor),
+    summary?.monthly_minor ?? null,
+    term,
+  );
   // Paid and waived, newest first. Kept apart from what is due: mixing them
   // makes a resident hunt for the one line that needs action.
   const history = dues.settled;
@@ -168,6 +179,7 @@ export default function Dues() {
                 <Text className="mt-2 font-jk text-micro leading-[17px] text-muted">
                   Due {dayLabel(summary.next_due_on ?? summary.next_period)} — that is{' '}
                   {summary.grace_days} day{summary.grace_days === 1 ? '' : 's'} after the 1st.
+                  {settled ? ' Once it is billed you can pay 3, 6 or 12 months at once.' : ''}
                 </Text>
               </Card>
             ) : null}
@@ -186,15 +198,23 @@ export default function Dues() {
             {outstanding.length > 0 ? (
               <>
                 <Text className="mt-7 font-jk-b text-title text-ink">To pay</Text>
-                {outstanding.map((r) => (
-                  <ChargeRow
-                    key={r.charge_id}
-                    charge={r}
-                    paying={paying}
-                    onPay={() => void pay(r)}
-                    onShare={() => void shareLink(r)}
-                  />
-                ))}
+                <TermPicker value={term} onChange={setTerm} />
+                {oldestFirst.map((r) => {
+                  // The term rides on the oldest month only; any later open
+                  // month is inside the term anyway, or payable on its own.
+                  const months = r === anchor ? term : 1;
+                  return (
+                    <ChargeRow
+                      key={r.charge_id}
+                      charge={r}
+                      paying={paying}
+                      months={months}
+                      termTotal={r === anchor ? termTotal : r.amount_minor}
+                      onPay={() => void pay(r, months)}
+                      onShare={() => void shareLink(r)}
+                    />
+                  );
+                })}
               </>
             ) : null}
 
@@ -226,15 +246,58 @@ export default function Dues() {
   );
 }
 
+/**
+ * How far ahead to pay. Dues stay monthly; this only decides how many months
+ * one checkout settles.
+ */
+function TermPicker({
+  value,
+  onChange,
+}: {
+  value: DuesTermMonths;
+  onChange: (m: DuesTermMonths) => void;
+}) {
+  return (
+    <View className="mt-3 flex-row gap-2" accessibilityRole="radiogroup">
+      {DUES_TERMS.map((t) => {
+        const on = t.months === value;
+        return (
+          <Pressable
+            key={t.months}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            onPress={() => onChange(t.months)}
+            className={`h-10 flex-1 items-center justify-center rounded-full ${on ? 'bg-ink' : 'bg-field'}`}
+          >
+            <Text className={`font-jk-b text-micro ${on ? 'text-canvas' : 'text-muted'}`}>{t.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** "Pay ₦25,000" or "Pay 3 months · ₦75,000". */
+function payLabel(months: number, total: number | null, currency: string, prefix = 'Pay'): string {
+  const money = total === null ? '' : ` · ${formatMoney(total, currency)}`;
+  return months === 1
+    ? `${prefix}${total === null ? '' : ` ${formatMoney(total, currency)}`}`
+    : `${prefix} ${months} months${money}`;
+}
+
 /** One month, in either section. Actions only ever appear on an open charge. */
 function ChargeRow({
   charge: r,
   paying,
+  months = 1,
+  termTotal = null,
   onPay,
   onShare,
 }: {
   charge: DuesCharge;
   paying: string | null;
+  months?: number;
+  termTotal?: number | null;
   onPay?: () => void;
   onShare?: () => void;
 }) {
@@ -274,7 +337,9 @@ function ChargeRow({
               title={
                 paying === r.charge_id
                   ? 'Opening…'
-                  : `Pay it yourself · ${formatMoney(r.amount_minor, r.currency)}`
+                  : months === 1
+                    ? `Pay it yourself · ${formatMoney(r.amount_minor, r.currency)}`
+                    : payLabel(months, termTotal, r.currency, 'Pay it yourself ·')
               }
               onPress={onPay}
               disabled={paying !== null}
@@ -286,7 +351,7 @@ function ChargeRow({
             title={
               paying === r.charge_id
                 ? 'Opening…'
-                : `Pay ${formatMoney(r.amount_minor, r.currency)}`
+                : payLabel(months, months === 1 ? r.amount_minor : termTotal, r.currency)
             }
             onPress={onPay}
             disabled={paying !== null}

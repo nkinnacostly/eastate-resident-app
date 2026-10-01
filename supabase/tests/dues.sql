@@ -455,7 +455,7 @@ select pg_temp.check('settlement is not callable by a signed-in user', (
 
 select pg_temp.check('the pay-by-token path is service-role only', (
   select not has_function_privilege('authenticated',
-    'public.start_dues_payment_by_token(text,text)', 'execute')));
+    'public.start_dues_payment_by_token(text,text,integer)', 'execute')));
 
 select pg_temp.check('charge generation is not callable by a signed-in user', (
   select not has_function_privilege('authenticated',

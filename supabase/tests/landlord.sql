@@ -237,7 +237,7 @@ select pg_temp.check('no landlord function is anon-callable', (
   select not has_function_privilege('anon', 'public.is_landlord()', 'execute')
      and not has_function_privilege('anon', 'public.my_landlord_houses()', 'execute')
      and not has_function_privilege('anon', 'public.landlord_dues()', 'execute')
-     and not has_function_privilege('anon', 'public.start_landlord_dues_payment(uuid)', 'execute')));
+     and not has_function_privilege('anon', 'public.start_landlord_dues_payment(uuid,integer)', 'execute')));
 
 select pg_temp.check('every landlord function pins its search_path', (
   select count(*) = 0 from pg_proc p

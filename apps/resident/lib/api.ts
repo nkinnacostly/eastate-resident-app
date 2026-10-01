@@ -259,9 +259,11 @@ export async function listMyDues(estateId: string): Promise<DuesCharge[]> {
  * amount is never sent from here either -- it is read from the charge row
  * inside the database, which is what stops a client choosing its own price.
  */
-export async function startDuesPayment(chargeId: string): Promise<string> {
+export async function startDuesPayment(chargeId: string, months = 1): Promise<string> {
+  // `months` is how far ahead to pay (1, 3, 6 or 12), never a price: the total
+  // is computed in the database from the months it decides to cover.
   const { data, error } = await supabase.functions.invoke('dues-checkout', {
-    body: { charge_id: chargeId },
+    body: { charge_id: chargeId, months },
   });
   if (error) throw new Error(error.message);
   if (!data?.link) throw new Error(data?.error ?? 'Could not start the payment');
