@@ -1,17 +1,74 @@
 import { formatMoney } from '@estate/core';
+import { createColumnHelper } from '@tanstack/react-table';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import {
   BackLink, ChargeTable, DetailHead, DetailState, Field, FieldCard, SectionTitle,
 } from '../components/detail';
+import { DataTable } from '../components/data-table';
 import { DuesTransactions } from '../components/dues-transactions';
-import { Avatar, Card, Chip, Code, Empty, HeadActions, Stat } from '../components/ui';
+import { Avatar, Chip, Code, HeadActions, Stat } from '../components/ui';
 import { listEstateDuesPayments } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { getHouseDetail, type HouseDetail } from '../lib/detail';
+import type { DataTableFeatures } from '../lib/data-table';
+import { getHouseDetail, type HouseDetail, type HouseResident } from '../lib/detail';
 import { dateLabel } from '../lib/format';
 import type { DuesTransaction } from '../lib/operator';
+import { ago } from '../lib/operator-format';
+
+const col = createColumnHelper<DataTableFeatures, HouseResident>();
+
+/**
+ * The residents table. Module-level so the reference is stable: TanStack
+ * rebuilds its row models whenever `columns` changes identity.
+ *
+ * Only name, phone and email take part in search. Counts, dates and statuses
+ * would match nonsense -- searching "2" would find everyone with two codes and
+ * every date in 2026.
+ */
+const residentColumns = col.columns([
+  col.accessor('full_name', {
+    header: 'Name',
+    cell: (info) => (
+      <Link
+        to={`../../residents/${info.row.original.membership_id}`}
+        relative="path"
+        className="flex items-center gap-2.5 font-bold text-ink hover:underline"
+      >
+        <Avatar name={info.getValue()} />
+        <span className="truncate">{info.getValue()}</span>
+      </Link>
+    ),
+  }),
+  col.accessor('phone', { header: 'Phone', cell: (info) => info.getValue() ?? '—' }),
+  col.accessor('email', { header: 'Email', cell: (info) => info.getValue() ?? '—' }),
+  col.accessor('is_active', {
+    header: 'Status',
+    enableGlobalFilter: false,
+    cell: (info) => (info.getValue() ? <Chip tone="good">Active</Chip> : <Chip>Suspended</Chip>),
+  }),
+  col.accessor('in_arrears', {
+    header: 'Dues',
+    enableGlobalFilter: false,
+    cell: (info) => (info.getValue() ? <Chip tone="bad">Overdue</Chip> : <Chip>Up to date</Chip>),
+  }),
+  col.accessor('live_codes', { header: 'Live codes', enableGlobalFilter: false }),
+  col.accessor('codes_30d', { header: 'Codes · 30d', enableGlobalFilter: false }),
+  col.accessor('joined_at', {
+    header: 'Joined',
+    enableGlobalFilter: false,
+    cell: (info) => dateLabel(info.getValue()),
+  }),
+  // Null for someone who never signed in; sorted as the empty string so they
+  // gather at one end instead of failing the comparison.
+  col.accessor((r) => r.last_sign_in_at ?? '', {
+    id: 'last_sign_in_at',
+    header: 'Last sign-in',
+    enableGlobalFilter: false,
+    cell: (info) => (info.row.original.last_sign_in_at ? ago(info.row.original.last_sign_in_at) : 'Never'),
+  }),
+]);
 
 const PAYER: Record<string, string> = {
   landlord: 'The landlord — one bill for the house',
@@ -110,30 +167,16 @@ export function HouseProfile() {
       </div>
 
       <SectionTitle>Residents</SectionTitle>
-      <Card className="mt-3.5">
-        {d.residents.length === 0 ? (
-          <Empty>Nobody has joined this house yet. Share its house code to let them in.</Empty>
-        ) : (
-          d.residents.map((r, i) => (
-            <Link
-              key={r.membership_id}
-              to={`../../residents/${r.membership_id}`}
-              relative="path"
-              className={`flex items-center gap-3.5 p-4 transition hover:bg-field/60 ${i > 0 ? 'border-t border-hair' : ''}`}
-            >
-              <Avatar name={r.full_name} />
-              <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-extrabold">{r.full_name}</div>
-                <div className="mt-0.5 text-[12px] text-muted">
-                  {r.phone ?? 'No phone'} · joined {dateLabel(r.joined_at)}
-                </div>
-              </div>
-              {r.is_active ? <Chip tone="good">Active</Chip> : <Chip>Suspended</Chip>}
-              <span className="text-[12px] font-bold text-muted">View →</span>
-            </Link>
-          ))
-        )}
-      </Card>
+      <div className="mt-3.5">
+        <DataTable
+          label="Residents of this house"
+          data={d.residents}
+          columns={residentColumns}
+          getRowId={(r) => r.membership_id}
+          searchPlaceholder="Search residents by name, phone or email"
+          emptyText="Nobody has joined this house yet. Share its house code to let them in."
+        />
+      </div>
 
       <SectionTitle>Dues</SectionTitle>
       <ChargeTable

@@ -182,6 +182,19 @@ select pg_temp.check('a house: terms in force, both residents, its bill and gate
      and (d->'stats'->>'visitors_admitted_30d')::int = 1
     from (select :'h1_d'::jsonb as d) x));
 
+select pg_temp.check('each resident row carries what the residents table shows', (
+  select r->>'email' = 'ada9@example.com' and r->>'last_sign_in_at' is not null
+     and (r->>'live_codes')::int = 1 and (r->>'codes_30d')::int = 2
+     and (r->>'in_arrears')::boolean = false
+    from (select :'h1_d'::jsonb as d) x,
+         jsonb_array_elements(d->'residents') r
+   where r->>'full_name' = 'Ada Okafor'));
+select pg_temp.check('...including a resident who has never signed in', (
+  select r->>'last_sign_in_at' is null and (r->>'live_codes')::int = 0
+    from (select :'h1_d'::jsonb as d) x,
+         jsonb_array_elements(d->'residents') r
+   where r->>'full_name' = 'Bo Bello'));
+
 select public.estate_house_detail('e9000000-0000-4000-8000-00000000000a',
                                   'f9000000-0000-4000-8000-000000000002') as d \gset h2_
 select pg_temp.check('a resident-billed house shows each resident''s charge, named', (

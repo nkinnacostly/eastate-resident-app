@@ -108,15 +108,26 @@ export interface HouseDetail {
     dues_payer_override: 'landlord' | 'residents' | null;
     dues_amount_override: number | null;
   };
-  residents: {
-    membership_id: string;
-    full_name: string;
-    phone: string | null;
-    is_active: boolean;
-    joined_at: string;
-  }[];
+  residents: HouseResident[];
   charges: ChargeItem[];
   stats: { codes_30d: number; visitors_admitted_30d: number };
+}
+
+/** One row of the house page's residents table (20261003100000). */
+export interface HouseResident {
+  membership_id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  /** Null when the account has never been signed into. */
+  last_sign_in_at: string | null;
+  is_active: boolean;
+  joined_at: string;
+  /** Derived server-side: an 'active' code past its expiry is not live. */
+  live_codes: number;
+  codes_30d: number;
+  /** The gate's own arrears predicate. */
+  in_arrears: boolean;
 }
 
 // ─── Platform owner ──────────────────────────────────────────────────────────
