@@ -18,8 +18,10 @@ import {
 } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 
+// The last column fits View, Rotate code and Remind on ONE line: at 190px
+// "Rotate code" wrapped onto two, and the row read as a wall of buttons.
 const COLS =
-  'grid grid-cols-[80px_95px_minmax(0,1.2fr)_minmax(0,1.1fr)_95px_190px] gap-4';
+  'grid grid-cols-[80px_95px_minmax(0,1.2fr)_minmax(0,1.1fr)_95px_268px] gap-4';
 
 export function Houses() {
   const { activeEstateId, activeEstate } = useAuth();
@@ -342,8 +344,11 @@ export function Houses() {
         ) : (
           shown.map((h) => (
             <div key={h.id} className={`${COLS} items-center border-t border-hair px-5 py-3.5`}>
-              {/* The number opens the house; the row's buttons stay buttons. */}
-              <Link to={h.id} className="text-[13px] font-extrabold underline-offset-2 hover:underline">
+              {/* The number opens the house, and so does the View button below.
+                  The number alone was not enough: a lone digit does not look
+                  like something to press, and admins reported they could not
+                  find the house page at all. */}
+              <Link to={h.id} className="text-[13px] font-extrabold underline underline-offset-2">
                 {h.house_number}
               </Link>
               <div className="text-[13px] font-extrabold tracking-code">{h.house_code}</div>
@@ -373,8 +378,15 @@ export function Houses() {
                 {h.residents}
                 {h.residents === 0 ? <span className="font-semibold text-muted"> none yet</span> : null}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 whitespace-nowrap">
                 {h.is_active ? null : <Chip>Inactive</Chip>}
+                <Link
+                  to={h.id}
+                  aria-label={`View house ${h.house_number}`}
+                  className="inline-flex h-7 items-center rounded-chip bg-ink px-3 text-[11px] font-extrabold text-canvas transition hover:brightness-125"
+                >
+                  View
+                </Link>
                 <Button
                   variant="quiet"
                   className="h-7 px-3 text-[11px]"
