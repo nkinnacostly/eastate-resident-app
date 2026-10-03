@@ -250,7 +250,12 @@ export function Dues() {
                 </select>
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-bold text-muted">Amount a month</span>
+                {/* Says WHO the figure is for. "Amount a month" beside "Each
+                    resident" read as a house total to be split -- it is not:
+                    every resident is billed this full amount (20260927240000). */}
+                <span className="text-[11px] font-bold text-muted">
+                  {draft?.mode === 'per_resident' ? 'Amount per resident, a month' : 'Amount per house, a month'}
+                </span>
                 <input
                   value={draft?.amount ?? ''}
                   onChange={(e) => setDraft((d) => (d ? { ...d, amount: e.target.value } : d))}
@@ -283,6 +288,13 @@ export function Dues() {
           </Button>
         </div>
 
+        {draft?.mode === 'per_resident' ? (
+          <div className="mt-3 text-[12.5px] text-muted">
+            Every resident is billed this full amount. It is not split between people who share a
+            house, so nobody&apos;s bill changes when a housemate moves in or out.
+          </div>
+        ) : null}
+
         {!settled && draft?.mode !== 'none' ? (
           <div className="mt-3 text-[12.5px] font-semibold text-muted">
             Add the estate&apos;s bank account above before you start billing.
@@ -293,7 +305,7 @@ export function Dues() {
           <div className="mt-3 text-[12.5px] text-muted">
             Now: {MODE_COPY[config.dues_billing_mode]}
             {config.dues_amount_minor
-              ? ` · ${formatMoney(config.dues_amount_minor, config.dues_currency ?? 'NGN')} a month, due ${config.dues_grace_days} days after the 1st`
+              ? ` · ${formatMoney(config.dues_amount_minor, config.dues_currency ?? 'NGN')} ${config.dues_billing_mode === 'per_resident' ? 'per resident' : 'per house'} a month, due ${config.dues_grace_days} days after the 1st`
               : ''}
           </div>
         ) : null}
