@@ -1,0 +1,51 @@
+#!/bin/sh
+# Refuse to push while a migration is missing from the linked database.
+#
+# A push deploys the dashboard and the site straight away (Vercel builds from
+# GitHub), but migrations are applied by hand with `npm run db:push`. Push the
+# code first and the live dashboard calls database functions that do not exist
+# yet -- which is exactly what happened on 2026-10-03: every new detail page
+# failed with "Could not find the function ... in the schema cache".
+#
+# Database first is always the safe order here, because migrations in this
+# repo are additive: old code keeps working against the new schema, new code
+# does not work against the old one.
+#
+# If the check cannot run (CLI missing, offline, not logged in) the push is
+# allowed with a warning -- a guard that blocks every push on a train is a
+# guard people learn to switch off.
+#
+# Installed by `npm install` (the root package.json `prepare` script sets
+# core.hooksPath to .githooks). Override for one push: git push --no-verify
+
+if ! command -v supabase >/dev/null 2>&1; then
+  echo "pre-push: supabase CLI not found -- NOT checking for unapplied migrations." >&2
+  exit 0
+fi
+
+if ! out=$(supabase migration list --linked 2>/dev/null); then
+  echo "pre-push: could not reach the linked project -- NOT checking for unapplied migrations." >&2
+  exit 0
+fi
+
+# Rows look like "   20261001150000 |                | 2026-10-01 15:00:00".
+# An empty middle column is a migration the remote has never run.
+pending=$(printf '%s\n' "$out" \
+  | grep -E '^[[:space:]]*[0-9]{14}[[:space:]]*\|[[:space:]]*\|' \
+  | sed -E 's/^[[:space:]]*([0-9]{14}).*/\1/')
+
+if [ -n "$pending" ]; then
+  echo "" >&2
+  echo "pre-push: these migrations are not on the linked database yet:" >&2
+  for v in $pending; do
+    for f in supabase/migrations/"$v"_*.sql; do echo "    $f" >&2; done
+  done
+  echo "" >&2
+  echo "  This push would deploy code that calls them. Apply them first:" >&2
+  echo "      npm run db:push" >&2
+  echo "  then push again. To push anyway:  git push --no-verify" >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

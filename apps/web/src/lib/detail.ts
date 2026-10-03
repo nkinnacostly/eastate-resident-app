@@ -319,9 +319,11 @@ export interface LandlordHouseDetail {
 
 // ─── Fetchers ────────────────────────────────────────────────────────────────
 
-// Each call names its RPC literally: scripts/test-client-queries.mjs finds the
-// functions the apps depend on by scanning for `.rpc('name')`, and a generic
-// wrapper taking the name as a variable would hide them from it.
+// Each call names its RPC as a string literal: scripts/test-client-queries.mjs
+// finds the functions the apps depend on by scanning the source for rpc calls
+// with a quoted name, and a generic wrapper taking the name as a variable would
+// hide them from it. (Do not quote an example call in this comment -- the
+// scanner reads comments too, and goes looking for a function by that name.)
 function unwrap<T>({ data, error }: { data: unknown; error: { message: string } | null }): T | null {
   if (error) throw new Error(error.message);
   return (data ?? null) as T | null;

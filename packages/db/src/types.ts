@@ -1539,11 +1539,8 @@ export type Database = {
           waive_reason: string
         }[]
       }
+      landlord_house_detail: { Args: { p_house_id: string }; Returns: Json }
       mask_account_number: { Args: { p_number: string }; Returns: string }
-      landlord_house_detail: {
-        Args: { p_house_id: string }
-        Returns: Json
-      }
       mint_access_code: {
         Args: {
           p_delivery_note?: string
@@ -1723,10 +1720,7 @@ export type Database = {
           tx_ref: string
         }[]
       }
-      operator_estate_detail: {
-        Args: { p_estate_id: string }
-        Returns: Json
-      }
+      operator_estate_detail: { Args: { p_estate_id: string }; Returns: Json }
       operator_estates: {
         Args: never
         Returns: {
