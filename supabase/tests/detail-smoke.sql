@@ -134,11 +134,18 @@ begin
 
       reset role;
 
+      -- For a non-empty list, its first element's KEYS as well, so a field
+      -- the page reads off each row is proven present on the live schema.
+      -- Still key names only.
       select string_agg(
                k || case jsonb_typeof(r -> k)
                       when 'array' then '[' || jsonb_array_length(r -> k) || ']'
+                        || case when jsonb_typeof(r -> k -> 0) = 'object' then
+                             '{' || (select string_agg(ek, ' ' order by ek)
+                                       from jsonb_object_keys(r -> k -> 0) ek) || '}'
+                           else '' end
                       else '' end,
-               ',' order by k)
+               ', ' order by k)
         into function_shape
         from jsonb_object_keys(coalesce(r, '{}'::jsonb)) k;
 
