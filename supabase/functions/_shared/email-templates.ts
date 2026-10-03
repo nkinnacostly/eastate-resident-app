@@ -267,6 +267,8 @@ export function guardWelcome(v: {
   guardName: string | null;
   estateName: string | null;
   setPasswordUrl: string | null;
+  /** Where "Forgot password" lives. The guard app has no reset screen of its own. */
+  dashboardUrl: string;
 }): RenderedEmail {
   const greeting = v.guardName ? `Hi ${v.guardName},` : 'Hi,';
   const at = v.estateName ? ` at <strong>${esc(v.estateName)}</strong>` : '';
@@ -288,7 +290,7 @@ export function guardWelcome(v: {
   const cta = v.setPasswordUrl ? { label: 'Set your password', url: v.setPasswordUrl } : undefined;
 
   const footnote = v.setPasswordUrl
-    ? 'This link signs you in once so you can choose a password, and expires in 24 hours. If it has expired, or your estate gave you a password in person, open the guard app and use \u201cForgot password\u201d.'
+    ? `This link signs you in once so you can choose a password, and expires in 24 hours. If it has expired, or your estate gave you a password in person, choose \u201cForgot password\u201d at <a href="${esc(v.dashboardUrl)}" style="color:${MUTED};">${esc(v.dashboardUrl.replace(/^https?:\/\//, ''))}</a>, then sign in to the guard app with your new password.`
     : undefined;
 
   return {
@@ -314,7 +316,7 @@ export function guardWelcome(v: {
       'The app keeps working when the gate has no signal: codes are checked on the phone itself and sync when the connection returns.',
       '',
       v.setPasswordUrl
-        ? `Set your password: ${v.setPasswordUrl}\n(This link expires in 24 hours. If it has expired, or your estate gave you a password in person, use "Forgot password" in the guard app.)`
+        ? `Set your password: ${v.setPasswordUrl}\n(This link expires in 24 hours. If it has expired, or your estate gave you a password in person, choose "Forgot password" at ${v.dashboardUrl}, then sign in to the guard app with your new password.)`
         : 'Your estate will give you your password.',
       '',
       '\u2014',
@@ -494,7 +496,7 @@ export function resetPassword(v: { confirmUrl: string; otp: string }): RenderedE
 export function resetPasswordCode(v: { otp: string }): RenderedEmail {
   const body =
     p('Someone asked to reset the password for this myestateaccess account.') +
-    p('If it was you, enter this code in the app to choose a new password.') +
+    p('If it was you, enter this code on the screen where you asked for it, and choose a new password.') +
     codeBlock('Your reset code', v.otp) +
     muted('The code expires in 60 minutes and can only be used once.');
 
@@ -510,7 +512,7 @@ export function resetPasswordCode(v: { otp: string }): RenderedEmail {
     }),
     text: [
       'Someone asked to reset the password for this myestateaccess account.',
-      'If it was you, enter this code in the app to choose a new password.',
+      'If it was you, enter this code on the screen where you asked for it, and choose a new password.',
       '',
       `Your reset code: ${v.otp}`,
       '',
@@ -609,6 +611,12 @@ export function duesReminder(v: {
   /** Only ever set for a landlord. */
   payUrl: string | null;
   appUrl: string;
+  /**
+   * True only where the estate has authorised pausing new visitor codes for
+   * arrears. Otherwise the email must not mention that consequence at all: it
+   * would be threatening a sanction the estate never adopted.
+   */
+  codesPause: boolean;
 }): RenderedEmail {
   const greeting = v.recipientName ? `Hi ${v.recipientName},` : 'Hi,';
   const where = v.houseNumber
@@ -631,9 +639,11 @@ export function duesReminder(v: {
       p(
         'You can settle it with the button below. No account or sign-in is needed.',
       ) +
-      muted(
-        'If it is not paid, the people living at the house will not be able to generate NEW visitor codes. Their own access to the estate is unaffected, and any code they have already shared keeps working until it expires.',
-      );
+      (v.codesPause
+        ? muted(
+            'If it is not paid, the people living at the house will not be able to generate NEW visitor codes. Their own access to the estate is unaffected, and any code they have already shared keeps working until it expires.',
+          )
+        : '');
 
     return {
       subject: `${v.amount} due — estate dues for ${where}`,
@@ -652,10 +662,14 @@ export function duesReminder(v: {
         '',
         v.payUrl ? `Pay here (no account needed): ${v.payUrl}` : '',
         '',
-        'If it is not paid, the people living at the house will not be able to generate',
-        'NEW visitor codes. Their own access to the estate is unaffected, and any code',
-        'they have already shared keeps working until it expires.',
-        '',
+        ...(v.codesPause
+          ? [
+              'If it is not paid, the people living at the house will not be able to generate',
+              'NEW visitor codes. Their own access to the estate is unaffected, and any code',
+              'they have already shared keeps working until it expires.',
+              '',
+            ]
+          : []),
         'If you no longer own this property, reply and we will pass it on to the estate.',
         '',
         '—',
@@ -678,7 +692,9 @@ export function duesReminder(v: {
         'These dues are billed to the owner of the house rather than to you. We have written to them as well.',
       ) +
       muted(
-        'If they are not settled, you will not be able to generate NEW visitor codes until they are. Your own access to the estate is unaffected, and any code you have already shared keeps working until it expires. The app shows the owner’s contact details if you need to chase it.',
+        (v.codesPause
+          ? 'If they are not settled, you will not be able to generate NEW visitor codes until they are. Your own access to the estate is unaffected, and any code you have already shared keeps working until it expires. '
+          : '') + 'The app shows the owner’s contact details if you need to chase it.',
       );
 
     return {
@@ -688,8 +704,9 @@ export function duesReminder(v: {
         heading: 'A heads-up about your estate dues',
         body,
         cta: { label: 'Open the app', url: v.appUrl },
-        footnote:
-          'You are receiving this because you live at this house and unpaid dues would affect your visitor codes.',
+        footnote: v.codesPause
+          ? 'You are receiving this because you live at this house and unpaid dues would affect your visitor codes.'
+          : 'You are receiving this because you live at this house.',
       }),
       text: [
         greeting,
@@ -699,10 +716,14 @@ export function duesReminder(v: {
         'These dues are billed to the owner of the house rather than to you.',
         'We have written to them as well.',
         '',
-        'If they are not settled, you will not be able to generate NEW visitor codes',
-        'until they are. Your own access to the estate is unaffected, and any code you',
-        'have already shared keeps working until it expires.',
-        '',
+        ...(v.codesPause
+          ? [
+              'If they are not settled, you will not be able to generate NEW visitor codes',
+              'until they are. Your own access to the estate is unaffected, and any code you',
+              'have already shared keeps working until it expires.',
+              '',
+            ]
+          : []),
         `Open the app: ${v.appUrl}`,
         '',
         '—',
@@ -718,9 +739,11 @@ export function duesReminder(v: {
       `Your estate dues at <strong>${esc(v.estateName)}</strong> ${esc(when)} — <strong>${esc(v.amount)}</strong>, due ${esc(v.dueOn)}.`,
     ) +
     p('You can pay in the app in a few taps.') +
-    muted(
-      'If they are not settled you will not be able to generate NEW visitor codes until they are. Your own access to the estate is unaffected, and any code you have already shared keeps working until it expires.',
-    );
+    (v.codesPause
+      ? muted(
+          'If they are not settled you will not be able to generate NEW visitor codes until they are. Your own access to the estate is unaffected, and any code you have already shared keeps working until it expires.',
+        )
+      : '');
 
   return {
     subject: `${v.amount} due — your estate dues at ${v.estateName}`,
@@ -739,10 +762,14 @@ export function duesReminder(v: {
       '',
       `Pay in the app: ${v.appUrl}`,
       '',
-      'If they are not settled you will not be able to generate NEW visitor codes',
-      'until they are. Your own access to the estate is unaffected, and any code you',
-      'have already shared keeps working until it expires.',
-      '',
+      ...(v.codesPause
+        ? [
+            'If they are not settled you will not be able to generate NEW visitor codes',
+            'until they are. Your own access to the estate is unaffected, and any code you',
+            'have already shared keeps working until it expires.',
+            '',
+          ]
+        : []),
       '—',
       'Privacy policy: https://myestateaccess.com/privacy',
     ].join('\n'),

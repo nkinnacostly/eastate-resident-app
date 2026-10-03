@@ -721,6 +721,17 @@ select pg_temp.check('only the landlord is sent a pay link', (
      and count(*) filter (where message->>'pay_token' is null) = 2
   from pgmq.sent where message->>'charge_id' = 'cc200000-0000-4000-8000-0000000000aa'));
 
+-- The email may only threaten paused codes where the estate authorised it.
+-- Whether this fixture estate has, the flag must say the same thing.
+select pg_temp.check('each reminder says whether this estate pauses codes for arrears', (
+  select bool_and((message->>'codes_pause')::boolean = (
+           select e.dues_enforcement_authorised_at is not null
+             from public.estates e
+             join public.dues_charges c on c.estate_id = e.id
+            where c.id = 'cc200000-0000-4000-8000-0000000000aa'))
+     and bool_and(message ? 'codes_pause')
+  from pgmq.sent where message->>'charge_id' = 'cc200000-0000-4000-8000-0000000000aa'));
+
 -- Two days out is a SECOND reminder, not a duplicate of the first.
 update public.dues_charges set due_on = current_date + 2
  where id = 'cc200000-0000-4000-8000-0000000000aa';

@@ -1,8 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { myAgencies, type Agency } from './agency';
-import { Ctx, type AdminMembership, type AuthState } from './auth-context';
+import { Ctx, type AdminMembership, type AuthState, type PasswordResetResult } from './auth-context';
 import { supabase } from './supabase';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -18,13 +18,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [agenciesLoaded, setAgenciesLoaded] = useState(false);
+  // Raised while a password reset is between redeeming the emailed code and
+  // saving the new password. Redeeming the code IS a sign-in, and letting that
+  // session through would drop the person into the dashboard with their old
+  // password still in force if the save then failed.
+  const suppressSession = useRef(false);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, next) => setSession(next));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, next) => {
+      if (!suppressSession.current) setSession(next);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -183,6 +190,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  /**
+   * Email a reset code. Our own Edge Function, as the resident app uses, not
+   * supabase.auth.resetPasswordForEmail: the built-in mail is a link built from
+   * the project's Site URL, while request-password-reset sends a code through
+   * the verified domain. It answers 200 whether or not the address has an
+   * account, so this screen can never be used to discover who is registered.
+   */
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const { error } = await supabase.functions.invoke('request-password-reset', {
+      body: { email },
+    });
+    return { error: error ? 'We could not send a code just now. Please try again.' : null };
+  }, []);
+
+  const completePasswordReset = useCallback(
+    async (email: string, code: string, password: string): Promise<PasswordResetResult> => {
+      // Raised BEFORE verifyOtp, because verifyOtp is what emits the session.
+      suppressSession.current = true;
+      try {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: code,
+          type: 'recovery',
+        });
+        // Wrong, expired or already used: indistinguishable to the person, and
+        // all fixed the same way, by asking for another code.
+        if (verifyError) return { status: 'bad_code' };
+
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+        if (updateError) {
+          // The code is spent and a session exists, but the password is still
+          // the old one. Signing out is the honest end state.
+          await supabase.auth.signOut();
+          return { status: 'error', message: updateError.message };
+        }
+
+        // They chose this password themselves, so any handover-password flag
+        // no longer applies. Best effort: failing it only means one more
+        // change-password screen, never a lock-out.
+        await supabase.rpc('clear_must_change_password');
+
+        // Read fresh: updateUser reissues the tokens.
+        const { data } = await supabase.auth.getSession();
+        suppressSession.current = false;
+        setSession(data.session);
+        return { status: 'ok' };
+      } catch {
+        return { status: 'error', message: 'No connection. Try again once you are back online.' };
+      } finally {
+        // Every early return above leaves the flag raised otherwise, and a stuck
+        // flag would stop this tab noticing any sign-in until it was reloaded.
+        suppressSession.current = false;
+      }
+    },
+    [],
+  );
+
   const activeEstate = useMemo(
     () => estates.find((e) => e.estate_id === activeEstateId) ?? null,
     [estates, activeEstateId],
@@ -192,12 +256,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session, loading, estates, estatesLoaded, estatesError, activeEstateId,
       setActiveEstateId, activeEstate, refreshEstates, signIn, signOut,
+      requestPasswordReset, completePasswordReset,
       isPlatformAdmin, isLandlord, rolesLoaded, mustChangePassword, changePassword,
       agencies, agenciesLoaded,
     }),
     [
       session, loading, estates, estatesLoaded, estatesError, activeEstateId,
       activeEstate, refreshEstates, signIn, signOut,
+      requestPasswordReset, completePasswordReset,
       isPlatformAdmin, isLandlord, rolesLoaded, mustChangePassword, changePassword,
       agencies, agenciesLoaded,
     ],

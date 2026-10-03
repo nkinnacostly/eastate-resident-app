@@ -45,6 +45,13 @@ export interface AuthState {
   refreshEstates: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** Emails a reset code. Never reveals whether the address has an account. */
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  /**
+   * Redeems the emailed code and sets the new password. The session is only
+   * released once the password is saved -- see AuthProvider.
+   */
+  completePasswordReset: (email: string, code: string, password: string) => Promise<PasswordResetResult>;
   /** True for a platform owner. Resolved per session, never from a JWT claim. */
   isPlatformAdmin: boolean;
   /**
@@ -83,6 +90,11 @@ export interface AuthState {
   mustChangePassword: boolean;
   changePassword: (next: string) => Promise<{ error: string | null }>;
 }
+
+export type PasswordResetResult =
+  | { status: 'ok' }
+  | { status: 'bad_code' }
+  | { status: 'error'; message: string };
 
 export const Ctx = createContext<AuthState | null>(null);
 

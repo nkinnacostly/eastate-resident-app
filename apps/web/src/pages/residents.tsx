@@ -134,7 +134,7 @@ export function Residents() {
     <>
       <PageHead
         title="Residents"
-        blurb="Everyone approved to make codes at this estate. Suspending a resident stops them making new ones; codes already issued stay valid until they expire or are revoked."
+        blurb="Everyone approved to make codes at this estate. Suspending a resident stops them making new ones and cancels every code they have already issued."
         right={<HeadActions estate={activeEstate?.estate_name ?? '—'} />}
       />
 

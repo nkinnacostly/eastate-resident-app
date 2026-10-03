@@ -161,7 +161,7 @@
             "name": "Who can see a resident's visitor codes?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Only the resident who created the code. Guards see a code only when it is presented at the gate. Estate administrators see that an entry happened, not the code itself, and platform operators can never see codes at all."
+              "text": "The resident who created it, the guard it is presented to at the gate, and the administrators of that estate, who can see their own estate's codes and entries so they can answer questions and cancel a code. Nobody at any other estate can see them, and the platform's own dashboard never shows a code."
             }
           },
           {
@@ -381,9 +381,9 @@
            alt="A person sending a message on a smartphone.">
       <div>
         <p class="eyebrow">Privacy by construction</p>
-        <h2>A resident's code is not the estate's business.</h2>
-        <p class="lede" style="margin-top:16px">The estate needs to know that somebody was admitted, at which gate and when. It does not need the characters a resident sent to their sister.</p>
-        <p style="margin-top:18px;color:var(--muted)">That separation is enforced in the database rather than in the interface. There is no screen anywhere in the product that shows a live code to anyone but the resident who made it — not because it is hidden, but because nothing on the server will return one.</p>
+        <h2>A resident's code stays inside the estate.</h2>
+        <p class="lede" style="margin-top:16px">The estate office can see its own codes and entries, so it can answer a question or cancel a code. Nobody outside the estate can.</p>
+        <p style="margin-top:18px;color:var(--muted)">That separation is enforced in the database rather than in the interface: each estate's records are walled off from every other estate's, and the platform's own dashboard is built never to return a code. A guard sees a host's name only when a valid code is checked, and the gate phone holds no names at all.</p>
       </div>
     </div>
   </section>
@@ -424,7 +424,7 @@
         </details>
         <details>
           <summary>Who can see a resident's visitor codes?</summary>
-          <p>Only the resident who created them. Guards see a code when it is presented at the gate. Estate administrators see that an entry happened, not the code itself. Platform operators cannot see codes at all.</p>
+          <p>The resident who created them, the guard they are presented to, and the administrators of that estate, who can see their own estate's codes and entries so they can answer questions and cancel a code. Nobody at any other estate can, and the platform's own dashboard never shows a code.</p>
         </details>
         <details>
           <summary>Do visitors need to install anything?</summary>

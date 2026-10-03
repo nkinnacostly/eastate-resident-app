@@ -41,6 +41,9 @@ const base = {
   dueOn: '8 October 2026',
   daysLeft: 7,
   appUrl: 'https://myestateaccess.com/app',
+  // The consequence lines below are only true where the estate has switched
+  // the pause on; see the codesPause:false pass further down.
+  codesPause: true,
 };
 
 // Every shape the reminder takes. A promise that is wrong in one variant is
@@ -80,6 +83,20 @@ for (const [name, v] of Object.entries(variants)) {
     subject.includes('₦2,500') || plain.includes('₦2,500'));
 }
 
+// ─── Where the estate has NOT authorised pausing codes ───────────────────────
+//
+// Every reminder used to threaten paused codes regardless. Where the committee
+// never adopted that rule, saying so is threatening a sanction that does not
+// exist -- precisely what recording the authority for it is meant to prevent.
+for (const [name, v] of Object.entries(variants)) {
+  const { html, text, subject } = mod.duesReminder({ ...v, codesPause: false });
+  const plain = `${html}\n${text}`.replace(/\s+/g, ' ');
+  ok(`${name}, no pause rule: never mentions visitor codes being stopped`,
+    !/NEW visitor codes|affect your visitor codes/i.test(plain));
+  ok(`${name}, no pause rule: still names the amount`,
+    subject.includes('₦2,500') || plain.includes('₦2,500'));
+}
+
 // A landlord gets a pay link; a tenant must never be sent one — it is a bearer
 // token over somebody else's bill.
 const landlord = mod.duesReminder(variants['landlord, house-billed']);
@@ -93,6 +110,26 @@ ok('a tenant is NOT sent the landlord’s pay link',
 const src = readFileSync('supabase/functions/_shared/email-templates.ts', 'utf8');
 ok('no template anywhere still describes the guard override to a resident',
   !/guard can (still )?(let|admit)/i.test(src));
+
+// ─── Password recovery must lead somewhere real ──────────────────────────────
+//
+// The guard welcome email told guards to use "Forgot password" in the guard
+// app, and the admin email pointed at the dashboard's -- neither screen
+// existed, so a guard or admin whose link expired had no way back in. The
+// dashboard has one now; the guard app still does not, so guards are sent
+// there.
+const guard = mod.guardWelcome({
+  guardName: 'Gary', estateName: 'Demo Estate',
+  setPasswordUrl: 'https://set.example/abc', dashboardUrl: 'https://app.myestateaccess.com',
+});
+ok('a guard whose link expired is sent to the dashboard reset, which exists',
+  guard.html.includes('app.myestateaccess.com') && guard.text.includes('Forgot password" at https://app.myestateaccess.com'));
+ok('...and never to a guard-app "Forgot password" screen, which does not',
+  !/forgot password.{0,40}guard app|guard app.{0,40}forgot password/i.test(guard.html + guard.text));
+
+const reset = mod.resetPasswordCode({ otp: '123456' });
+ok('the reset-code email works for the dashboard as well as the app',
+  !/in the app/i.test(reset.html + reset.text) && (reset.html + reset.text).includes('123456'));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

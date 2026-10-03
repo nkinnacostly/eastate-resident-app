@@ -305,8 +305,9 @@ export function Houses() {
                 reminders shipped. Stale reassurance is worse than none: an
                 admin withholds the email that the reminders need. */}
             <span className="text-[12px] text-muted">
-              The landlord is a contact on the house, not a login — they never sign in. Dues
-              reminders are emailed to them if an address is given.
+              The landlord does not need an account: dues reminders and the house code are emailed to
+              them if an address is given. If they choose to sign up with that same address, they see
+              this house in their own landlord dashboard.
             </span>
           </div>
         </Card>

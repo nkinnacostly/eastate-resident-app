@@ -124,6 +124,7 @@ function render(msg: Record<string, unknown>): { to: string; email: RenderedEmai
         guardName: (msg.guard_name as string | null) ?? null,
         estateName: (msg.estate_name as string | null) ?? null,
         setPasswordUrl: (msg.set_password_url as string | null) ?? null,
+        dashboardUrl: APP_URL,
       }),
     };
   }
@@ -163,6 +164,9 @@ function render(msg: Record<string, unknown>): { to: string; email: RenderedEmai
         daysLeft,
         payUrl: token ? `${SITE_URL}/dues/pay?t=${encodeURIComponent(token)}` : null,
         appUrl: SITE_URL,
+        // Absent on reminders queued before the flag existed: those say nothing
+        // about paused codes rather than risk threatening one that is not real.
+        codesPause: msg.codes_pause === true,
       }),
     };
   }

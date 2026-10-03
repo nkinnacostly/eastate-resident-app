@@ -35,6 +35,7 @@ import { Portfolio } from './pages/operator/portfolio';
 import { Settings as OperatorSettings } from './pages/operator/settings';
 import { Overview } from './pages/overview';
 import { ResidentProfile } from './pages/resident-profile';
+import { ResetPassword } from './pages/reset-password';
 import { Residents } from './pages/residents';
 import { Settings } from './pages/settings';
 import { SignIn } from './pages/sign-in';
@@ -158,6 +159,7 @@ export function App() {
     return (
       <Routes>
         <Route path="/landlord/signup" element={<LandlordSignUp />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<SignIn />} />
       </Routes>
     );

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { useAuth } from '../lib/auth-context';
 
@@ -62,12 +63,19 @@ export function SignIn() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
 
+        <Link
+          to="/reset-password"
+          className="mt-4 block text-center text-[12.5px] font-bold text-muted hover:text-ink"
+        >
+          Forgot password?
+        </Link>
+
         {/* Only landlords can create their own account here. Estate admins and
             guards arrive by invitation, so this is not a general sign-up and
             says so rather than inviting everyone to try. */}
         <a
           href="/landlord/signup"
-          className="mt-4 block text-center text-[12.5px] font-bold text-muted hover:text-ink"
+          className="mt-2 block text-center text-[12.5px] font-bold text-muted hover:text-ink"
         >
           Own a property at an estate? Create a landlord account
         </a>

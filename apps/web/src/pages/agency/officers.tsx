@@ -162,7 +162,7 @@ export function AgencyOfficers() {
           >
             PSIRA&apos;s verification page
           </a>{' '}
-          or scan the QR code on the officer&apos;s card, then record it here. Anything older than
+          or scan the QR code on the officer&apos;s card. This portal cannot record a check yet, so send the result to the myestateaccess team. Anything older than
           90 days shows as unchecked, because registration runs in 24-month cycles and renewal
           opens 90 days out.
         </p>

@@ -93,8 +93,8 @@ export function AgencyCoverage() {
           <Empty>Loading…</Empty>
         ) : rows.length === 0 ? (
           <Empty>
-            No estates yet. An estate adds your agency from its own dashboard — you cannot
-            contract yourself in, by design.
+            No estates yet. Estates appear here once a contract with your agency is set up
+            — you cannot contract yourself in, by design.
           </Empty>
         ) : (
           rows.map((r) => (
