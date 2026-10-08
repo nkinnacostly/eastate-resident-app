@@ -17,7 +17,7 @@
  *              be classed permanent.
  *
  * The live part sends ONE real email, to MAIL_TEST_TO (the shell, then
- * .env.local, falling back to RESEND_FROM_EMAIL, our own address). While the account is in the
+ * .env.local, falling back to the support mailbox, which is ours). While the account is in the
  * provider's sandbox that address must be a confirmed member of the team.
  *
  * Run with node 24: node 26's fetch fails TLS against some hosts here.
@@ -103,9 +103,10 @@ ok('their spec still describes POST /emails', Boolean(sendOp && schema));
   ok('sends no field their schema refuses', extra.length === 0, `extra: ${extra.join(', ')}`);
   const missing = schema.required.filter((k) => !(k in body));
   ok('sends every field their schema requires', missing.length === 0, `missing: ${missing.join(', ')}`);
-  ok('still sends from RESEND_FROM_EMAIL, under the product name',
-    body.from === `myestateaccess <${env.RESEND_FROM_EMAIL}>` && body.reply_to === env.RESEND_FROM_EMAIL,
-    body.from);
+  ok('sends from no-reply@, under the product name',
+    body.from === 'myestateaccess <no-reply@myestateaccess.com>', body.from);
+  ok('replies go to the support mailbox', body.reply_to === 'hello@myestateaccess.com', body.reply_to);
+  ok('the support mailbox is never the sender', !body.from.includes('hello@'), body.from);
   ok('sends both html and text parts', body.html === email.html && body.text === email.text);
   ok('no Idempotency-Key unless one is asked for', !('Idempotency-Key' in init.headers));
 }
@@ -192,7 +193,7 @@ globalThis.fetch = realFetch;
 
 console.log('\n— live, against emails.mydomainshub.com —');
 
-const to = process.env.MAIL_TEST_TO || env.MAIL_TEST_TO || env.RESEND_FROM_EMAIL;
+const to = process.env.MAIL_TEST_TO || env.MAIL_TEST_TO || mailer.REPLY_TO;
 // The real reset template, so the live send proves our actual HTML and text
 // get past their content check, not a toy body.
 const live = resetPasswordCode({ otp: '000000' });

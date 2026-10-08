@@ -13,18 +13,27 @@
 //   error { name, message } with the status; the message never quotes an
 //         address, subject or body, so it is safe to log.
 //
-// The From address is still read from RESEND_FROM_EMAIL. The variable name
-// predates the move off Resend; the address on it is the one the domain is
-// verified for, and renaming the secret would be churn with nothing to gain.
+// Sent FROM no-reply@, with Reply-To hello@. hello@ is the support mailbox
+// people write to; it must never send, so a bounce, an auto-reply or a spam
+// complaint about bulk mail never lands on — or reflects on — the address
+// residents rely on to reach us. The templates still say "reply to this
+// message", and that stays true: the reply goes to hello@.
+//
+// Constants, not env: these are the product's identity, and a stale secret
+// overriding them is exactly how mail would quietly start going out from the
+// support address again.
 
 import type { RenderedEmail } from './email-templates.ts';
 
 const ENDPOINT = 'https://emails.mydomainshub.com/api/v1/emails';
 
 export const MAIL_API_KEY = Deno.env.get('DOMAINHUB_API_KEY');
-export const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'hello@myestateaccess.com';
+/** Sends only. Nobody reads it. */
+export const FROM_EMAIL = 'no-reply@myestateaccess.com';
 /** The visible sender. A bare address reads as machinery; a name reads as a product. */
 export const FROM = `myestateaccess <${FROM_EMAIL}>`;
+/** The support mailbox. Where replies land; it receives and never sends. */
+export const REPLY_TO = 'hello@myestateaccess.com';
 
 export interface SendResult {
   /** Accepted by the provider — now, or by an earlier request with the same key. */
@@ -104,7 +113,7 @@ export async function sendEmail(
       // Always both parts. An HTML-only message is a strong spam signal and
       // renders as nothing at all in a text-only client.
       text: email.text,
-      reply_to: FROM_EMAIL,
+      reply_to: REPLY_TO,
     }),
   });
 
