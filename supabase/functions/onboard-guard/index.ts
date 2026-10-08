@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
   }
 
   // Enqueued, not sent inline: the send belongs on the same cron-driven path as
-  // every other email, and a Resend hiccup must not fail an onboarding that has
+  // every other email, and a mail-provider hiccup must not fail an onboarding that has
   // already created a user and a membership.
   const { error: mailErr } = await admin.rpc('enqueue_email', {
     p_kind: 'guard_welcome',

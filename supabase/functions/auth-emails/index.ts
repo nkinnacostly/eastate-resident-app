@@ -2,11 +2,11 @@
 //
 // When this hook is enabled, Supabase stops sending auth mail itself and POSTs
 // here instead — so sign-up confirmation and password resets go out through
-// Resend, on our own domain, in our own design, with the templates living in
+// our mail provider (_shared/mailer.ts), on our own domain, in our own design, with the templates living in
 // this repo rather than in a dashboard text box nobody can review.
 //
 // That last point is why this exists rather than the simpler alternative of
-// pointing Supabase's SMTP settings at Resend. SMTP would work, but the
+// pointing Supabase's SMTP settings at the provider. SMTP would work, but the
 // templates would then be dashboard state: unreviewable, unversioned, and
 // exactly the kind of "configured by hand in a console" that the rest of this
 // project deliberately avoids.
@@ -29,12 +29,8 @@ import {
   verifyEmailCode,
   type RenderedEmail,
 } from '../_shared/email-templates.ts';
+import { MAIL_API_KEY, sendEmail } from '../_shared/mailer.ts';
 
-const RESEND_URL = 'https://api.resend.com/emails';
-
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'hello@myestateaccess.com';
-const FROM = `myestateaccess <${FROM_EMAIL}>`;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 
 /**
@@ -74,27 +70,13 @@ function confirmUrl(d: HookPayload['email_data']): string {
 }
 
 async function send(to: string, email: RenderedEmail): Promise<void> {
-  const res = await fetch(RESEND_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: FROM,
-      to: [to],
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      reply_to: FROM_EMAIL,
-    }),
-  });
-  if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);
+  const r = await sendEmail(to, email);
+  if (!r.sent) throw new Error(`email send failed: ${r.detail}`);
 }
 
 Deno.serve(async (req) => {
-  if (!RESEND_API_KEY) {
-    console.error('RESEND_API_KEY not set');
+  if (!MAIL_API_KEY) {
+    console.error('DOMAINHUB_API_KEY not set');
     return new Response(JSON.stringify({ error: { message: 'email not configured' } }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

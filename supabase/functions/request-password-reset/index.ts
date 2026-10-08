@@ -1,7 +1,7 @@
 // Self-service password reset — the "send me a code" half.
 //
-// Mints a recovery token with the admin API and sends it through Resend, on the
-// verified domain, using the repo's own template. The app then redeems the code
+// Mints a recovery token with the admin API and sends it through our mail
+// provider (_shared/mailer.ts), on the verified domain, using the repo's own template. The app then redeems the code
 // with verifyOtp and sets a new password; nothing here changes a password, and
 // nothing here returns a token to the caller.
 //
@@ -33,12 +33,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import { resetPasswordCode } from '../_shared/email-templates.ts';
-
-const RESEND_URL = 'https://api.resend.com/emails';
-
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'hello@myestateaccess.com';
-const FROM = `myestateaccess <${FROM_EMAIL}>`;
+import { MAIL_API_KEY, sendEmail } from '../_shared/mailer.ts';
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -49,7 +44,7 @@ const admin = createClient(
 /**
  * The single response every caller gets.
  *
- * Unknown address, rate limited, Resend down, mail sent — all identical, and
+ * Unknown address, rate limited, provider down, mail sent — all identical, and
  * deliberately so. The app says "if that address has an account, a code is on
  * its way", which is true in every one of those cases and informative in none.
  */
@@ -61,29 +56,12 @@ function ok(): Response {
 }
 
 async function send(to: string, otp: string): Promise<void> {
-  const email = resetPasswordCode({ otp });
-
-  const res = await fetch(RESEND_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-      // No Idempotency-Key here, unlike the queue dispatcher. Each request
-      // mints a NEW token that invalidates the last one, so two requests must
-      // produce two different emails — deduplicating them would send the
-      // recipient a code that no longer works.
-    },
-    body: JSON.stringify({
-      from: FROM,
-      to: [to],
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      reply_to: FROM_EMAIL,
-    }),
-  });
-
-  if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);
+  // No Idempotency-Key here, unlike the queue dispatcher. Each request mints a
+  // NEW token that invalidates the last one, so two requests must produce two
+  // different emails — deduplicating them would send the recipient a code that
+  // no longer works.
+  const r = await sendEmail(to, resetPasswordCode({ otp }));
+  if (!r.sent) throw new Error(`email send failed: ${r.detail}`);
 }
 
 Deno.serve(async (req) => {
@@ -105,10 +83,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'bad_request' }), { status: 400 });
   }
 
-  if (!RESEND_API_KEY) {
+  if (!MAIL_API_KEY) {
     // Logged loudly, but the caller still gets the standard answer. Telling an
     // anonymous caller about our configuration is not their business.
-    console.error('RESEND_API_KEY not set — cannot send reset code');
+    console.error('DOMAINHUB_API_KEY not set — cannot send reset code');
     return ok();
   }
 

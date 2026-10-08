@@ -330,7 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Supabase's fallback mail service, which sends a template containing no code
    * and a link built from the project's Site URL — still `localhost:3000`, and
    * therefore dead on a phone. request-password-reset mints the same token and
-   * sends it through Resend on the verified domain, code-first.
+   * sends it through our mail provider on the verified domain, code-first.
    */
   const requestPasswordReset = useCallback(async (email: string) => {
     try {

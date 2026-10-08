@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
   // working as an in-person fallback for an admin whose email never arrives.
   //
   // Enqueued rather than sent inline: the send belongs on the same cron-driven
-  // path as everything else, and a Resend hiccup must not fail an onboarding
+  // path as everything else, and a mail-provider hiccup must not fail an onboarding
   // that has already created an estate, a user and a membership.
   let setPasswordUrl: string | null = null;
   if (password) {

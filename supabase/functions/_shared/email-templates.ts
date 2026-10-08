@@ -49,7 +49,7 @@ const FONT =
 export interface RenderedEmail {
   subject: string;
   html: string;
-  /** Never omit. Resend will synthesise one, but a hand-written version reads better and scores better. */
+  /** Never omit. An HTML-only message is a spam signal, and a hand-written text part reads better than any synthesised one. */
   text: string;
 }
 
