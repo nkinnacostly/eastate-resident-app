@@ -218,6 +218,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // all fixed the same way, by asking for another code.
         if (verifyError) return { status: 'bad_code' };
 
+        // This session was opened with a code sent to the address, which is
+        // the one proof an account created FOR someone (by an estate admin or
+        // the operator) never had. Recording it here is what lets such an
+        // account be matched to the houses it owns as a landlord. Before
+        // updateUser, while the session still says how it was opened. Best
+        // effort: failing it costs landlord pages, never the reset.
+        await supabase.rpc('prove_email_ownership');
+
         const { error: updateError } = await supabase.auth.updateUser({ password });
         if (updateError) {
           // The code is spent and a session exists, but the password is still

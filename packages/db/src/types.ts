@@ -1098,6 +1098,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _generate_dues_charges: {
+        Args: { p_due_floor: string; p_estate_id: string; p_period: string }
+        Returns: number
+      }
       _ingest_verification_event: {
         Args: {
           p_client_event_id: string
@@ -1797,6 +1801,7 @@ export type Database = {
         Args: { p_agency_membership_id: string; p_estate_id: string }
         Returns: string
       }
+      prove_email_ownership: { Args: never; Returns: boolean }
       purge_password_reset_attempts: { Args: never; Returns: undefined }
       raise_current_dues: { Args: { p_estate_id: string }; Returns: number }
       record_psira_registration: {

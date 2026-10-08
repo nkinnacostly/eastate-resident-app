@@ -76,7 +76,13 @@ delete from public.verification_events where estate_id in ('11111111-1111-4111-8
 delete from public.access_codes where estate_id in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222');
 delete from public.code_mint_attempts where membership_id in ('aaaaaaaa-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000004');
 update public.memberships set is_active=true, deactivated_at=null where id='aaaaaaaa-0000-4000-8000-000000000002';
-delete from pgmq.q_notifications;
+-- Only THIS suite's messages. This runs against production, and an unscoped
+-- delete here threw away every resident's pending "your visitor has arrived"
+-- push each time the suite ran.
+delete from pgmq.q_notifications
+ where message->>'estate_id' in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222')
+    or message->>'membership_id' in (select id::text from public.memberships
+                                      where estate_id in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222'));
 insert into public.memberships (id,user_id,estate_id,role) values ('aaaaaaaa-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','11111111-1111-4111-8111-111111111111','admin') on conflict (user_id,estate_id,role) do nothing;
 begin; set local role authenticated; set local request.jwt.claims to '{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}';
 insert into results select 100+1,'m','1='||r.result,true from public.mint_access_code('11111111-1111-4111-8111-111111111111') r;
@@ -182,7 +188,10 @@ insert into results select 9,'deactivation: outstanding codes revoked',
 insert into results select 10,'queue: code_used + forced_pull enqueued',
   'code_used='||count(*) filter (where message->>'kind'='code_used')::text||' forced_pull='||count(*) filter (where message->>'kind'='forced_pull')::text,
   count(*) filter (where message->>'kind'='code_used')>=1 and count(*) filter (where message->>'kind'='forced_pull')>=1
-  from pgmq.q_notifications;
+  from pgmq.q_notifications
+ where message->>'estate_id' in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222')
+    or message->>'membership_id' in (select id::text from public.memberships
+                                      where estate_id in ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222'));
 -- The admit-and-flag override, both directions.
 --
 -- These are a pair on purpose. 12 proves the override now survives the replay;
