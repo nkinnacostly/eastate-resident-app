@@ -24,11 +24,13 @@
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
 
 import {
+  emailChange,
   resetPassword,
   verifyEmail,
   verifyEmailCode,
   type RenderedEmail,
 } from '../_shared/email-templates.ts';
+import { emailChangeMails } from '../_shared/email-change.ts';
 import { MAIL_API_KEY, sendEmail } from '../_shared/mailer.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -43,10 +45,13 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const HOOK_SECRET = (Deno.env.get('SEND_EMAIL_HOOK_SECRET') ?? '').replace('v1,whsec_', '');
 
 interface HookPayload {
-  user: { email: string };
+  user: { email: string; new_email?: string };
   email_data: {
     token: string;
     token_hash: string;
+    /** Email change only. See _shared/email-change.ts for which goes where. */
+    token_new?: string;
+    token_hash_new?: string;
     redirect_to: string;
     email_action_type: string;
     site_url: string;
@@ -60,9 +65,9 @@ interface HookPayload {
  * redirects to `redirect_to`. Building it by hand from `token_hash` is the
  * documented approach — the payload carries no ready-made URL.
  */
-function confirmUrl(d: HookPayload['email_data']): string {
+function confirmUrl(d: HookPayload['email_data'], tokenHash = d.token_hash): string {
   const params = new URLSearchParams({
-    token: d.token_hash,
+    token: tokenHash,
     type: d.email_action_type,
     redirect_to: d.redirect_to || d.site_url,
   });
@@ -75,14 +80,6 @@ async function send(to: string, email: RenderedEmail): Promise<void> {
 }
 
 Deno.serve(async (req) => {
-  if (!MAIL_API_KEY) {
-    console.error('DOMAINHUB_API_KEY not set');
-    return new Response(JSON.stringify({ error: { message: 'email not configured' } }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
   const raw = await req.text();
 
   let payload: HookPayload;
@@ -98,6 +95,16 @@ Deno.serve(async (req) => {
     console.error('hook signature verification failed', e);
     return new Response(JSON.stringify({ error: { message: 'invalid signature' } }), {
       status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // After the signature, not before: an unauthenticated caller learns nothing
+  // about our configuration, not even that mail is broken.
+  if (!MAIL_API_KEY) {
+    console.error('DOMAINHUB_API_KEY not set');
+    return new Response(JSON.stringify({ error: { message: 'email not configured' } }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -120,9 +127,17 @@ Deno.serve(async (req) => {
 
       // An email CHANGE is not the same journey: there are no join codes in
       // flight, and the person may well be doing it from a desktop, so the
-      // link is still the shortest path.
+      // link is still the shortest path. Each address gets its own code and
+      // only its own — see _shared/email-change.ts before touching this.
       case 'email_change':
-        await send(user.email, verifyEmail({ confirmUrl: url, otp: d.token }));
+        for (const m of emailChangeMails(user, d)) {
+          await send(m.to, emailChange({
+            side: m.side,
+            newEmail: user.new_email!,
+            otp: m.otp,
+            confirmUrl: confirmUrl(d, m.tokenHash),
+          }));
+        }
         break;
 
       case 'recovery':

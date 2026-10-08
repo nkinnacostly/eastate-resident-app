@@ -17,11 +17,16 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { verifyTransaction } from '../_shared/flutterwave.ts';
+import { forbidden, isServiceRole } from '../_shared/caller.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Cron only. The anon key passes the gateway, and every call here spends
+  // our Flutterwave rate limit on up to 200 verifications; see _shared/caller.ts.
+  if (!isServiceRole(req)) return forbidden();
+
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   const { data: pending, error } = await admin.rpc('dues_payments_awaiting_verification', {

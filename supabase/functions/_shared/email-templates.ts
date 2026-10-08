@@ -429,6 +429,65 @@ export function verifyEmail(v: { confirmUrl: string; otp: string }): RenderedEma
   };
 }
 
+// ─── Email change (one mail per address under secure email change) ──────────
+
+/**
+ * `side` says which address this copy is for. Under secure email change BOTH
+ * addresses must confirm, each with its own code, and each mail must reach
+ * only its own inbox — the whole point is that a change needs the consent of
+ * whoever owns the new address, not just whoever holds the session.
+ */
+export function emailChange(v: {
+  side: 'current' | 'new';
+  newEmail: string;
+  confirmUrl: string;
+  otp: string;
+}): RenderedEmail {
+  const lead = v.side === 'current'
+    ? `Someone signed in to your myestateaccess account asked to change its email address to ${v.newEmail}.`
+    : 'Someone asked to move a myestateaccess account to this email address.';
+  const ask = v.side === 'current'
+    ? 'If that was you, confirm below. The change also has to be confirmed from the new address before it takes effect.'
+    : 'If that was you, confirm below. Until you do, the account stays on its old address.';
+  const ignore = v.side === 'current'
+    ? 'If you did not ask for this, do not confirm, and change your password: someone else may be signed in to your account.'
+    : 'If you did not ask for this, ignore this message — without your confirmation the account is not moved to this address.';
+
+  const body =
+    p(esc(lead)) +
+    p(ask) +
+    codeBlock('Or enter this code', v.otp) +
+    muted('This link and code both expire in 60 minutes.');
+
+  return {
+    subject: v.side === 'current' ? 'Confirm your email change' : 'Confirm your new email address',
+    html: shell({
+      preheader: `Your confirmation code is ${v.otp}. It expires in 60 minutes.`,
+      heading: v.side === 'current' ? 'Confirm the change' : 'Confirm this address',
+      body,
+      cta: { label: 'Confirm', url: v.confirmUrl },
+      footnote: ignore,
+    }),
+    text: [
+      lead,
+      '',
+      ask,
+      '',
+      `Confirm: ${v.confirmUrl}`,
+      '',
+      `Or enter this code: ${v.otp}`,
+      '',
+      'This link and code both expire in 60 minutes.',
+      '',
+      ignore,
+      '',
+      '—',
+      'Privacy policy: https://myestateaccess.com/privacy',
+      'Questions: hello@myestateaccess.com',
+    ].join('\n'),
+  };
+}
+
 // ─── Password reset (the hook receives these too) ────────────────────────────
 
 export function resetPassword(v: { confirmUrl: string; otp: string }): RenderedEmail {

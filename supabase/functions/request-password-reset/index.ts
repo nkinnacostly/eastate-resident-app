@@ -35,6 +35,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { resetPasswordCode } from '../_shared/email-templates.ts';
 import { MAIL_API_KEY, sendEmail } from '../_shared/mailer.ts';
 
+/** Supabase Edge Runtime's background-task hook (keeps the worker alive past the response). */
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
+
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -64,6 +67,68 @@ async function send(to: string, otp: string): Promise<void> {
   if (!r.sent) throw new Error(`email send failed: ${r.detail}`);
 }
 
+/**
+ * Everything after input validation: rate limit, mint, send.
+ *
+ * Run AFTER the response has gone, never before it. A real address waits on
+ * generateLink and then on the mail provider; an unknown one fails fast at
+ * generateLink. Done inline, that difference is a stopwatch membership oracle
+ * * that the identical response bodies were written to prevent.
+ */
+async function issueResetCode(email: string): Promise<void> {
+  if (!MAIL_API_KEY) {
+    // Logged loudly, but the caller still gets the standard answer. Telling an
+    // anonymous caller about our configuration is not their business.
+    console.error('DOMAINHUB_API_KEY not set — cannot send reset code');
+    return;
+  }
+
+  // Rate limit BEFORE minting. Minting first would invalidate the code the
+  // caller was legitimately sent a moment ago, which turns a flood of requests
+  // against someone else's address into a denial of their reset rather than
+  // merely noise in their inbox.
+  const { data: claim, error: claimError } = await admin.rpc('claim_password_reset', {
+    p_email: email,
+  });
+
+  if (claimError) {
+    console.error('claim_password_reset failed', claimError);
+    return;
+  }
+
+  if (claim !== 'ok') {
+    console.warn('password reset rate limited');
+    return;
+  }
+
+  // Mints the token AND tells us the address is real. An unknown address errors
+  // here, which is the only place this function learns that — and it says
+  // nothing about it.
+  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+  });
+
+  const otp = link?.properties?.email_otp ?? '';
+
+  if (linkError || !otp) {
+    // Almost always "no account for this address". Logged without the address:
+    // a log full of addresses that tried to reset is itself a list worth
+    // stealing, and it would outlive the request that made it.
+    console.warn('no recovery code minted', linkError?.message ?? 'no otp returned');
+    return;
+  }
+
+  try {
+    await send(email, otp);
+  } catch (e) {
+    // The token stays minted and unused; it simply expires. The caller is told
+    // nothing, and may try again — which is exactly what the rate limit budget
+    // is for.
+    console.error('reset code send failed', e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'method_not_allowed' }), { status: 405 });
@@ -83,57 +148,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'bad_request' }), { status: 400 });
   }
 
-  if (!MAIL_API_KEY) {
-    // Logged loudly, but the caller still gets the standard answer. Telling an
-    // anonymous caller about our configuration is not their business.
-    console.error('DOMAINHUB_API_KEY not set — cannot send reset code');
-    return ok();
-  }
-
-  // Rate limit BEFORE minting. Minting first would invalidate the code the
-  // caller was legitimately sent a moment ago, which turns a flood of requests
-  // against someone else's address into a denial of their reset rather than
-  // merely noise in their inbox.
-  const { data: claim, error: claimError } = await admin.rpc('claim_password_reset', {
-    p_email: email,
-  });
-
-  if (claimError) {
-    console.error('claim_password_reset failed', claimError);
-    return ok();
-  }
-
-  if (claim !== 'ok') {
-    console.warn('password reset rate limited');
-    return ok();
-  }
-
-  // Mints the token AND tells us the address is real. An unknown address errors
-  // here, which is the only place this function learns that — and it says
-  // nothing about it.
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-  });
-
-  const otp = link?.properties?.email_otp ?? '';
-
-  if (linkError || !otp) {
-    // Almost always "no account for this address". Logged without the address:
-    // a log full of addresses that tried to reset is itself a list worth
-    // stealing, and it would outlive the request that made it.
-    console.warn('no recovery code minted', linkError?.message ?? 'no otp returned');
-    return ok();
-  }
-
-  try {
-    await send(email, otp);
-  } catch (e) {
-    // The token stays minted and unused; it simply expires. The caller is told
-    // nothing, and may try again — which is exactly what the rate limit budget
-    // is for.
-    console.error('reset code send failed', e);
-  }
-
+  // Answer now, work later: see issueResetCode for why the order matters.
+  EdgeRuntime.waitUntil(issueResetCode(email).catch((e) => console.error('reset failed', e)));
   return ok();
 });

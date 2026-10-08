@@ -147,6 +147,9 @@ Deno.serve(async (req) => {
       // No name means no name. Defaulting it to the email address would put
       // the same string in both columns of every table that shows a person.
       user_metadata: adminName ? { full_name: adminName } : {},
+      // Confirmed, but not proved: the operator typed this address. See the
+      // same flag in onboard-guard and current_verified_email().
+      app_metadata: { email_unproven: true },
     });
     if (createErr) return json({ error: 'create_user_failed', detail: createErr.message }, 400);
     userId = created.user.id;

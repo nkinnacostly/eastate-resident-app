@@ -14,6 +14,7 @@
 // deliberately pointed that way.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { forbidden, isServiceRole } from '../_shared/caller.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
@@ -101,12 +102,18 @@ const admin = createClient(
   { auth: { persistSession: false } },
 );
 
-/** Every active push token for one membership. A person may have several devices. */
+/**
+ * Every push token for one membership — if that membership is still active. A
+ * person may have several devices. A moved-out resident's tokens stay in the
+ * table, and without the is_active filter their old phone would keep being
+ * told who arrived at a house they no longer live in.
+ */
 async function tokensForMembership(membershipId: string): Promise<string[]> {
   const { data, error } = await admin
     .from('push_tokens')
-    .select('expo_push_token')
-    .eq('membership_id', membershipId);
+    .select('expo_push_token, memberships!inner(is_active)')
+    .eq('membership_id', membershipId)
+    .eq('memberships.is_active', true);
   if (error) throw error;
   return (data ?? []).map((r) => r.expo_push_token as string);
 }
@@ -229,7 +236,10 @@ async function sendToExpo(messages: PushMessage[]): Promise<{ retryable: boolean
   return { retryable: accepted === 0 && retryableErrors > 0 && permanentErrors === 0 };
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Cron only. The anon key passes the gateway; see _shared/caller.ts.
+  if (!isServiceRole(req)) return forbidden();
+
   // Via public wrappers, not pgmq directly: PostgREST only exposes `public`
   // and `graphql_public`, and the pgmq schema is deliberately revoked from
   // every client role. See the wrappers in the guard_shifts migration.

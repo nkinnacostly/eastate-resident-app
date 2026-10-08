@@ -128,6 +128,14 @@ Deno.serve(async (req) => {
       // same string in both columns of every table that shows a person — and
       // this name is what residents see as "on duty".
       user_metadata: fullName ? { full_name: fullName } : {},
+      // email_confirm above says "this address is verified", but nobody has
+      // proved it: an estate admin typed it and holds the password. Landlord
+      // access is keyed on a confirmed address, so without this flag any
+      // estate admin could create an account on a landlord's email and read
+      // that landlord's houses at every OTHER estate. current_verified_email()
+      // refuses a flagged account until its owner signs in through an emailed
+      // code. app_metadata, because the user cannot write it.
+      app_metadata: { email_unproven: true },
     });
     if (createErr) return json({ error: 'create_user_failed', detail: createErr.message }, 400);
     userId = created.user.id;
@@ -154,9 +162,11 @@ Deno.serve(async (req) => {
   // ─── 3. the profile ───────────────────────────────────────────────────────
   //
   // A phone number is worth having on a guard: it is how an admin reaches the
-  // gate when something is wrong. Only filled in when given, and never blanked
-  // on an existing account — this admin does not own that person's profile.
-  if (fullName || phone) {
+  // gate when something is wrong. Only filled in on an account THIS request
+  // created. An existing account belongs to someone who may live or work at
+  // other estates: patching it would let any estate admin rename any user on
+  // the platform — and this name is what residents elsewhere see as "on duty".
+  if (password && (fullName || phone)) {
     const patch: Record<string, string> = {};
     if (fullName) patch.full_name = fullName;
     if (phone) patch.phone = phone;
@@ -231,7 +241,9 @@ Deno.serve(async (req) => {
     estate_id: estateId,
     guard_user_id: userId,
     email,
-    full_name: fullName || existingUser?.full_name || null,
+    // Only what the caller typed. Echoing an existing account's name back would
+    // tell any estate admin who owns any email address on the platform.
+    full_name: fullName || null,
     // Null when an existing account was reused — the UI must say so rather than
     // show a blank box that looks like a bug.
     password,

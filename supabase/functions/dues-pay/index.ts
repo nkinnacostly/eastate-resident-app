@@ -52,7 +52,12 @@ Deno.serve(async (req) => {
     p_payer_email: email,
     p_months: months,
   });
-  if (error) return json({ error: error.message }, 400);
+  if (error) {
+    // Logged, not returned: this endpoint is anonymous, and a raw Postgres
+    // message describes our schema to whoever is probing it.
+    console.error('[dues-pay] start_dues_payment_by_token', error.message);
+    return json({ error: 'could_not_start' }, 400);
+  }
 
   const row = Array.isArray(data) ? data[0] : data;
   // Same response for a bad token and a settled charge, deliberately: a

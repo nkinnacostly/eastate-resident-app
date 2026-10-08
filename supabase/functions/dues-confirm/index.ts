@@ -16,6 +16,12 @@
 // the entire point of the pay link. The reference authorises nothing on its
 // own: this endpoint only ever settles what Flutterwave itself reports as
 // successful, so calling it with a guessed reference achieves nothing.
+//
+// It IS still open to the internet, so it only asks Flutterwave about payments
+// WE started. Before that check, anyone could make it verify arbitrary
+// transaction ids with our secret key: spending our merchant rate limit (which
+// the webhook and checkout need) and learning, from pending vs failed vs
+// needs_review, which transactions exist on our account.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { verifyTransaction } from '../_shared/flutterwave.ts';
@@ -36,16 +42,39 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   const { tx_ref, transaction_id } = await req.json().catch(() => ({}));
-  if (!tx_ref && !transaction_id) return json({ error: 'reference_required' }, 400);
+  // Flutterwave puts tx_ref on every redirect, success or failure, so a real
+  // return always has one.
+  if (typeof tx_ref !== 'string' || !tx_ref) return json({ error: 'reference_required' }, 400);
 
   try {
-    const v = await verifyTransaction({ transactionId: transaction_id, txRef: tx_ref });
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    const { data: ours, error: lookupErr } = await admin
+      .from('dues_payments')
+      .select('status')
+      .eq('tx_ref', tx_ref)
+      .maybeSingle();
+    if (lookupErr) throw lookupErr;
+    // Not a payment we started. Answered exactly like one still in flight, so
+    // the reply says nothing about what does or does not exist.
+    if (!ours) return json({ status: 'pending' });
+    // The webhook got here first: nothing left to ask Flutterwave.
+    if (ours.status === 'successful') return json({ status: 'paid' });
+
+    const v = await verifyTransaction({
+      transactionId: typeof transaction_id === 'string' || typeof transaction_id === 'number'
+        ? String(transaction_id)
+        : undefined,
+      txRef: tx_ref,
+    });
     // Flutterwave does not know it, or it has not completed. Reported as
     // pending rather than failed: the person is looking at the page seconds
     // after paying, and a bank transfer can legitimately still be in flight.
     if (!v) return json({ status: 'pending' });
-
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    // A transaction id from some other payment, paired with our reference.
+    // settle_dues_payment keys on the verified tx_ref so it could not credit
+    // the wrong charge, but there is no reason to go on.
+    if (v.txRef !== tx_ref) return json({ status: 'pending' });
     const { data: result, error } = await admin.rpc('settle_dues_payment', {
       p_tx_ref: v.txRef,
       p_provider_tx_id: v.providerTxId,

@@ -24,6 +24,7 @@ import {
   type RenderedEmail,
 } from '../_shared/email-templates.ts';
 import { MAIL_API_KEY, sendEmail } from '../_shared/mailer.ts';
+import { forbidden, isServiceRole } from '../_shared/caller.ts';
 
 const BATCH = 25;
 const VISIBILITY_SECONDS = 60;
@@ -150,7 +151,10 @@ function render(msg: Record<string, unknown>): { to: string; email: RenderedEmai
   return null;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Cron only. The anon key passes the gateway; see _shared/caller.ts.
+  if (!isServiceRole(req)) return forbidden();
+
   if (!MAIL_API_KEY) {
     // Leave the queue untouched. Mail waits for the secret rather than being
     // consumed and lost while it is missing.
