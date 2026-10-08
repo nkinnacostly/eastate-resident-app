@@ -146,14 +146,28 @@ describe('the request button', () => {
     await waitFor(() => expect(requestAccess()).toBeDisabled());
   });
 
-  // Mirrors minimum_password_length in supabase/config.toml — meeting the rule
-  // in the field beats meeting it in an alert after the account attempt fails.
+  // Mirrors minimum_password_length = 8 in supabase/config.toml — meeting the
+  // rule in the field beats meeting it in an alert after the account attempt
+  // fails. Seven characters on purpose: the old minimum was 6, so this is the
+  // length that tells the two rules apart.
   it('stays disabled on a password the server would refuse', async () => {
     render(<SignUp />);
     fillEverything();
-    type('Create password', '12345');
+    type('Create password', '1234567');
 
     await waitFor(() => expect(requestAccess()).toBeDisabled());
+    fireEvent(screen.getByPlaceholderText('Create password'), 'blur');
+    await screen.findByText('Use at least 8 characters.');
+  });
+
+  // The boundary itself — a client minimum above the server's would refuse a
+  // password the server accepts.
+  it('accepts a password of exactly 8 characters', async () => {
+    render(<SignUp />);
+    fillEverything();
+    type('Create password', '12345678');
+
+    await waitFor(() => expect(requestAccess()).toBeEnabled());
   });
 
   it('enables once every required field satisfies the schema', async () => {

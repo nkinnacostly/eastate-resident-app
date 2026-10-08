@@ -190,6 +190,39 @@ describe('reset password — redeeming the code', () => {
     );
   });
 
+  // The same minimum as sign-up — minimum_password_length = 8 in
+  // supabase/config.toml. Seven is the length the old 6-character rule passed.
+  it('will not set a password shorter than 8 characters', async () => {
+    setParams({ email: 'rita@example.com' });
+
+    render(<ResetPassword />);
+    fill('12345678', '1234567');
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Set new password' })).toBeDisabled(),
+    );
+    fireEvent(screen.getByPlaceholderText('New password'), 'blur');
+    await screen.findByText('Use at least 8 characters.');
+    expect(mockCompletePasswordReset).not.toHaveBeenCalled();
+  });
+
+  it('sets a password of exactly 8 characters', async () => {
+    setParams({ email: 'rita@example.com' });
+    mockCompletePasswordReset.mockResolvedValue({ status: 'ok' });
+
+    render(<ResetPassword />);
+    fill('12345678', 'abcdefgh');
+    await pressWhenEnabled('Set new password');
+
+    await waitFor(() =>
+      expect(mockCompletePasswordReset).toHaveBeenCalledWith(
+        'rita@example.com',
+        '12345678',
+        'abcdefgh',
+      ),
+    );
+  });
+
   it('will not submit a half-typed code', async () => {
     setParams({ email: 'rita@example.com' });
 

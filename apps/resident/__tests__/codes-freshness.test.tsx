@@ -6,12 +6,19 @@ import { CodesProvider, useCodesOnFocus } from '@/lib/codes';
 
 const mockList = jest.fn();
 jest.mock('@/lib/api', () => ({
-  listMyCodes: () => mockList(),
+  listMyCodes: (...a: unknown[]) => mockList(...a),
   mintCode: jest.fn(),
 }));
 
+let mockMemberships: { id: string }[];
 jest.mock('@/lib/auth', () => ({
-  useAuth: () => ({ session: { user: { id: 'u1' } }, activeEstateId: 'estate-1' }),
+  useAuth: () => ({
+    session: { user: { id: 'u1' } },
+    // A fresh array on every render, as the real provider produces on each
+    // membership refresh — the list must not refetch just because of that.
+    memberships: mockMemberships.map((m) => ({ ...m })),
+    activeEstateId: 'estate-1',
+  }),
 }));
 
 function Screen() {
@@ -31,6 +38,7 @@ const liveRow = (code: string) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockMemberships = [{ id: 'm1' }];
   mockList.mockResolvedValue([liveRow('B7PJU6')]);
 });
 
@@ -47,6 +55,20 @@ describe('code freshness', () => {
       </CodesProvider>,
     );
     await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1));
+    // Scoped to the resident's own memberships — see own-rows.test.tsx.
+    expect(mockList).toHaveBeenCalledWith(['m1']);
+  });
+
+  // Until a membership exists there are no codes of one's own to ask for.
+  it('asks for nothing while the resident has no membership', async () => {
+    mockMemberships = [];
+    const { getByText } = render(
+      <CodesProvider>
+        <Screen />
+      </CodesProvider>,
+    );
+    await waitFor(() => expect(getByText('live:0')).toBeTruthy());
+    expect(mockList).not.toHaveBeenCalled();
   });
 
   // The case that actually bites: phone in a pocket while a guard burns the

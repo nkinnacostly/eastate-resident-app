@@ -38,12 +38,17 @@ const emailField = z
 const SUPABASE_PASSWORD_MAX = 72;
 
 /**
- * Mirrors `minimum_password_length = 6` in supabase/config.toml. Read from
- * there rather than chosen here: a client minimum ABOVE the server's refuses a
- * password the server would have accepted, and one below it produces a rejection
- * the resident cannot see coming. Change both together, or neither.
+ * Mirrors `minimum_password_length = 8` in supabase/config.toml (raised from 6,
+ * Oct 2026). Read from there rather than chosen here: a client minimum ABOVE
+ * the server's refuses a password the server would have accepted, and one below
+ * it produces a rejection the resident cannot see coming. Change both together,
+ * or neither.
+ *
+ * Applies only where a password is SET — sign-up and reset. Sign-in has no
+ * minimum on purpose, so a password chosen under the old 6-character rule
+ * still gets its owner in.
  */
-const SUPABASE_PASSWORD_MIN = 6;
+const SUPABASE_PASSWORD_MIN = 8;
 
 /**
  * The two join codes are checked for PRESENCE ONLY — deliberately no format,

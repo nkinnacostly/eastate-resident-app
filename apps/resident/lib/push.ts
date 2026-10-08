@@ -3,7 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { registerPushToken } from './api';
+import { registerPushToken, unregisterPushToken } from './api';
 
 /**
  * Device registration for push notifications.
@@ -45,6 +45,24 @@ function easProjectId(): string | null {
     (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
   return typeof id === 'string' && id.length > 0 ? id : null;
 }
+
+/**
+ * The Expo token this device last registered, kept so sign-out can name the row
+ * to delete without another round trip to Expo. A property of the install, not
+ * of the person signed in, so it is not cleared when they sign out — the next
+ * resident on this phone registers the very same token.
+ */
+let registeredToken: string | null = null;
+
+/**
+ * How long sign-out waits for the token delete before going ahead without it.
+ *
+ * Sign-out is how a resident hands a phone over, and it must work on a dead
+ * network: the session is dropped locally either way, so a delete that cannot
+ * land must not hold the resident on screen. Long enough for a slow round
+ * trip, short enough that a tap on "Sign out" still feels like it did something.
+ */
+const UNREGISTER_TIMEOUT_MS = 4000;
 
 /**
  * Ask for permission, get an Expo push token, and store it against the
@@ -89,9 +107,62 @@ export async function registerForPush(estateId: string): Promise<void> {
     }
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    // Held before the RPC, not after: if the RPC lands but its answer is lost,
+    // the row exists, and sign-out still has to be able to name it.
+    registeredToken = token;
     await registerPushToken(estateId, token);
   } catch (e) {
     // Never let this break a launch. The app works without notifications.
     console.warn('[push] registration failed', e);
+  }
+}
+
+/**
+ * This device's Expo token WITHOUT ever prompting — for sign-out on a launch
+ * where registerForPush did not get as far as fetching one (it was offline at
+ * startup, say, while a row from an earlier launch is still on the server).
+ * No permission means this install never registered, so there is nothing to
+ * take back.
+ */
+async function tokenWithoutPrompting(): Promise<string | null> {
+  if (registeredToken) return registeredToken;
+  if (!Device.isDevice) return null;
+  if ((await Notifications.getPermissionsAsync()).status !== 'granted') return null;
+  const projectId = easProjectId();
+  if (!projectId) return null;
+  return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+}
+
+/**
+ * Take this device's token back from the signed-in user, so the NEXT person to
+ * use the phone does not receive the last one's "your visitor has arrived".
+ *
+ * MUST run before the session is dropped: the delete goes through RLS as this
+ * user, and once signed out there is nobody left with the right to remove the
+ * row. Without it a shared or handed-over phone kept buzzing for the previous
+ * resident's visitors indefinitely.
+ *
+ * Best effort, like registration, and it never throws. A failed or slow delete
+ * must never stop someone signing out — that would be the worse failure — so
+ * it gives up after UNREGISTER_TIMEOUT_MS and lets sign-out carry on.
+ */
+export async function unregisterForPush(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const attempt = (async () => {
+    const token = await tokenWithoutPrompting();
+    if (token) await unregisterPushToken(token);
+  })();
+  const giveUp = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), UNREGISTER_TIMEOUT_MS);
+  });
+
+  try {
+    if ((await Promise.race([attempt, giveUp])) === 'timeout') {
+      console.warn('[push] token removal timed out; signing out without it');
+    }
+  } catch (e) {
+    console.warn('[push] token removal failed; signing out without it', e);
+  } finally {
+    clearTimeout(timer);
   }
 }

@@ -12,6 +12,7 @@ import {
 } from 'react';
 
 import { requestHouseAccess, type JoinResult } from './api';
+import { unregisterForPush } from './push';
 import { supabase } from './supabase';
 
 export interface Membership {
@@ -233,17 +234,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // RLS scopes this to the caller's own rows — no client-side filter needed.
+    // The `user_id` filter is REQUIRED. RLS on memberships answers "may this
+    // user see the row", and an estate admin may see every membership in their
+    // estate while a platform admin may see every membership on the platform.
+    // Without it, a resident who was also an admin loaded other people's
+    // memberships as their own, and a platform admin's app landed on an
+    // arbitrary estate. RLS is the security boundary; this is what makes the
+    // list mean "mine".
+    //
+    // `estates` is NAMED via its constraint. Left to inference it broke
+    // outright the day a second foreign key appeared between memberships and
+    // estates: PostgREST cannot choose between two relationships and answers
+    // 300 PGRST201, so this lookup failed for every resident at once and the
+    // app sat on a blank screen. supabase/tests/embeds.sql guards the class.
+    // Kept ABOVE the query, not between `.from` and `.select`: the
+    // test:client-queries extractor only looks 400 characters past `.from(`,
+    // and this note once pushed the select out of its reach — so the one query
+    // that broke was the one query it never checked.
     const { data, error } = await supabase
       .from('memberships')
-      // `estates` is NAMED via its constraint. Left to inference it broke
-      // outright the day a second foreign key appeared between memberships and
-      // estates: PostgREST cannot choose between two relationships and answers
-      // 300 PGRST201, so this lookup failed for every resident at once and the
-      // app sat on a blank screen. supabase/tests/embeds.sql guards the class.
       .select(
         'id, estate_id, role, estates!memberships_estate_id_fkey(name), houses(house_number, house_code)',
       )
+      .eq('user_id', userId)
       .eq('role', 'resident')
       .eq('is_active', true);
 
@@ -372,6 +385,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // resident and all fixed the same way, by asking for another code.
         if (verifyError) return { status: 'bad_code' };
 
+        // This session was opened with a code sent to the address, which is
+        // the one proof an account created FOR someone (by an estate admin or
+        // the operator) never had. Recording it here is what lets such an
+        // account be matched to the houses it owns as a landlord. Before
+        // updateUser, while the session still says how it was opened. Best
+        // effort: failing it costs landlord pages, never the reset.
+        await supabase.rpc('prove_email_ownership');
+
         const { error: updateError } = await supabase.auth.updateUser({ password });
 
         if (updateError) {
@@ -464,6 +485,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Token first, while there is still a session to delete it AS. Signing out
+    // first would leave this phone receiving the previous resident's visitor
+    // notifications for as long as the next person uses it. Never throws and
+    // gives up after a few seconds — see unregisterForPush.
+    await unregisterForPush();
     await supabase.auth.signOut();
   }, []);
 

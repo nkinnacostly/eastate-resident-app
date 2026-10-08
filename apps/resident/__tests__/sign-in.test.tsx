@@ -70,6 +70,20 @@ describe('the log in button', () => {
 
     await waitFor(() => expect(login()).toBeEnabled());
   });
+
+  // The server minimum went from 6 to 8. Passwords set under the old rule
+  // still exist and must still get their owners in — the new minimum belongs
+  // to sign-up and reset only.
+  it('still signs in with a password set under the old 6-character rule', async () => {
+    render(<SignIn />);
+    fireEvent.changeText(email(), 'rita@example.com');
+    fireEvent.changeText(password(), 'abc123');
+
+    await waitFor(() => expect(login()).toBeEnabled());
+    fireEvent.press(login());
+
+    await waitFor(() => expect(mockSignIn).toHaveBeenCalledWith('rita@example.com', 'abc123'));
+  });
 });
 
 describe('signing in', () => {

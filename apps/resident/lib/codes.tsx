@@ -24,7 +24,7 @@ const CodesContext = createContext<CodesState | null>(null);
  * exactly the number a resident is trying to trust.
  */
 export function CodesProvider({ children }: { children: ReactNode }) {
-  const { session, activeEstateId } = useAuth();
+  const { session, memberships, activeEstateId } = useAuth();
   const [codes, setCodes] = useState<CodeRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -34,6 +34,12 @@ export function CodesProvider({ children }: { children: ReactNode }) {
   // unbounded request loop against the database. A primitive cannot do that.
   const userId = session?.user.id ?? null;
 
+  // The memberships whose codes are "mine", flattened to a string for the same
+  // reason: the array is rebuilt on every membership refresh even when nothing
+  // in it changed. listMyCodes filters on these — RLS alone would also hand an
+  // estate admin every code in the estate (see listMyCodes).
+  const membershipKey = memberships.map((m) => m.id).join(',');
+
   // Shares one request between overlapping callers. Mount, tab focus and
   // returning to the foreground can all fire at once — without this the app
   // issues three identical queries and the last to land wins, which is not
@@ -41,7 +47,9 @@ export function CodesProvider({ children }: { children: ReactNode }) {
   const inFlight = useRef<Promise<void> | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!userId) {
+    // No resident membership (yet) means no codes of one's own — the same
+    // answer as signed out, and not worth a request.
+    if (!userId || !membershipKey) {
       setCodes([]);
       return;
     }
@@ -50,7 +58,7 @@ export function CodesProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const run = (async () => {
       try {
-        setCodes(await listMyCodes());
+        setCodes(await listMyCodes(membershipKey.split(',')));
       } catch {
         // Leave the last known list in place; a transient network failure should
         // not blank out codes the resident may be reading aloud right now.
@@ -61,7 +69,7 @@ export function CodesProvider({ children }: { children: ReactNode }) {
     })();
     inFlight.current = run;
     return run;
-  }, [userId]);
+  }, [userId, membershipKey]);
 
   useEffect(() => {
     void refresh();

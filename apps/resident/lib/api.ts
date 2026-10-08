@@ -59,19 +59,33 @@ export async function mintCode(
 }
 
 /**
- * The resident's own codes.
+ * The resident's own codes — the ones minted under `membershipIds`, which must
+ * be the caller's own active resident memberships (useAuth's `memberships`).
  *
- * Note the absent `.eq('membership_id', …)`: the RLS policy on `access_codes`
- * already restricts rows to the caller's own. Adding the filter would be
- * harmless but relying on it would be the mistake — RLS is what makes a
- * forgotten filter survivable (§6.2).
+ * The `.in('membership_id', …)` filter is REQUIRED, not belt-and-braces. RLS on
+ * `access_codes` answers "may this user see the row", which is a wider question
+ * than "is this row mine": an estate admin may read every code in their estate.
+ * Without the filter, a resident who is also an admin got every live gate code
+ * on the estate listed here as their own — with share buttons — and a 3-code
+ * cap counter that counted the neighbours' codes. RLS is the security boundary;
+ * this filter is what makes the list mean "mine".
+ *
+ * A filter on the membership ids rather than an embedded `memberships!inner`
+ * join: access_codes has two foreign keys to memberships (the minter and
+ * `revoked_by_membership_id`), and an unnamed embed would be ambiguous (300
+ * PGRST201 — see the note on `estates!memberships_estate_id_fkey` in auth).
  */
-export async function listMyCodes(): Promise<CodeRow[]> {
+export async function listMyCodes(membershipIds: readonly string[]): Promise<CodeRow[]> {
+  // No resident membership, no codes of one's own. Answered here rather than
+  // sent as an empty `in.()`, which would be a round trip to learn nothing.
+  if (membershipIds.length === 0) return [];
+
   const { data, error } = await supabase
     .from('access_codes')
     .select(
       'id, code, created_at, expires_at, used_at, revoked_reason, status, is_delivery, delivery_note',
     )
+    .in('membership_id', membershipIds)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -160,6 +174,22 @@ export async function registerPushToken(
     // optional, so pass undefined rather than an explicit null.
     p_device_id: deviceId,
   });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Stop this device receiving the signed-in user's notifications. Called on
+ * sign-out, while the session still exists (see unregisterForPush).
+ *
+ * Filtered on the TOKEN, never on the user: a resident signed in on two phones
+ * who signs out of one must keep getting "your visitor has arrived" on the
+ * other. And a direct delete rather than an RPC because push_tokens is the one
+ * table devices manage themselves — the "push_tokens: manage own" policy limits
+ * the delete to rows on the caller's own memberships, so this cannot touch the
+ * same token registered under anybody else.
+ */
+export async function unregisterPushToken(token: string): Promise<void> {
+  const { error } = await supabase.from('push_tokens').delete().eq('expo_push_token', token);
   if (error) throw new Error(error.message);
 }
 
