@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card, DarkButton, Eyebrow, OutlineButton, PrimaryButton } from '@/components/ui';
 import { useShift } from '@/lib/shift';
+import { forgetVerdict, readVerdict, replaceVerdict } from '@/lib/verdicts';
 import { admitAndFlag, REJECT_COPY, type Verdict } from '@/lib/verify';
 
 function clock(iso: string | null): string {
@@ -25,18 +26,18 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export default function VerdictScreen() {
-  const { v } = useLocalSearchParams<{ v: string }>();
+  // An id, looked up in this process's own store -- never a verdict decoded
+  // from the URL. This screen is reachable from outside the app through the
+  // exported scheme, so anything it took from its params would be something a
+  // visitor could have written. An id nobody here produced finds nothing, and
+  // lands on "No verdict to show" below. See lib/verdicts.
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const { refresh } = useShift();
-  const [verdict, setVerdict] = useState<Verdict | null>(() => {
-    try {
-      return JSON.parse(v) as Verdict;
-    } catch {
-      return null;
-    }
-  });
+  const [verdict, setVerdict] = useState<Verdict | null>(() => readVerdict(id));
 
   const done = () => {
+    forgetVerdict(id);
     void refresh();
     router.replace('/(tabs)');
   };
@@ -209,7 +210,9 @@ export default function VerdictScreen() {
             <OutlineButton
               title="Admit anyway and flag it"
               onPress={async () => {
-                setVerdict(await admitAndFlag(verdict.code));
+                const flagged = await admitAndFlag(verdict.code);
+                if (id) replaceVerdict(id, flagged);
+                setVerdict(flagged);
               }}
             />
           ) : null}

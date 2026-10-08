@@ -15,6 +15,7 @@ import React from 'react';
 import SetPassword from '@/app/(auth)/set-password';
 import StartShift from '@/app/(auth)/start-shift';
 import Check from '@/app/(tabs)/index';
+import { readVerdict } from '@/lib/verdicts';
 
 // `mock`-prefixed so jest's module factories are allowed to close over them.
 const mockSignIn = jest.fn(async () => ({ error: null as string | null }));
@@ -193,6 +194,34 @@ describe('code entry', () => {
 
     fireEvent.press(button('Check'));
     await waitFor(() => expect(mockVerifyOnline).toHaveBeenCalledWith('e-1', '7K4P92'));
+  });
+
+  // The verdict is held in the app and the route names it by id. Carried in
+  // the URL, it was something any link could write -- including a lime
+  // "checked with the server" screen the server never produced.
+  it('navigates with an id into the verdict store, never the verdict itself', async () => {
+    const verdict = {
+      decision: 'admit',
+      code: '7K4P92',
+      checkedWith: 'server',
+      host: null,
+      issuedAt: null,
+      clientEventId: 'evt-9',
+    };
+    mockVerifyOnline.mockResolvedValueOnce(verdict as never);
+    render(<Check />);
+    type('7K4P92');
+    await waitFor(() => expect(button('Check')).toBeEnabled());
+
+    fireEvent.press(button('Check'));
+
+    const push = (global as { __router?: { push: jest.Mock } }).__router!.push;
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    const [{ pathname, params }] = push.mock.calls[0];
+    expect(pathname).toBe('/verdict');
+    expect(Object.keys(params)).toEqual(['id']);
+    expect(JSON.stringify(params)).not.toContain('checkedWith');
+    expect(readVerdict(params.id)).toEqual(verdict);
   });
 
   it('will not verify without a post to verify against', async () => {

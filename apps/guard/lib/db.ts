@@ -129,6 +129,69 @@ export async function setMeta(key: string, value: string): Promise<void> {
   );
 }
 
+// ─── post ────────────────────────────────────────────────────────────────────
+
+/**
+ * The last post the SERVER confirmed for a guard, kept so a restart during an
+ * outage does not end the shift.
+ *
+ * The post (which estate, which membership) is resolved by a network query,
+ * and without this a phone restarted with no signal came up with no post, was
+ * routed to sign-in, and could not verify anything -- the offline pool sat on
+ * disk, full, unreachable. A crash, a flat battery or an OS kill during an
+ * outage is exactly when that pool exists to be used.
+ *
+ * Kept under the user it was resolved for and only ever handed back to that
+ * user: a shared gate phone must not start one guard's session on another
+ * guard's post. Forgotten whenever the server says there is no post, or the
+ * session ends -- see shift.tsx.
+ */
+export interface CachedPost {
+  user_id: string;
+  membership_id: string;
+  estate_id: string;
+  estate_name: string;
+}
+
+const POST_KEY = 'guard_post';
+
+export async function rememberPost(post: CachedPost): Promise<void> {
+  await setMeta(POST_KEY, JSON.stringify(post));
+}
+
+/** The cached post for THIS user, or null -- never somebody else's. */
+export async function recallPost(userId: string): Promise<CachedPost | null> {
+  const raw = await getMeta(POST_KEY);
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<CachedPost> | null;
+    // Shape-checked rather than cast: a half-written or older-format row must
+    // read as "nothing cached", not as a post with an undefined estate.
+    if (
+      !p ||
+      p.user_id !== userId ||
+      typeof p.membership_id !== 'string' ||
+      typeof p.estate_id !== 'string' ||
+      typeof p.estate_name !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      user_id: p.user_id,
+      membership_id: p.membership_id,
+      estate_id: p.estate_id,
+      estate_name: p.estate_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function forgetPost(): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM meta WHERE key = ?', POST_KEY);
+}
+
 // ─── pool ────────────────────────────────────────────────────────────────────
 
 /**

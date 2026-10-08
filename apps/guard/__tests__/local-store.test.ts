@@ -4,7 +4,10 @@ import {
   countStranded,
   countUnsynced,
   enqueue,
+  forgetPost,
   getMeta,
+  recallPost,
+  rememberPost,
   setMeta,
   unsynced,
   __resetDbForTests,
@@ -38,6 +41,7 @@ const mockDb = {
     if (sql.depth > 0) sql.inTransaction.push(q);
     if (q.startsWith('INSERT INTO meta')) sql.meta.set(args[0] as string, args[1] as string);
     else if (q.startsWith("DELETE FROM meta WHERE key = 'cursor'")) sql.meta.delete('cursor');
+    else if (q.startsWith('DELETE FROM meta WHERE key = ?')) sql.meta.delete(args[0] as string);
   }),
   getFirstAsync: jest.fn(async (s: string, ...args: unknown[]) => {
     sql.calls.push({ sql: s.trim().replace(/\s+/g, ' '), args });
@@ -226,5 +230,52 @@ describe('outbox attribution', () => {
     // than silently matching none against NULL.
     expect(q!.sql).toContain('membership_id IS NOT NULL AND membership_id IS NOT ?');
     expect(q!.args[0]).toBe('m-guard-1');
+  });
+});
+
+/**
+ * The cached post is what lets a phone restarted during an outage go straight
+ * back to the keypad. It is only safe if it can never open one guard's
+ * session on another guard's post -- a gate phone is shared by design.
+ */
+describe('cached post', () => {
+  const post = {
+    user_id: 'u-1',
+    membership_id: 'm-1',
+    estate_id: 'e-1',
+    estate_name: 'Acacia Park',
+  };
+
+  it('hands the post back to the guard it was resolved for', async () => {
+    await rememberPost(post);
+
+    expect(await recallPost('u-1')).toEqual(post);
+  });
+
+  it('never hands it to anybody else', async () => {
+    await rememberPost(post);
+
+    expect(await recallPost('u-2')).toBeNull();
+  });
+
+  it('is gone once forgotten', async () => {
+    await rememberPost(post);
+    await forgetPost();
+
+    expect(await recallPost('u-1')).toBeNull();
+    expect(await getMeta('guard_post')).toBeNull();
+  });
+
+  // A half-written row, or one from a future format, reads as nothing cached
+  // -- never as a post with an undefined estate to verify against.
+  it.each([
+    ['not json'],
+    [JSON.stringify(null)],
+    [JSON.stringify({ user_id: 'u-1', membership_id: 'm-1' })],
+    [JSON.stringify({ ...post, estate_id: 42 })],
+  ])('treats a malformed cache (%s) as empty', async (raw) => {
+    await setMeta('guard_post', raw);
+
+    expect(await recallPost('u-1')).toBeNull();
   });
 });

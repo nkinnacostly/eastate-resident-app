@@ -10,7 +10,8 @@ import { CodeBoxes, Keypad } from '@/components/keypad';
 import { Eyebrow, StatusDot, TAB_BAR_CLEARANCE, WarnBanner } from '@/components/ui';
 import { codeSchema, type CodeValues } from '@/lib/schemas';
 import { useShift } from '@/lib/shift';
-import { verifyOffline, verifyOnline } from '@/lib/verify';
+import { holdVerdict } from '@/lib/verdicts';
+import { verifyOffline, verifyOnline, type Verdict } from '@/lib/verify';
 
 function minutes(seconds: number | null): string {
   if (seconds === null) return 'never';
@@ -42,6 +43,14 @@ export default function Check() {
     void refresh();
   }, [refresh]);
 
+  // The route carries an opaque id, never the verdict. A verdict in the URL
+  // is one anybody can write: the scheme is exported, so a visitor could send
+  // the guard a link that paints "Let them in -- checked with the server"
+  // without the server ever being asked. See lib/verdicts.
+  const show = (verdict: Verdict) => {
+    router.push({ pathname: '/verdict', params: { id: holdVerdict(verdict) } });
+  };
+
   // Only ever called with a code the schema accepted, and `code` is the PARSED
   // value — trimmed and upper-cased — so what reaches the server is what was
   // validated.
@@ -56,17 +65,14 @@ export default function Check() {
         : await verifyOffline(code);
 
       reset();
-      router.push({
-        pathname: '/verdict',
-        params: { v: JSON.stringify(verdict) },
-      });
+      show(verdict);
     } catch (e) {
       // The server was reachable a moment ago and is not now. Fall back to the
       // pool rather than making the guard retype — the visitor is waiting.
       try {
         const verdict = await verifyOffline(code);
         reset();
-        router.push({ pathname: '/verdict', params: { v: JSON.stringify(verdict) } });
+        show(verdict);
       } catch {
         Alert.alert('Could not check that code', (e as Error).message);
       }

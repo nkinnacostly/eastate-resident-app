@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { getMeta, setMeta } from './db';
 import { supabase } from './supabase';
 
 /**
@@ -58,6 +59,16 @@ function easProjectId(): string | null {
   return typeof id === 'string' && id.length > 0 ? id : null;
 }
 
+const PUSH_TOKEN_KEY = 'push_token';
+
+/**
+ * How long sign-out will wait on the server to forget this device. A gate with
+ * a dead uplink can hold a request open far longer than a guard will stand
+ * looking at a spinner, and this is the one step of ending a shift that must
+ * never be the reason it did not end.
+ */
+const UNREGISTER_TIMEOUT_MS = 5_000;
+
 /**
  * Ask for permission, get an Expo push token, and store it against the guard
  * membership. Safe to call on every launch: `register_push_token` upserts on
@@ -105,6 +116,12 @@ export async function registerForPush(estateId: string): Promise<void> {
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
 
+    // Remembered BEFORE the RPC, and on disk rather than in memory, because
+    // sign-out has to find it again -- possibly after a restart, possibly
+    // offline, and never by asking Expo's servers for it a second time. If the
+    // RPC below fails there is no row to remove, and removing nothing is fine.
+    await setMeta(PUSH_TOKEN_KEY, token);
+
     // `p_role: 'guard'` is the part that differs from the resident call. The
     // RPC resolves the membership from auth.uid() + estate + role, so a token
     // registered under the wrong role would be attached to the wrong
@@ -118,5 +135,44 @@ export async function registerForPush(estateId: string): Promise<void> {
   } catch (e) {
     // Never let this break a shift. Verification works without notifications.
     console.warn('[push] registration failed', e);
+  }
+}
+
+/**
+ * Stop this device receiving pushes for whoever is signed in. Call BEFORE the
+ * session is dropped.
+ *
+ * Nothing removed these rows, so a gate phone handed to the next guard kept
+ * receiving the previous guard's pushes for as long as their membership lived:
+ * register_push_token adds a row per (membership, token), sign-out left it, and
+ * the dispatcher kept addressing it. The phone is shared; the subscription was
+ * not supposed to be.
+ *
+ * Deleted directly, by token, under RLS: "push_tokens: manage own" lets a user
+ * delete rows on their OWN memberships and nobody else's, so this removes
+ * exactly this device's rows for this person -- not the token on another
+ * guard's membership, and not this person's other devices. Hence it has to run
+ * while there is still a session to be that person.
+ *
+ * Best effort, and never throws. A row left behind costs a misdirected
+ * data-only wake-up; a sign-out blocked on the network costs a guard who
+ * cannot hand over the phone.
+ */
+export async function unregisterForPush(): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UNREGISTER_TIMEOUT_MS);
+  try {
+    const token = await getMeta(PUSH_TOKEN_KEY);
+    if (!token) return;
+    const { error } = await supabase
+      .from('push_tokens')
+      .delete()
+      .eq('expo_push_token', token)
+      .abortSignal(controller.signal);
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    console.warn('[push] could not remove this device token', e);
+  } finally {
+    clearTimeout(timer);
   }
 }
