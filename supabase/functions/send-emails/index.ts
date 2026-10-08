@@ -19,6 +19,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   estateAdminWelcome,
   guardWelcome,
+  guardInvite,
+  settlementChanged,
   duesReminder,
   landlordWelcome,
   type RenderedEmail,
@@ -102,6 +104,33 @@ function render(msg: Record<string, unknown>): { to: string; email: RenderedEmai
         setPasswordUrl: (msg.set_password_url as string | null) ?? null,
         dashboardUrl: APP_URL,
       }),
+    };
+  }
+
+  if (kind === 'settlement_changed') {
+    return {
+      to,
+      // Per change and per recipient: every admin hears about every change.
+      key: `settlement-${msg.estate_id}-${msg.subaccount_ref}-${to}`,
+      email: settlementChanged({
+        estateName: (msg.estate_name as string) ?? 'Your estate',
+        bankName: (msg.bank_name as string | null) ?? null,
+        accountLast4: (msg.account_last4 as string) ?? '????',
+        accountName: (msg.account_name as string) ?? '',
+        changedBy: (msg.changed_by as string) ?? 'an estate admin',
+        changedAt: (msg.changed_at as string) ?? '',
+      }),
+    };
+  }
+
+  if (kind === 'guard_invite') {
+    return {
+      to,
+      // One mail per invitation: asking the same person again reuses the
+      // invitation, and within the provider's 24 hours this key keeps it from
+      // landing in their inbox twice.
+      key: `guard-invite-${msg.invite_id}`,
+      email: guardInvite({ estateName: (msg.estate_name as string | null) ?? null }),
     };
   }
 

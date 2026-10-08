@@ -3,7 +3,8 @@
  * Run supabase/tests/security.sql against the linked project.
  *
  *   node scripts/test-security.mjs                       # the schema as deployed
- *   node scripts/test-security.mjs --with <migration>    # dry run: migration + tests, rolled back
+ *   node scripts/test-security.mjs --with <migration> [--with <migration>…]
+ *                                                        # dry run: migrations + tests, rolled back
  *
  * The dry run splices the migration in after the suite's opening `begin;`, so
  * it is applied to the REAL schema, tested as the real roles, and rolled back
@@ -18,15 +19,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const suite = readFileSync('supabase/tests/security.sql', 'utf8');
-const withIdx = process.argv.indexOf('--with');
+// Every `--with <file>` is spliced in, in the order given.
+const withFiles = process.argv.flatMap((a, i, all) => (a === '--with' ? [all[i + 1]] : []));
 let sql = suite;
-if (withIdx !== -1) {
-  const migration = readFileSync(process.argv[withIdx + 1], 'utf8');
+if (withFiles.length) {
   if (!suite.includes('-- @@MIGRATION@@')) throw new Error('no splice marker in security.sql');
+  const migrations = withFiles.map((f) => readFileSync(f, 'utf8')).join('\n');
   // A function, not a string: a replacement string treats $$ as an escape for $,
   // which silently corrupts every dollar-quoted function body in the migration.
-  sql = suite.replace('-- @@MIGRATION@@', () => migration);
-  console.log(`dry run: ${process.argv[withIdx + 1]} (rolled back)\n`);
+  sql = suite.replace('-- @@MIGRATION@@', () => migrations);
+  console.log(`dry run: ${withFiles.join(', ')} (rolled back)\n`);
 }
 
 const file = join(mkdtempSync(join(tmpdir(), 'sec-')), 'security.sql');

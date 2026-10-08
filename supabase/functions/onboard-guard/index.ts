@@ -112,61 +112,129 @@ Deno.serve(async (req) => {
   if (findErr) return json({ error: 'lookup_failed', detail: findErr.message }, 400);
 
   const existingUser = Array.isArray(existing) ? existing[0] : existing;
-  let userId: string | undefined = existingUser?.user_id;
-  let password: string | null = null;
 
-  if (!userId) {
-    password = generatePassword();
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email,
-      password,
-      // No confirmation mail: the guard is standing in front of the admin, and
-      // the account has to work on the gate phone now, not after they find an
-      // inbox. The set-password link further down is the unhurried path.
-      email_confirm: true,
-      // No name means no name. Defaulting it to the email address would put the
-      // same string in both columns of every table that shows a person — and
-      // this name is what residents see as "on duty".
-      user_metadata: fullName ? { full_name: fullName } : {},
-      // email_confirm above says "this address is verified", but nobody has
-      // proved it: an estate admin typed it and holds the password. Landlord
-      // access is keyed on a confirmed address, so without this flag any
-      // estate admin could create an account on a landlord's email and read
-      // that landlord's houses at every OTHER estate. current_verified_email()
-      // refuses a flagged account until its owner signs in through an emailed
-      // code. app_metadata, because the user cannot write it.
-      app_metadata: { email_unproven: true },
+  const { data: estate } = await caller
+    .from('estates')
+    .select('id, name')
+    .eq('id', estateId)
+    .single();
+
+  // ─── 1a. an existing account: invite, never attach ────────────────────────
+  //
+  // This person already has an account — at another estate, or as a resident
+  // here — and nobody has asked them. Attaching them on an admin's say-so is
+  // what this used to do, and it let any estate admin pull anyone on the
+  // platform into their estate and read their profile. They get an invitation
+  // by email and accept it in the guard app, signed in as themselves
+  // (respond_to_guard_invite). Nothing about them goes back to the caller: no
+  // name, no user id.
+  if (existingUser) {
+    const { data: alreadyGuard } = await admin
+      .from('memberships')
+      .select('id')
+      .eq('user_id', existingUser.user_id)
+      .eq('estate_id', estateId)
+      .eq('role', 'guard')
+      .eq('is_active', true)
+      .maybeSingle();
+    if (alreadyGuard) {
+      // Already on this estate's gate, which the caller can see in their own
+      // guards list anyway. Nothing to ask.
+      return json({
+        estate_id: estateId, email, full_name: fullName || null, password: null,
+        invited: false, guard_user_id: null, reused_existing_account: true, welcome_email_queued: false,
+      });
+    }
+
+    const { data: inviter } = await caller.rpc('current_membership', {
+      p_estate_id: estateId,
+      p_role: 'admin',
     });
-    if (createErr) return json({ error: 'create_user_failed', detail: createErr.message }, 400);
-    userId = created.user.id;
+
+    // One open invitation per person per estate: asking again reuses it.
+    const { data: open } = await admin
+      .from('guard_invites')
+      .select('id')
+      .eq('estate_id', estateId)
+      .eq('user_id', existingUser.user_id)
+      .eq('status', 'pending')
+      .maybeSingle();
+    let inviteId: string | undefined = open?.id;
+    if (!inviteId) {
+      const { data: created, error: inviteErr } = await admin
+        .from('guard_invites')
+        .insert({ estate_id: estateId, user_id: existingUser.user_id, invited_by_membership_id: inviter ?? null })
+        .select('id')
+        .single();
+      if (inviteErr) return json({ error: 'invite_failed' }, 400);
+      inviteId = created.id;
+    }
+
+    const { error: inviteMailErr } = await admin.rpc('enqueue_email', {
+      p_kind: 'guard_invite',
+      p_payload: { to: email, invite_id: inviteId, estate_name: estate?.name ?? null },
+    });
+    if (inviteMailErr) console.error('could not enqueue guard invite email:', inviteMailErr.message);
+
+    return json({
+      estate_id: estateId, email, full_name: fullName || null, password: null,
+      invited: true, guard_user_id: null, reused_existing_account: true, welcome_email_queued: !inviteMailErr,
+    });
   }
+
+  // ─── 1b. no account yet: create one ───────────────────────────────────────
+  const password = generatePassword();
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    // No confirmation mail: the guard is standing in front of the admin, and
+    // the account has to work on the gate phone now, not after they find an
+    // inbox. The set-password link further down is the unhurried path.
+    email_confirm: true,
+    // No name means no name. Defaulting it to the email address would put the
+    // same string in both columns of every table that shows a person — and
+    // this name is what residents see as "on duty".
+    user_metadata: fullName ? { full_name: fullName } : {},
+    // email_confirm above says "this address is verified", but nobody has
+    // proved it: an estate admin typed it and holds the password. Landlord
+    // access is keyed on a confirmed address, so without this flag any
+    // estate admin could create an account on a landlord's email and read
+    // that landlord's houses at every OTHER estate. current_verified_email()
+    // refuses a flagged account until its owner signs in through an emailed
+    // code. app_metadata, because the user cannot write it.
+    app_metadata: { email_unproven: true },
+  });
+  if (createErr) return json({ error: 'create_user_failed', detail: createErr.message }, 400);
+  const userId = created.user.id;
 
   // ─── 2. the membership ────────────────────────────────────────────────────
   //
-  // Through the CALLER's client, so grant_membership re-checks for itself that
-  // this person administers this estate. The check above is what stops an
-  // orphaned account being created; this is what actually enforces the rule.
-  const { error: grantErr } = await caller.rpc('grant_membership', {
+  // Through the SERVICE ROLE: grant_membership no longer lets an estate admin
+  // attach anyone who is not already a member of their estate, and this
+  // account has no membership anywhere yet. That is safe only because the
+  // caller was checked as this estate's admin before anything was created,
+  // and because this branch only ever runs for an account created a moment
+  // ago by this request.
+  const { error: grantErr } = await admin.rpc('grant_membership', {
     p_estate_id: estateId,
     p_user_id: userId,
     p_role: 'guard',
   });
   if (grantErr) {
-    // Only clean up an account THIS request created. Deleting a pre-existing
-    // one would take a person away from the other estates they already work,
-    // or delete their resident account at this one.
-    if (password) await admin.auth.admin.deleteUser(userId!);
+    // The account was created by this request a moment ago and holds nothing
+    // else, so removing it leaves no orphan behind.
+    await admin.auth.admin.deleteUser(userId);
     return json({ error: 'grant_membership_failed', detail: grantErr.message }, 400);
   }
 
   // ─── 3. the profile ───────────────────────────────────────────────────────
   //
   // A phone number is worth having on a guard: it is how an admin reaches the
-  // gate when something is wrong. Only filled in on an account THIS request
-  // created. An existing account belongs to someone who may live or work at
-  // other estates: patching it would let any estate admin rename any user on
-  // the platform — and this name is what residents elsewhere see as "on duty".
-  if (password && (fullName || phone)) {
+  // gate when something is wrong. This branch only ever runs for an account
+  // THIS request created; an existing account is never patched (see 1a) — it
+  // belongs to someone who may live or work at other estates, and its name is
+  // what residents elsewhere see as "on duty".
+  if (fullName || phone) {
     const patch: Record<string, string> = {};
     if (fullName) patch.full_name = fullName;
     if (phone) patch.phone = phone;
@@ -178,8 +246,8 @@ Deno.serve(async (req) => {
 
   // ─── 4. force a password change ───────────────────────────────────────────
   //
-  // Only for an account created here — by the time it is first used its
-  // password has been seen by two people.
+  // By the time this account is first used its password has been seen by two
+  // people.
   //
   // KNOWN GAP, recorded rather than papered over: this flag is currently read
   // only by the WEB dashboard (apps/web/src/lib/auth.tsx). The guard app does
@@ -188,19 +256,11 @@ Deno.serve(async (req) => {
   // the account and because the guard app honouring it is a change to the guard
   // app, not to this function. Until then the emailed set-password link below
   // is the real remedy.
-  if (password) {
-    const { error: flagErr } = await admin
-      .from('profiles')
-      .update({ must_change_password: true })
-      .eq('id', userId);
-    if (flagErr) console.error('could not set must_change_password:', flagErr.message);
-  }
-
-  const { data: estate } = await caller
-    .from('estates')
-    .select('id, name')
-    .eq('id', estateId)
-    .single();
+  const { error: flagErr } = await admin
+    .from('profiles')
+    .update({ must_change_password: true })
+    .eq('id', userId);
+  if (flagErr) console.error('could not set must_change_password:', flagErr.message);
 
   // ─── 5. tell the guard, by email ──────────────────────────────────────────
   //
@@ -212,14 +272,12 @@ Deno.serve(async (req) => {
   // realistic handover is a person at a gate who may not have an inbox on
   // their phone at all.
   let setPasswordUrl: string | null = null;
-  if (password) {
-    const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-    });
-    if (linkErr) console.error('could not generate set-password link:', linkErr.message);
-    else setPasswordUrl = link?.properties?.action_link ?? null;
-  }
+  const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+  });
+  if (linkErr) console.error('could not generate set-password link:', linkErr.message);
+  else setPasswordUrl = link?.properties?.action_link ?? null;
 
   // Enqueued, not sent inline: the send belongs on the same cron-driven path as
   // every other email, and a mail-provider hiccup must not fail an onboarding that has
@@ -241,13 +299,10 @@ Deno.serve(async (req) => {
     estate_id: estateId,
     guard_user_id: userId,
     email,
-    // Only what the caller typed. Echoing an existing account's name back would
-    // tell any estate admin who owns any email address on the platform.
     full_name: fullName || null,
-    // Null when an existing account was reused — the UI must say so rather than
-    // show a blank box that looks like a bug.
     password,
-    reused_existing_account: password === null,
+    invited: false,
+    reused_existing_account: false,
     welcome_email_queued: !mailErr,
   });
 });

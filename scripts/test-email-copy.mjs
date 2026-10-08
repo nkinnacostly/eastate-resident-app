@@ -131,5 +131,29 @@ const reset = mod.resetPasswordCode({ otp: '123456' });
 ok('the reset-code email works for the dashboard as well as the app',
   !/in the app/i.test(reset.html + reset.text) && (reset.html + reset.text).includes('123456'));
 
+// The invitation to an EXISTING account. It must not read like the welcome:
+// nothing has happened yet, and ignoring it has to be a complete answer.
+const invite = mod.guardInvite({ estateName: '<b>Acme</b> Estate' });
+const invitePlain = `${invite.html}\n${invite.text}`;
+ok('a guard invitation says nothing changes until it is accepted',
+  /nothing changes until you accept/i.test(invite.text) && /nothing changes until you accept/i.test(invite.html));
+ok('...tells them to sign in with the account they already have',
+  /existing account/i.test(invite.text));
+ok('...carries no link or password to act on',
+  !/https?:\/\/(?!myestateaccess\.com\/privacy)/.test(invite.text) && !/password:/i.test(invitePlain));
+ok('...and escapes the estate name an admin typed', !invite.html.includes('<b>Acme</b>'));
+
+// The payout-account alert goes to every admin and the operators. It must
+// say where money now goes without handing out the account number.
+const payout = mod.settlementChanged({
+  estateName: '<i>Acme</i>', bankName: 'GTBank', accountLast4: '6789', accountName: 'ACME ESTATE',
+  changedBy: 'ada@example.com', changedAt: '8 Oct 2026, 10:00 (Lagos)',
+});
+ok('the payout alert names the bank and the last four digits',
+  payout.text.includes('GTBank ending 6789') && payout.html.includes('6789'));
+ok('...says who changed it and when', payout.text.includes('ada@example.com') && payout.text.includes('8 Oct 2026'));
+ok('...tells an admin who did not expect it what to do', /did not expect this change/i.test(payout.text));
+ok('...and escapes the estate name', !payout.html.includes('<i>Acme</i>'));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

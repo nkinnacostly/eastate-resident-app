@@ -267,6 +267,103 @@ begin
     'previous=' || n_a || ' new=' || n_b);
 end $$;
 
+-- ─── 11. Existing accounts join a gate only by accepting ────────────────────
+
+do $$
+begin
+  -- Admin of A tries to pull in estate B's resident, a stranger to A.
+  perform set_config('request.jwt.claims', '{"sub":"5ec00000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+  execute 'set local role authenticated';
+  begin
+    perform public.grant_membership('5ec0e000-0000-4000-8000-00000000000a', '5ec00000-0000-4000-8000-000000000004', 'guard');
+    perform pg_temp.ok('an estate admin cannot attach a stranger to their estate', false, 'grant succeeded');
+  exception when insufficient_privilege then
+    perform pg_temp.ok('an estate admin cannot attach a stranger to their estate', true);
+  end;
+  -- ...but can still change the role of someone already at the estate.
+  begin
+    perform public.grant_membership('5ec0e000-0000-4000-8000-00000000000a', '5ec00000-0000-4000-8000-000000000001', 'guard');
+    perform pg_temp.ok('an estate admin can still give an existing member another role', true);
+  exception when others then
+    perform pg_temp.ok('an estate admin can still give an existing member another role', false, sqlerrm);
+  end;
+  execute 'reset role';
+end $$;
+
+select pg_temp.ok('no client can read or write guard_invites directly',
+  not (has_table_privilege('authenticated', 'public.guard_invites', 'select')
+    or has_table_privilege('authenticated', 'public.guard_invites', 'insert')
+    or has_table_privilege('anon', 'public.guard_invites', 'select')));
+
+insert into public.guard_invites (id, estate_id, user_id, invited_by_membership_id)
+values ('5ec0f000-0000-4000-8000-000000000001', '5ec0e000-0000-4000-8000-00000000000a',
+        '5ec00000-0000-4000-8000-000000000004', '5ec0b000-0000-4000-8000-000000000002');
+
+do $$
+declare n int; r text; v_active boolean;
+begin
+  -- Someone else cannot see or answer it.
+  perform set_config('request.jwt.claims', '{"sub":"5ec00000-0000-4000-8000-000000000001","role":"authenticated"}', true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.my_guard_invites();
+  perform pg_temp.ok('an invitation is invisible to anyone but the invitee', n = 0, n::text);
+  r := public.respond_to_guard_invite('5ec0f000-0000-4000-8000-000000000001', true);
+  perform pg_temp.ok('nobody can accept an invitation on the invitee''s behalf', r = 'not_found', r);
+
+  -- The invitee sees it, by estate name, and accepts.
+  perform set_config('request.jwt.claims', '{"sub":"5ec00000-0000-4000-8000-000000000004","role":"authenticated"}', true);
+  select count(*) into n from public.my_guard_invites() where estate_name = 'Sec Estate A';
+  perform pg_temp.ok('the invitee sees their invitation', n = 1, n::text);
+  r := public.respond_to_guard_invite('5ec0f000-0000-4000-8000-000000000001', true);
+  execute 'reset role';
+  select m.is_active into v_active from public.memberships m
+   where m.user_id = '5ec00000-0000-4000-8000-000000000004'
+     and m.estate_id = '5ec0e000-0000-4000-8000-00000000000a' and m.role = 'guard';
+  perform pg_temp.ok('accepting makes them a guard there', r = 'accepted' and v_active, r);
+
+  execute 'set local role authenticated';
+  r := public.respond_to_guard_invite('5ec0f000-0000-4000-8000-000000000001', false);
+  execute 'reset role';
+  perform pg_temp.ok('an answered invitation cannot be answered again', r = 'not_found', r);
+end $$;
+
+-- ─── 12. The payment sweep cannot be starved ────────────────────────────────
+
+insert into public.dues_charges (id, estate_id, period, membership_id, amount_minor, currency, due_on)
+values ('5ec01000-0000-4000-8000-000000000001', '5ec0e000-0000-4000-8000-00000000000a',
+        date_trunc('month', current_date - interval '1 month')::date,
+        '5ec0b000-0000-4000-8000-000000000001', 500000, 'NGN', current_date);
+insert into public.dues_payments (charge_id, tx_ref, amount_minor, currency, status, created_at, last_checked_at)
+values
+  ('5ec01000-0000-4000-8000-000000000001', 'sec-oldest',  500000, 'NGN', 'initiated', now() - interval '2 days', now() - interval '1 minute'),
+  ('5ec01000-0000-4000-8000-000000000001', 'sec-newer',   500000, 'NGN', 'initiated', now() - interval '1 hour', null),
+  ('5ec01000-0000-4000-8000-000000000001', 'sec-failed',  500000, 'NGN', 'failed',    now() - interval '2 hours', now() - interval '5 minutes');
+
+do $$
+declare refs text[]; picks text[] := '{}'; r text;
+begin
+  select array_agg(tx_ref order by tx_ref) into refs
+    from public.dues_payments_awaiting_verification(interval '10 minutes', 100000)
+   where tx_ref like 'sec-%';
+  perform pg_temp.ok('the sweep includes recorded failures as well as initiated payments',
+    refs @> array['sec-failed','sec-newer','sec-oldest'], array_to_string(refs, ','));
+
+  -- Rotation, one at a time. Everything else waiting (real rows included) is
+  -- marked as just checked, inside this rolled-back transaction, so the three
+  -- fixtures are the only rows competing for the front of the queue.
+  update public.dues_payments set last_checked_at = now() - interval '10 minutes' where tx_ref = 'sec-failed';
+  update public.dues_payments set last_checked_at = now() - interval '5 minutes'  where tx_ref = 'sec-oldest';
+  update public.dues_payments set last_checked_at = null                          where tx_ref = 'sec-newer';
+  update public.dues_payments set last_checked_at = now()
+   where tx_ref not like 'sec-%' and status in ('initiated', 'failed');
+  for i in 1..3 loop
+    select tx_ref into r from public.dues_payments_awaiting_verification(interval '10 minutes', 1);
+    picks := picks || r;
+  end loop;
+  perform pg_temp.ok('each call takes the payment checked least recently, so none is starved',
+    picks = array['sec-newer','sec-failed','sec-oldest'], array_to_string(picks, ','));
+end $$;
+
 -- ─── 9. Nothing in public executable by PUBLIC or anon that should not be ───
 
 select pg_temp.ok('no SECURITY DEFINER function in public is executable by anon',

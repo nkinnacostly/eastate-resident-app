@@ -26,7 +26,7 @@
 // fetch-back fails we delete what we made and store nothing, because a
 // subaccount we cannot verify is worse than none at all -- none at all is
 // refused loudly by the database.
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 import {
   createSubaccount,
@@ -51,6 +51,49 @@ const json = (b: unknown, status = 200) =>
 
 type Country = 'NG' | 'ZA';
 const isCountry = (v: unknown): v is Country => v === 'NG' || v === 'ZA';
+
+/**
+ * One email per estate admin and platform operator, through the queue.
+ *
+ * A single estate admin can repoint every future dues payment, and the audit
+ * row alone tells nobody. Addresses come from auth.users via the service role;
+ * the account number goes out as its last four digits only.
+ */
+async function alertSettlementChange(
+  admin: SupabaseClient,
+  c: {
+    estateId: string; estateName: string; bankName: string | null; accountNumber: string;
+    accountName: string; subaccountRef: string; changedBy: string;
+  },
+): Promise<void> {
+  const [{ data: admins }, { data: operators }] = await Promise.all([
+    admin.from('memberships').select('user_id').eq('estate_id', c.estateId).eq('role', 'admin').eq('is_active', true),
+    admin.from('platform_admins').select('user_id'),
+  ]);
+  const ids = [...new Set([...(admins ?? []), ...(operators ?? [])].map((r) => r.user_id as string))];
+  const emails = new Set<string>();
+  for (const id of ids) {
+    const { data } = await admin.auth.admin.getUserById(id);
+    if (data?.user?.email) emails.add(data.user.email.toLowerCase());
+  }
+  const changedAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short' }) + ' (Lagos)';
+  for (const to of emails) {
+    await admin.rpc('enqueue_email', {
+      p_kind: 'settlement_changed',
+      p_payload: {
+        to,
+        estate_id: c.estateId,
+        estate_name: c.estateName,
+        bank_name: c.bankName,
+        account_last4: c.accountNumber.slice(-4),
+        account_name: c.accountName,
+        subaccount_ref: c.subaccountRef,
+        changed_by: c.changedBy,
+        changed_at: changedAt,
+      },
+    });
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -191,6 +234,18 @@ Deno.serve(async (req) => {
       p_actor_user_id: user.id,
     });
     if (error) throw new Error(error.message);
+
+    // Tell every admin and the platform operators. Best effort, and after
+    // the save: a mail problem must not undo a payout account that is set.
+    await alertSettlementChange(admin, {
+      estateId,
+      estateName,
+      bankName: made.bankName ?? (bank_name ? String(bank_name) : null),
+      accountNumber: String(account_number),
+      accountName: finalName,
+      subaccountRef: confirmed.ref,
+      changedBy: user.email ?? 'an estate admin',
+    }).catch((e) => console.error('[estate-settlement] alert', (e as Error).message));
 
     return json({
       ok: true,

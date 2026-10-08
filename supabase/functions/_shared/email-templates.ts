@@ -327,6 +327,56 @@ export function guardWelcome(v: {
   };
 }
 
+
+/**
+ * An estate asks someone who ALREADY has an account to work its gate.
+ *
+ * Unlike guardWelcome nothing has happened yet: no membership exists until the
+ * person accepts, signed in as themselves, in the guard app. The mail has to
+ * make that plain — and make ignoring it a safe, complete answer.
+ */
+export function guardInvite(v: { estateName: string | null }): RenderedEmail {
+  const at = v.estateName ? ` at <strong>${esc(v.estateName)}</strong>` : '';
+  const atPlain = v.estateName ? ` at ${v.estateName}` : '';
+
+  const body =
+    p('Hi,') +
+    p(`You have been invited to work the gate${at} on myestateaccess.`) +
+    p(
+      'To accept, open the myestateaccess guard app and sign in with your existing account — the same email and password you already use. The invitation is waiting there; accept it and you can start your shift.',
+    ) +
+    muted('Nothing changes until you accept. Your account stays exactly as it is.');
+
+  const ignore =
+    'If you were not expecting this, ignore it. The estate cannot add you to its gate without your acceptance, and declining in the app removes the invitation.';
+
+  return {
+    subject: v.estateName
+      ? `${v.estateName} invited you to work its gate`
+      : 'You have been invited to work an estate gate',
+    html: shell({
+      preheader: `You have been invited to work the gate${atPlain}. Accept it in the guard app.`,
+      heading: 'An invitation to the gate',
+      body,
+      footnote: ignore,
+    }),
+    text: [
+      'Hi,',
+      '',
+      `You have been invited to work the gate${atPlain} on myestateaccess.`,
+      '',
+      'To accept, open the myestateaccess guard app and sign in with your existing account (the same email and password you already use). The invitation is waiting there; accept it and you can start your shift.',
+      '',
+      'Nothing changes until you accept. Your account stays exactly as it is.',
+      '',
+      ignore,
+      '',
+      '\u2014',
+      'Privacy policy: https://myestateaccess.com/privacy',
+      'Questions: hello@myestateaccess.com',
+    ].join('\n'),
+  };
+}
 // ─── 2. Landlord onboarded → the landlord ────────────────────────────────────
 
 export function landlordWelcome(v: {
@@ -423,6 +473,58 @@ export function verifyEmail(v: { confirmUrl: string; otp: string }): RenderedEma
       'nothing will be set up and no one gains access to anything.',
       '',
       '—',
+      'Privacy policy: https://myestateaccess.com/privacy',
+      'Questions: hello@myestateaccess.com',
+    ].join('\n'),
+  };
+}
+
+// ─── The estate's payout account changed ─────────────────────────────────────
+
+/**
+ * Sent to EVERY admin of the estate and to the platform operators whenever
+ * the account dues settle into is set or replaced.
+ *
+ * One admin can change it alone — compromised, or simply rogue — and from that
+ * moment every payment lands somewhere new. The audit row records it; this is
+ * what makes sure a human who did not do it hears about it the same day.
+ */
+export function settlementChanged(v: {
+  estateName: string;
+  bankName: string | null;
+  accountLast4: string;
+  accountName: string;
+  changedBy: string;
+  changedAt: string;
+}): RenderedEmail {
+  const where = `${v.bankName ?? 'a bank account'} ending ${v.accountLast4} (${v.accountName})`;
+  const body =
+    p(`The account that dues for <strong>${esc(v.estateName)}</strong> are paid into was just changed.`) +
+    p(`From now on, payments settle into ${esc(where)}.`) +
+    p(`Changed by ${esc(v.changedBy)} at ${esc(v.changedAt)}.`) +
+    muted('If this was expected, there is nothing to do.');
+  const footnote =
+    'If you did not expect this change, reply to this message straight away. Payments made from now on go to the new account.';
+
+  return {
+    subject: `Payout account changed for ${v.estateName}`,
+    html: shell({
+      preheader: `Dues for ${v.estateName} now settle into ${where}.`,
+      heading: 'Payout account changed',
+      body,
+      footnote,
+    }),
+    text: [
+      `The account that dues for ${v.estateName} are paid into was just changed.`,
+      '',
+      `From now on, payments settle into ${where}.`,
+      `Changed by ${v.changedBy} at ${v.changedAt}.`,
+      '',
+      'If this was expected, there is nothing to do.',
+      '',
+      footnote,
+      '',
+      '\u2014',
       'Privacy policy: https://myestateaccess.com/privacy',
       'Questions: hello@myestateaccess.com',
     ].join('\n'),

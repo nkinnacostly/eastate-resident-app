@@ -1606,6 +1606,15 @@ export type Database = {
           paid_count: number
         }[]
       }
+      my_guard_invites: {
+        Args: never
+        Returns: {
+          estate_id: string
+          estate_name: string
+          invite_id: string
+          invited_at: string
+        }[]
+      }
       my_landlord_houses: {
         Args: never
         Returns: {
@@ -1833,6 +1842,10 @@ export type Database = {
           house_number: string
           result: string
         }[]
+      }
+      respond_to_guard_invite: {
+        Args: { p_accept: boolean; p_invite_id: string }
+        Returns: string
       }
       revoke_access_code: {
         Args: { p_code_id: string; p_reason?: string }
