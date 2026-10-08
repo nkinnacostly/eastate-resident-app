@@ -17,6 +17,11 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.keystore
+*.apk
+*.aab
+*.ipa
+GoogleService-Info.plist
 
 # Metro
 .metro-health-check*
@@ -30,9 +35,11 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# local env files — every variant (.env.production, .env.staging, …), not
+# just .local, since any of them can hold a service key.
 .env
+.env.*
+!.env.example
 
 # Supabase local stack
 supabase/.branches/

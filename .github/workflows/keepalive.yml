@@ -13,6 +13,9 @@
 
 name: supabase-keepalive
 
+# Reads nothing from the repo and writes nothing to it.
+permissions: {}
+
 on:
   schedule:
     # 06:00 UTC every Monday and Thursday — two chances to miss before the

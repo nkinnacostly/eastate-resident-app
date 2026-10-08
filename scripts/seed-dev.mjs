@@ -10,6 +10,14 @@
  *     node scripts/seed-dev.mjs          # create
  *     node scripts/seed-dev.mjs --reset  # delete first, then create
  *
+ * Refuses any project that is not on this machine unless given
+ * --allow-remote. The root .env.local points at PRODUCTION, and this script
+ * creates a platform owner: run by habit, it put four accounts with one shared,
+ * committed password into the live project, on a domain anyone could buy and
+ * then reset every one of them through. The password is now random per run
+ * (or SEED_PASSWORD), and the addresses are on .test, a TLD that cannot be
+ * registered, so no inbox will ever exist to reset them through.
+ *
  * Users are created through the Auth Admin API rather than SQL. Inserting into
  * auth.users directly couples you to GoTrue's internal schema and produces rows
  * that fail sign-in with an unhelpful "Database error querying schema" — this
@@ -39,6 +47,12 @@ const URL_ = env.EXPO_PUBLIC_SUPABASE_URL;
 const SVC = env.SUPABASE_SERVICE_ROLE_KEY;
 if (!URL_ || !SVC) {
   die('Need EXPO_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the root .env.local');
+}
+
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+if (!LOCAL_HOSTS.has(new URL(URL_).hostname) && !process.argv.includes('--allow-remote')) {
+  die(`${new URL(URL_).hostname} is not a local project. This creates a platform owner;\n` +
+      '  pass --allow-remote only if you really mean to seed a shared or live project.');
 }
 
 function die(msg) {
@@ -79,20 +93,22 @@ async function api(path, { method = 'POST', body, headers = {} } = {}, tries = 6
 
 const ESTATE_ID = 'dddd0000-0000-4000-8000-000000000001';
 const ESTATE_NAME = 'Demo Estate';
-const PASSWORD = 'DemoPassw0rd!23';
+// Never a constant: a constant is committed, and then it is everyone's.
+const PASSWORD = env.SEED_PASSWORD ||
+  `Seed-${[...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(36)).join('').slice(0, 16)}`;
 const PEOPLE = [
   // `unit` lives on the MEMBERSHIP, not the user — guards and admins hold no
   // unit, which is why it is per-person here rather than a global.
-  { role: 'resident', email: 'resident@estate-access-qa.com', name: 'Rita Resident', unit: 'B12' },
-  { role: 'guard', email: 'guard@estate-access-qa.com', name: 'Gary Guard' },
-  { role: 'admin', email: 'admin@estate-access-qa.com', name: 'Ada Admin' },
+  { role: 'resident', email: 'resident@estate-access.test', name: 'Rita Resident', unit: 'B12' },
+  { role: 'guard', email: 'guard@estate-access.test', name: 'Gary Guard' },
+  { role: 'admin', email: 'admin@estate-access.test', name: 'Ada Admin' },
 ];
 
 // The platform owner is NOT a membership — they belong to no estate. A row in
 // platform_admins is what the operator dashboard checks, and keeping it a
 // separate table is deliberate: a client-updatable flag on profiles would be a
 // privilege-escalation vector (see core_tables.sql).
-const OWNER = { email: 'owner@estate-access-qa.com', name: 'Olu Owner' };
+const OWNER = { email: 'owner@estate-access.test', name: 'Olu Owner' };
 
 async function findUserByEmail(email) {
   const { body } = await api(`/auth/v1/admin/users?per_page=200`, { method: 'GET' });
