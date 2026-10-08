@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PendingInvites } from '@/components/invites';
 import { Card, Field, PrimaryButton } from '@/components/ui';
 import { signInSchema, type SignInValues } from '@/lib/schemas';
 import { useShift } from '@/lib/shift';
@@ -113,14 +114,10 @@ export default function StartShift() {
             />
           </View>
 
-          {signedInWithoutPost ? (
-            <Card className="mt-4 bg-coral-wash p-4">
-              <Text className="font-jk-md text-sub text-coral-ink">
-                This account is signed in but is not an active guard at any estate. An admin has to
-                assign you to a post.
-              </Text>
-            </Card>
-          ) : null}
+          {/* Also where a guard invited by an estate lands: they are not a
+              guard anywhere until they accept, so their invitations are
+              offered here. With none pending it is the plain notice. */}
+          {signedInWithoutPost ? <PendingInvites key={session.user.id} /> : null}
 
           <PrimaryButton
             title={isSubmitting ? 'Signing in…' : 'Sign in and sync'}

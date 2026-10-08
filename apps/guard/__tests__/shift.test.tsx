@@ -280,6 +280,24 @@ describe('post resolution', () => {
     expect(bindSession).not.toHaveBeenCalled();
   });
 
+  // Accepting an estate's invitation makes this user a guard without touching
+  // their session, and the post was only ever re-asked on a new session or on
+  // a sync -- which needs a post to run. The guard sat on start-shift.
+  it('picks up a post granted mid-session when asked again, without a new session', async () => {
+    mockServer.memberships = NO_POST;
+    mount();
+    await waitFor(() => expect(forgetPost).toHaveBeenCalled());
+    expect(shift.post).toBeNull();
+
+    // What respond_to_guard_invite leaves behind: an active guard membership.
+    mockServer.memberships = CONFIRMED;
+    act(() => shift.recheckPost());
+
+    await waitFor(() => expect(shift.post).toEqual(ACACIA));
+    expect(bindSession).toHaveBeenCalledWith('e-1', 'm-1');
+    expect(rememberPost).toHaveBeenCalledWith(cachedFor('u-1'));
+  });
+
   it('remembers a post the server confirmed, under the guard it belongs to', async () => {
     mount();
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import { HeadActions, Avatar, Button, Card, Chip, Empty, PageHead, Stat } from '../components/ui';
@@ -26,51 +26,106 @@ function heldFor(since: string): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-/**
- * The handover panel.
- *
- * Shown once, after registering a guard, and never retrievable: the password is
- * not stored anywhere in readable form — it went straight into the auth system
- * as a hash. If this is dismissed before it is written down, the fix is to
- * reset the password, not to look it up.
- */
-function Handover({ result, onDone }: { result: OnboardGuardResult; onDone: () => void }) {
+/** The card every outcome of registering a guard is reported in. */
+function Outcome({
+  title,
+  blurb,
+  onDone,
+  children,
+}: {
+  title: ReactNode;
+  blurb: ReactNode;
+  onDone: () => void;
+  children?: ReactNode;
+}) {
   return (
     <Card className="mt-5 border-lime bg-lime-soft p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[14px] font-extrabold">
-            {result.full_name ?? result.email} can now work the gate
-          </div>
-          <div className="mt-1 text-[12px] leading-[1.5] text-lime-ink">
-            {result.reused_existing_account
-              ? 'That address already had an account, so it keeps its existing password. This estate will be waiting when they sign in to the guard app.'
-              : 'Hand these to the guard. The password is shown once and cannot be looked up later — it was hashed on the way in.'}
-            {result.welcome_email_queued
-              ? ' We have also emailed them a link to set their own password.'
-              : ' We could not queue their welcome email, so the details above are the only handover.'}
-          </div>
+          <div className="text-[14px] font-extrabold break-words">{title}</div>
+          <div className="mt-1 text-[12px] leading-[1.5] text-lime-ink">{blurb}</div>
         </div>
         <Button variant="quiet" onClick={onDone}>
           Done
         </Button>
       </div>
+      {children}
+    </Card>
+  );
+}
 
+/**
+ * What became of the address the admin typed.
+ *
+ * Three outcomes that must not read alike. Only a NEW account has a password
+ * to hand over. An address that already has an account gets an invitation:
+ * nothing is attached until that person accepts it in the guard app, signed
+ * in as themselves — typing somebody's email used to make them a guard here
+ * without asking them, and this is what replaced it. So an invitation is
+ * never worded as "can now work the gate", and never shows a password box.
+ *
+ * The handover itself is shown once and never retrievable: the password is
+ * not stored anywhere in readable form — it went straight into the auth
+ * system as a hash. If this is dismissed before it is written down, the fix is
+ * to reset the password, not to look it up.
+ */
+function Handover({ result, onDone }: { result: OnboardGuardResult; onDone: () => void }) {
+  if (result.invited) {
+    return (
+      <Outcome
+        // "Sent" only when the email really was queued. The invitation exists
+        // either way — it is waiting in the guard app — but promising an
+        // email that is not coming sends the admin to chase the wrong thing.
+        title={`${result.welcome_email_queued ? 'Invitation sent to' : 'Invitation created for'} ${result.email}`}
+        blurb={
+          <>
+            They already have a myestateaccess account, so they accept the invitation in the guard
+            app, signed in with their own password. They&apos;ll appear in your guards list once
+            they accept.
+            {result.welcome_email_queued
+              ? null
+              : ' We could not email them the invitation, so let them know it is waiting in the guard app.'}
+          </>
+        }
+        onDone={onDone}
+      />
+    );
+  }
+
+  if (!result.password) {
+    return (
+      <Outcome
+        title={`${result.email} is already a guard here`}
+        blurb="Nothing has changed. They sign in to the guard app with the password they already have."
+        onDone={onDone}
+      />
+    );
+  }
+
+  return (
+    <Outcome
+      title={`${result.full_name ?? result.email} can now work the gate`}
+      blurb={
+        'Hand these to the guard. The password is shown once and cannot be looked up later — it was hashed on the way in.' +
+        (result.welcome_email_queued
+          ? ' We have also emailed them a link to set their own password.'
+          : ' We could not queue their welcome email, so the details above are the only handover.')
+      }
+      onDone={onDone}
+    >
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-[14px] bg-white px-4 py-3">
           <div className={label}>EMAIL</div>
           <div className="mt-1 text-[13px] font-bold break-all">{result.email}</div>
         </div>
-        {result.password ? (
-          <div className="rounded-[14px] bg-white px-4 py-3">
-            <div className={label}>PASSWORD</div>
-            <div className="mt-1 font-mono text-[13px] font-bold tracking-wider">
-              {result.password}
-            </div>
+        <div className="rounded-[14px] bg-white px-4 py-3">
+          <div className={label}>PASSWORD</div>
+          <div className="mt-1 font-mono text-[13px] font-bold tracking-wider">
+            {result.password}
           </div>
-        ) : null}
+        </div>
       </div>
-    </Card>
+    </Outcome>
   );
 }
 
@@ -193,8 +248,9 @@ export function Guards() {
             {/* Worth saying before the click, not after: this makes a real
                 account, and the name here is what residents see as "on duty". */}
             <span className="text-[12px] text-muted">
-              This creates a sign-in for the guard app. Their name is shown to residents when they
-              start a shift.
+              This creates a sign-in for the guard app. If the address already has an account, that
+              person is sent an invitation instead and joins once they accept it. Their name is
+              shown to residents when they start a shift.
             </span>
           </div>
         </Card>

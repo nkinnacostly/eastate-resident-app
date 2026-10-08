@@ -49,6 +49,14 @@ jest.mock('@/lib/verify', () => ({
   REJECT_COPY: {},
 }));
 
+// Start-shift offers invitations to a signed-in user with no post. Nobody is
+// signed in here (session: null), so it is never asked; mocked only so the
+// real Supabase client is not built at import. Driven in invites.test.tsx.
+jest.mock('@/lib/invites', () => ({
+  listGuardInvites: jest.fn(async () => []),
+  respondToGuardInvite: jest.fn(),
+}));
+
 const button = (name: string) => screen.getByRole('button', { name });
 
 beforeEach(() => {

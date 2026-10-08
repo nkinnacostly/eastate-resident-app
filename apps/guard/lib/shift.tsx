@@ -77,6 +77,17 @@ interface ShiftState {
    * set-password screen.
    */
   mustChangePassword: boolean | null;
+  /**
+   * Ask the server for this user's post again, now.
+   *
+   * For a post that is GRANTED while signed in -- accepting an estate's
+   * invitation makes this user a guard without changing their session, and
+   * the post is otherwise only re-asked on a new session or (once there is a
+   * post) on each sync. Without this the guard would have to sign out and in
+   * again to reach the keypad they were just given.
+   */
+  recheckPost: () => void;
+  /** Re-reads the pool and queue counters. Does not re-resolve the post. */
   refresh: () => Promise<void>;
   sync: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -169,6 +180,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   // Bumped to ask the server about the post again without a new session. See
   // `sync`: a post restored from the cache keeps asking until it is answered.
   const [recheck, setRecheck] = useState(0);
+  const recheckPost = useCallback(() => setRecheck((n) => n + 1), []);
   // True while the post on screen is the cached one rather than the server's.
   const postFromCache = useRef(false);
 
@@ -505,6 +517,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
         poolAgeSeconds !== null && poolAgeSeconds > OFFLINE_AUTHORISATION_TTL_SECONDS,
       syncing,
       mustChangePassword,
+      recheckPost,
       refresh,
       sync,
       signIn,
@@ -513,7 +526,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     }),
     [
       session, post, loading, online, poolCount, queued, stranded, lastPullAt,
-      poolAgeSeconds, syncing, mustChangePassword, refresh, sync, signIn,
+      poolAgeSeconds, syncing, mustChangePassword, recheckPost, refresh, sync, signIn,
       setPassword, endShift,
     ],
   );

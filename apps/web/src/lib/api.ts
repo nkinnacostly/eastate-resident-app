@@ -90,26 +90,38 @@ export interface CodeRow {
 
 // ─── guards ──────────────────────────────────────────────────────────────────
 
+/**
+ * What onboard-guard did with the email it was given. Three outcomes:
+ *
+ *   - a NEW account: `invited` false, `password` set. Created on the spot and
+ *     handed over in person.
+ *   - an EXISTING account: `invited` true, `password` null. Nothing is
+ *     attached -- the person is emailed an invitation and accepts it in the
+ *     guard app, signed in as themselves. Until then they are not a guard here.
+ *   - already a guard here: `invited` false, `password` null. Nothing to do.
+ *
+ * Typing someone's email used to make an existing account a guard at the
+ * caller's estate without that person being asked. The invitation is what
+ * replaced that, so `invited` -- not `reused_existing_account` -- is what
+ * decides what the admin is told.
+ */
 export interface OnboardGuardResult {
   estate_id: string;
-  guard_user_id: string;
+  /** Null unless a new account was created: nothing about an existing one comes back. */
+  guard_user_id: string | null;
   email: string;
+  /** For an existing account, only what the admin typed -- never the account's own name. */
   full_name: string | null;
-  /** Null when an existing account was reused — that person keeps their own. */
+  /** Set only for a new account. Anyone else keeps the password they already have. */
   password: string | null;
+  /** True when an invitation was sent rather than a guard registered. */
+  invited: boolean;
+  /** Kept by the function for older dashboards; true for both null-password outcomes. */
   reused_existing_account: boolean;
+  /** The welcome email for a new account, or the invitation email for an existing one. */
   welcome_email_queued: boolean;
 }
 
-/**
- * Registers a guard at this estate and returns their handover details.
- *
- * An Edge Function rather than an RPC for the same reason as estate
- * onboarding: minting an auth user needs the service role key, which bypasses
- * RLS and must never reach a browser bundle. The function re-checks that the
- * caller really administers `estateId` — the JWT proves who they are, not what
- * they may do, and the estate id travels from the client.
- */
 export interface GuardProfile {
   membership_id: string;
   user_id: string;
@@ -169,6 +181,16 @@ export async function listGuardShifts(
   return (data ?? []) as GuardShift[];
 }
 
+/**
+ * Registers a guard at this estate -- or, for an address that already has an
+ * account, invites them -- and returns what happened.
+ *
+ * An Edge Function rather than an RPC for the same reason as estate
+ * onboarding: minting an auth user needs the service role key, which bypasses
+ * RLS and must never reach a browser bundle. The function re-checks that the
+ * caller really administers `estateId` — the JWT proves who they are, not what
+ * they may do, and the estate id travels from the client.
+ */
 export async function onboardGuard(input: {
   estate_id: string;
   email: string;
@@ -182,12 +204,14 @@ function describeGuardError(code: string): string {
   const map: Record<string, string> = {
     not_authenticated: 'You are signed out. Sign in again.',
     not_an_admin_at_this_estate: 'Only an administrator of this estate can register a guard.',
+    auth_check_failed: 'Could not confirm that you administer this estate. Try again.',
     estate_id_required: 'No estate selected.',
     email_required: 'The guard needs an email address.',
     email_invalid: 'That does not look like an email address.',
     lookup_failed: 'That address could not be checked.',
     create_user_failed: 'The guard account could not be created.',
     grant_membership_failed: 'The account exists but could not be attached to this estate.',
+    invite_failed: 'That address already has an account, but the invitation could not be created.',
   };
   return map[code] ?? code;
 }
