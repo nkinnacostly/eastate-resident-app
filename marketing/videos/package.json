@@ -1,0 +1,23 @@
+{
+  "name": "myestateaccess-videos",
+  "private": true,
+  "version": "1.0.0",
+  "description": "The 5 W's motion videos (Who, What, Why, Where, When), 1080x1350, 90s each. Remotion 4 -- free for individuals and companies of up to 3 people; larger companies need a Remotion company licence.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "render": "sh render-all.sh"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.538",
+    "@remotion/fonts": "4.0.538",
+    "@remotion/transitions": "4.0.538",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "typescript": "~5.9.3"
+  }
+}
