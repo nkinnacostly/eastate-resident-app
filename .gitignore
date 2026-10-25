@@ -88,3 +88,6 @@ fcm-v1*.json
 # plaintext. The keystores themselves are already covered by *.jks above;
 # this is the file that would leak the passwords to open them.
 credentials.json
+
+# Marketing videos and their Remotion source stay on this computer only.
+/marketing/
