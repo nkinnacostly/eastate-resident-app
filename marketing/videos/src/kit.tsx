@@ -3,11 +3,11 @@
  *
  * Brand tokens are the product's own (apps/web/tailwind.config.js) and the
  * typeface is the apps' Plus Jakarta Sans, so the videos look like the thing
- * they advertise. Every video is 1080x1350 (4:5) at 30fps: the five W's run
- * 90 seconds each, the intro 60.
+ * they advertise. Every video renders at 9:16 for Reels and TikTok and at 4:5
+ * for feed posts, 30fps: the five W's run 90 seconds each, the intro 60.
  */
 import { loadFont } from '@remotion/fonts';
-import type { CSSProperties, ReactNode } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import {
   AbsoluteFill,
   Easing,
@@ -47,11 +47,27 @@ export const C = {
   white: '#ffffff',
 };
 
-export const W = 1080;
-export const H = 1350;
+/** 9:16 is the main format (Reels and TikTok); 4:5 is kept for feed posts. */
+export const FORMATS = {
+  '9x16': { width: 1080, height: 1920 },
+  '4x5': { width: 1080, height: 1350 },
+} as const;
 export const FPS = 30;
 export const TOTAL = 90 * FPS;
 export const INTRO_TOTAL = 60 * FPS;
+
+/**
+ * Where content may sit in this format. At 9:16 it keeps clear of the
+ * Reels/TikTok overlays: the top ~250px, the caption and buttons along the
+ * bottom ~350px, and the action column on the right (safe-zone guides
+ * checked Oct 2026; the platforms publish no single official figure).
+ */
+export function useFormat() {
+  const { width, height } = useVideoConfig();
+  const vertical = height / width > 1.5;
+  const inset = vertical ? { top: 280, right: 120, bottom: 380, left: 80 } : { top: 170, right: 72, bottom: 90, left: 72 };
+  return { vertical, inset, contentW: width - inset.left - inset.right };
+}
 
 // ─── Motion ──────────────────────────────────────────────────────────────────
 
@@ -150,8 +166,11 @@ export type Series = (typeof SERIES)[number];
 /** Persistent header: logo, and the five W's with this video's one lit (the intro has none). */
 export function Header({ current, delay = 0 }: { current?: Series; delay?: number }) {
   const p = useIn(delay + 4, 22);
+  const { vertical, inset } = useFormat();
+  // At 9:16 the top of the frame sits under the app's own header, so drop down.
+  const pos = vertical ? { top: 186, left: inset.left, right: inset.right } : { top: 54, left: 60, right: 60 };
   return (
-    <div style={{ position: 'absolute', top: 54, left: 60, right: 60, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...rise(p, -20) }}>
+    <div style={{ position: 'absolute', ...pos, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...rise(p, -20) }}>
       <Logo size={50} />
       <div style={{ display: 'flex', gap: 8 }}>
         {current && SERIES.map((s) => (
@@ -220,38 +239,41 @@ export function Title({
         fontWeight: weight,
         lineHeight: 1.06,
         letterSpacing: '-0.035em',
+        wordSpacing: '0.06em',
         textAlign: align,
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: align === 'center' ? 'center' : 'flex-start',
-        columnGap: size * 0.26,
+        // Balanced lines: a headline never ends on one stranded word, whatever
+        // width the format gives it.
+        textWrap: 'balance',
         ...style,
       }}
     >
       {words.map((w, i) => {
         const p = spring({ frame: frame - delay - i * stagger, fps, config: { damping: 16, mass: 0.7, stiffness: 140 } });
         return (
-          <span key={i} style={{ display: 'inline-block', overflow: 'hidden', paddingBottom: size * 0.08 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                transform: `translateY(${(1 - p) * 105}%)`,
-                opacity: Math.min(1, p * 2),
-                color: highlight.includes(w) ? C.lime : color,
-              }}
-            >
-              {/* Trailing punctuation tucked in: at display sizes the font's
-                  side-bearing leaves a gap that reads as "seconds ." */}
-              {/[.,?!]$/.test(w) ? (
-                <>
-                  {w.slice(0, -1)}
-                  <span style={{ marginLeft: '-0.06em' }}>{w.slice(-1)}</span>
-                </>
-              ) : (
-                w
-              )}
+          <Fragment key={i}>
+            {i > 0 ? ' ' : null}
+            <span style={{ display: 'inline-block', verticalAlign: 'top', overflow: 'hidden', paddingBottom: size * 0.08 }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  transform: `translateY(${(1 - p) * 105}%)`,
+                  opacity: Math.min(1, p * 2),
+                  color: highlight.includes(w) ? C.lime : color,
+                }}
+              >
+                {/* Trailing punctuation tucked in: at display sizes the font's
+                    side-bearing leaves a gap that reads as "seconds ." */}
+                {/[.,?!]$/.test(w) ? (
+                  <>
+                    {w.slice(0, -1)}
+                    <span style={{ marginLeft: '-0.06em' }}>{w.slice(-1)}</span>
+                  </>
+                ) : (
+                  w
+                )}
+              </span>
             </span>
-          </span>
+          </Fragment>
         );
       })}
     </div>
@@ -270,7 +292,7 @@ export function Kicker({ children, delay = 0, color = C.lime }: { children: Reac
 export function Body({ children, delay = 0, size = 38, color, style }: { children: ReactNode; delay?: number; size?: number; color?: string; style?: CSSProperties }) {
   const p = useIn(delay, 20);
   return (
-    <div style={{ fontSize: size, lineHeight: 1.38, fontWeight: 500, color: color ?? 'rgba(255,255,255,0.78)', ...rise(p, 26), ...style }}>
+    <div style={{ fontSize: size, lineHeight: 1.38, fontWeight: 500, color: color ?? 'rgba(255,255,255,0.78)', textWrap: 'pretty', ...rise(p, 26), ...style }}>
       {children}
     </div>
   );
@@ -294,8 +316,9 @@ export function Pill({ children, delay = 0, tone = 'lime', size = 30 }: { childr
 
 /** Content area between the header and the bottom edge. */
 export function Frame({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  const { inset } = useFormat();
   return (
-    <div style={{ position: 'absolute', top: 170, left: 72, right: 72, bottom: 90, display: 'flex', flexDirection: 'column', ...style }}>
+    <div style={{ position: 'absolute', ...inset, display: 'flex', flexDirection: 'column', ...style }}>
       {children}
     </div>
   );
@@ -304,8 +327,9 @@ export function Frame({ children, style }: { children: ReactNode; style?: CSSPro
 /** Small note at the bottom of a scene ("Illustration. Names are examples."). */
 export function Note({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
   const p = useIn(delay);
+  const { vertical, inset } = useFormat();
   return (
-    <div style={{ position: 'absolute', left: 72, right: 72, bottom: 34, fontSize: 18, color: C.muted2, opacity: p * 0.9 }}>{children}</div>
+    <div style={{ position: 'absolute', left: inset.left, right: inset.right, bottom: vertical ? inset.bottom - 50 : 34, fontSize: 18, color: C.muted2, opacity: p * 0.9 }}>{children}</div>
   );
 }
 

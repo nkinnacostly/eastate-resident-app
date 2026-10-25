@@ -4,7 +4,7 @@
  */
 import { Easing, interpolate, useCurrentFrame } from 'remotion';
 
-import { Body, C, Frame, Icon, IconTile, INTRO_TOTAL, Kicker, Logo, Note, Title, pop, rise, useIn } from '../kit';
+import { Body, C, Frame, Icon, IconTile, INTRO_TOTAL, Kicker, Logo, Note, Title, pop, rise, useFormat, useIn } from '../kit';
 import { CodeScreen, DuesScreen, GuardCheck, MessageBubble, Notification, Phone, ResidentHome, Verdict } from '../phone';
 import { Above, Beside, Copy, Outro, Scene, Video } from '../scenes';
 import { Browser, Dashboard } from '../web';
@@ -12,6 +12,7 @@ import { Browser, Dashboard } from '../web';
 /** A gate barrier arm swinging down on its post. */
 function Barrier({ delay }: { delay: number }) {
   const p = useIn(delay, 14, 1);
+  const { contentW } = useFormat();
   return (
     <div style={{ position: 'relative', height: 260 }}>
       <div style={{ position: 'absolute', left: 0, bottom: 0, width: 54, height: 230, borderRadius: 14, background: C.ink3 }} />
@@ -20,7 +21,7 @@ function Barrier({ delay }: { delay: number }) {
           position: 'absolute',
           left: 27,
           bottom: 182,
-          width: 880,
+          width: contentW - 56,
           height: 46,
           borderRadius: 23,
           background: `repeating-linear-gradient(-45deg, ${C.coral} 0 44px, ${C.white} 44px 88px)`,

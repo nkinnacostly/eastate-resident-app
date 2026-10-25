@@ -5,15 +5,16 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 
-import { C, FONT, Icon, KeyGlyph, rise, useIn } from './kit';
+import { C, FONT, Icon, KeyGlyph, rise, useFormat, useIn } from './kit';
 
 /** Browser chrome with a URL bar that can type itself out. */
 export function Browser({ url = 'app.myestateaccess.com', typeFrom, typeTo, children, width = 936, height = 760, delay = 0, style }: { url?: string; typeFrom?: number; typeTo?: number; children: ReactNode; width?: number; height?: number; delay?: number; style?: CSSProperties }) {
   const frame = useCurrentFrame();
   const p = useIn(delay, 18);
+  const { contentW } = useFormat();
   const n = typeFrom === undefined ? url.length : Math.floor(interpolate(frame, [typeFrom, typeTo ?? typeFrom + 30], [0, url.length], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
   return (
-    <div style={{ width, height, borderRadius: 30, overflow: 'hidden', background: C.white, boxShadow: '0 40px 80px rgba(0,0,0,0.4)', fontFamily: FONT, color: C.ink, display: 'flex', flexDirection: 'column', ...rise(p, 60), ...style }}>
+    <div style={{ width: Math.min(width, contentW), height, borderRadius: 30, overflow: 'hidden', background: C.white, boxShadow: '0 40px 80px rgba(0,0,0,0.4)', fontFamily: FONT, color: C.ink, display: 'flex', flexDirection: 'column', ...rise(p, 60), ...style }}>
       <div style={{ height: 64, background: C.field, display: 'flex', alignItems: 'center', gap: 10, padding: '0 22px', flexShrink: 0 }}>
         {[C.coral, '#ffcf6b', C.lime].map((c) => (
           <div key={c} style={{ width: 15, height: 15, borderRadius: 8, background: c }} />

@@ -1,7 +1,7 @@
 /** 5 of 5 — WHEN do you use it? Every visit, every month, every change. */
 import { useCurrentFrame } from 'remotion';
 
-import { C, Frame, Icon, Kicker, Note, Title, pop, rise, useIn } from '../kit';
+import { C, Frame, Icon, Kicker, Note, Title, pop, rise, useFormat, useIn } from '../kit';
 import { DuesScreen, GuardCheck, Notification, Phone, ResidentHome } from '../phone';
 import { Above, Beside, Copy, Outro, Scene, Statement, Video, WIntro } from '../scenes';
 import { AuditLog, Browser } from '../web';
@@ -74,8 +74,9 @@ function Calendar() {
   };
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const p = useIn(18, 16);
+  const { contentW } = useFormat();
   return (
-    <div style={{ width: 936, background: C.white, color: C.ink, borderRadius: 36, padding: 32, boxShadow: '0 40px 80px rgba(0,0,0,0.4)', ...rise(p, 50) }}>
+    <div style={{ width: Math.min(936, contentW), background: C.white, color: C.ink, borderRadius: 36, padding: 32, boxShadow: '0 40px 80px rgba(0,0,0,0.4)', ...rise(p, 50) }}>
       <div style={{ fontSize: 32, fontWeight: 800 }}>October</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginTop: 18 }}>
         {days.map((d, i) => (

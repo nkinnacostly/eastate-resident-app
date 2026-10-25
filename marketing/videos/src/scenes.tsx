@@ -9,7 +9,7 @@ import { wipe } from '@remotion/transitions/wipe';
 import type { ReactNode } from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion';
 
-import { Body, C, Drift, FPS, Frame, Header, Icon, IconTile, Kicker, Logo, Progress, SERIES, type Series, Stage, Title, TOTAL, rise, useIn } from './kit';
+import { Body, C, Drift, FPS, Frame, Header, Icon, IconTile, Kicker, Logo, Progress, SERIES, type Series, Stage, Title, TOTAL, rise, useFormat, useIn } from './kit';
 
 export type Scene = {
   /** Seconds on screen (before the transition overlap is taken off). */
@@ -72,6 +72,9 @@ export function Scene({ children }: { children: ReactNode }) {
 export function WIntro({ word, question, index }: { word: string; question: string; index: number }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { contentW } = useFormat();
+  // Long words (WHERE) shrink to fit the width; short ones stay at full size.
+  const size = Math.min(290, Math.floor(contentW / (word.length * 0.7)));
   return (
     <Scene>
       <Frame style={{ justifyContent: 'center' }}>
@@ -80,7 +83,7 @@ export function WIntro({ word, question, index }: { word: string; question: stri
           {word.split('').map((ch, i) => {
             const p = spring({ frame: frame - 8 - i * 4, fps, config: { damping: 12, mass: 0.9, stiffness: 120 } });
             return (
-              <span key={i} style={{ fontSize: 290, fontWeight: 800, letterSpacing: '-0.06em', lineHeight: 0.9, color: C.lime, display: 'inline-block', transform: `translateY(${(1 - p) * 160}px) rotate(${(1 - p) * -8}deg)`, opacity: Math.min(1, p * 2) }}>
+              <span key={i} style={{ fontSize: size, fontWeight: 800, letterSpacing: '-0.06em', lineHeight: 0.9, color: C.lime, display: 'inline-block', transform: `translateY(${(1 - p) * 160}px) rotate(${(1 - p) * -8}deg)`, opacity: Math.min(1, p * 2) }}>
                 {ch}
               </span>
             );
@@ -163,8 +166,22 @@ export function Copy({ icon, kicker, title, body, highlight = [], size = 72, del
   );
 }
 
-/** Copy on the left, a device on the right. */
-export function Beside({ left, right, leftWidth = 470 }: { left: ReactNode; right: ReactNode; leftWidth?: number }) {
+/**
+ * Copy on the left, a device on the right -- or, at 9:16, copy above the
+ * device. `stack` shrinks the device when the copy above it runs tall.
+ */
+export function Beside({ left, right, leftWidth = 470, stack = 1 }: { left: ReactNode; right: ReactNode; leftWidth?: number; stack?: number }) {
+  const { vertical } = useFormat();
+  if (vertical) {
+    return (
+      <Scene>
+        <Frame style={{ justifyContent: 'center', gap: 44 }}>
+          <div>{left}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', zoom: stack }}>{right}</div>
+        </Frame>
+      </Scene>
+    );
+  }
   return (
     <Scene>
       <Frame style={{ flexDirection: 'row', alignItems: 'center', gap: 40 }}>
@@ -175,8 +192,19 @@ export function Beside({ left, right, leftWidth = 470 }: { left: ReactNode; righ
   );
 }
 
-/** Copy on top, a wide visual underneath. */
+/** Copy on top, a wide visual underneath -- pinned low at 4:5, grouped and centred at 9:16. */
 export function Above({ top, bottom }: { top: ReactNode; bottom: ReactNode }) {
+  const { vertical } = useFormat();
+  if (vertical) {
+    return (
+      <Scene>
+        <Frame style={{ justifyContent: 'center', gap: 56 }}>
+          <div>{top}</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>{bottom}</div>
+        </Frame>
+      </Scene>
+    );
+  }
   return (
     <Scene>
       <Frame>

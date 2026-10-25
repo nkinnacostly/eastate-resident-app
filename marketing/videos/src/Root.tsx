@@ -1,6 +1,6 @@
 import { Composition } from 'remotion';
 
-import { FPS, H, INTRO_TOTAL, TOTAL, W } from './kit';
+import { FORMATS, FPS, INTRO_TOTAL, TOTAL } from './kit';
 import { Intro } from './videos/Intro';
 import { What } from './videos/What';
 import { When } from './videos/When';
@@ -8,23 +8,26 @@ import { Where } from './videos/Where';
 import { Who } from './videos/Who';
 import { Why } from './videos/Why';
 
-/** The series in order. Each is 1080x1350 (4:5), 30fps, exactly 90 seconds. */
+/** The 60-second intro, then the series in order at exactly 90 seconds each. */
 const VIDEOS = [
-  { id: 'Who', component: Who },
-  { id: 'What', component: What },
-  { id: 'Why', component: Why },
-  { id: 'Where', component: Where },
-  { id: 'When', component: When },
+  { id: 'Intro', component: Intro, frames: INTRO_TOTAL },
+  { id: 'Who', component: Who, frames: TOTAL },
+  { id: 'What', component: What, frames: TOTAL },
+  { id: 'Why', component: Why, frames: TOTAL },
+  { id: 'Where', component: Where, frames: TOTAL },
+  { id: 'When', component: When, frames: TOTAL },
 ];
 
+/** Each video in each format: `Who` is 9:16 (Reels, TikTok), `Who-4x5` the feed cut. */
 export function Root() {
   return (
     <>
-      {/* The 60-second introduction that leads into the series. */}
-      <Composition id="Intro" component={Intro} durationInFrames={INTRO_TOTAL} fps={FPS} width={W} height={H} />
-      {VIDEOS.map((v) => (
-        <Composition key={v.id} id={v.id} component={v.component} durationInFrames={TOTAL} fps={FPS} width={W} height={H} />
-      ))}
+      {VIDEOS.flatMap((v) =>
+        Object.entries(FORMATS).map(([format, size]) => {
+          const id = format === '9x16' ? v.id : `${v.id}-${format}`;
+          return <Composition key={id} id={id} component={v.component} durationInFrames={v.frames} fps={FPS} {...size} />;
+        }),
+      )}
     </>
   );
 }

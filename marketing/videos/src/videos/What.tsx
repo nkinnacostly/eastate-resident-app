@@ -1,7 +1,7 @@
 /** 2 of 5 — WHAT is it? Two apps, one website, one rule for every code. */
 import { spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
-import { C, Frame, Icon, IconTile, Kicker, Note, Pill, Title, rise, useIn } from '../kit';
+import { C, Frame, Icon, IconTile, Kicker, Note, Pill, Title, rise, useFormat, useIn } from '../kit';
 import { CodeScreen, DuesScreen, GuardCheck, Phone, ShareSheet, Verdict } from '../phone';
 import { Above, Beside, Copy, Outro, Scene, Statement, Video, WIntro } from '../scenes';
 import { AuditLog, Browser } from '../web';
@@ -38,6 +38,8 @@ function TheCode() {
   const { fps } = useVideoConfig();
   const code = 'K7Q2MX';
   const noteIn = useIn(104);
+  const { contentW } = useFormat();
+  const cardW = Math.min(138, Math.floor((contentW - 70) / 6));
   return (
     <Scene>
       <Frame style={{ justifyContent: 'center' }}>
@@ -47,7 +49,7 @@ function TheCode() {
           {code.split('').map((ch, i) => {
             const p = spring({ frame: frame - 26 - i * 5, fps, config: { damping: 11, mass: 0.8, stiffness: 140 } });
             return (
-              <div key={i} style={{ width: 138, height: 170, borderRadius: 32, background: C.white, color: C.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 104, fontWeight: 800, transform: `translateY(${(1 - p) * -90}px) rotate(${(1 - p) * (i % 2 ? 8 : -8)}deg) scale(${0.7 + 0.3 * Math.min(1, p)})`, opacity: Math.min(1, p * 1.6) }}>
+              <div key={i} style={{ width: cardW, height: 170, borderRadius: 32, background: C.white, color: C.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 104, fontWeight: 800, transform: `translateY(${(1 - p) * -90}px) rotate(${(1 - p) * (i % 2 ? 8 : -8)}deg) scale(${0.7 + 0.3 * Math.min(1, p)})`, opacity: Math.min(1, p * 1.6) }}>
                 {ch}
               </div>
             );
@@ -115,12 +117,14 @@ function Refusals() {
   const frame = useCurrentFrame();
   const reasons = ['No such code', 'Expired', 'Already used', 'Cancelled by the estate'];
   const idx = Math.min(reasons.length - 1, Math.floor(Math.max(0, frame - 30) / 48));
+  const { vertical } = useFormat();
   return (
     <Beside
+      stack={0.86}
       left={
         <div>
           <Copy icon="x" kicker="When it's wrong" title="Never just “no”." body="The guard is told why — in words they can read out to the visitor." />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 30, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexDirection: vertical ? 'row' : 'column', flexWrap: 'wrap', gap: 12, marginTop: 30, alignItems: 'flex-start' }}>
             {reasons.map((r, i) => (
               <div key={r} style={{ padding: '12px 22px', borderRadius: 999, fontSize: 26, fontWeight: 800, background: i === idx ? C.coralSoft : C.ink2, color: i === idx ? C.coralInk : C.muted2 }}>
                 {r}

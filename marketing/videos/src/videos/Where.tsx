@@ -6,7 +6,7 @@
  */
 import { interpolate, useCurrentFrame } from 'remotion';
 
-import { C, Frame, Icon, KeyGlyph, Note, Pill, Title, pop, rise, useIn } from '../kit';
+import { C, Frame, Icon, KeyGlyph, Note, Pill, Title, pop, rise, useFormat, useIn } from '../kit';
 import { GuardCheck, MessageBubble, Phone } from '../phone';
 import { Above, Beside, Copy, Outro, Scene, Statement, Video, WIntro } from '../scenes';
 import { Browser, Dashboard, LandlordView } from '../web';
@@ -17,8 +17,9 @@ function StoreSearch({ query, app, sub, stores, dark = false, delay = 0 }: { que
   const p = useIn(delay, 16);
   const n = Math.floor(interpolate(frame, [delay + 14, delay + 60], [0, query.length], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
   const result = useIn(delay + 66, 14);
+  const { contentW } = useFormat();
   return (
-    <div style={{ width: 936, background: C.white, color: C.ink, borderRadius: 36, padding: 34, boxShadow: '0 40px 80px rgba(0,0,0,0.4)', ...rise(p, 60) }}>
+    <div style={{ width: Math.min(936, contentW), background: C.white, color: C.ink, borderRadius: 36, padding: 34, boxShadow: '0 40px 80px rgba(0,0,0,0.4)', ...rise(p, 60) }}>
       <div style={{ height: 76, borderRadius: 24, background: C.field, display: 'flex', alignItems: 'center', gap: 16, padding: '0 24px', fontSize: 30, fontWeight: 600 }}>
         <Icon name="search" size={32} color={C.muted} />
         <span>{query.slice(0, n)}</span>
