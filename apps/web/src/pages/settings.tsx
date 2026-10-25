@@ -95,7 +95,7 @@ export function Settings() {
         />
         <Row
           title="Character set"
-          blurb={`${CODE_CHARSET.length} glyphs, ${CODE_LENGTH} per code. 0 O 1 I L are excluded so nothing is misread at the gate.`}
+          blurb={`${CODE_CHARSET.length} glyphs, ${CODE_LENGTH} per code. 0, O, 1 and I are excluded so nothing is misread at the gate.`}
           right={<Chip>Locked</Chip>}
         />
         <Row
