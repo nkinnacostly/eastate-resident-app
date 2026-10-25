@@ -2,12 +2,13 @@
  * Shared scenes (the W intro and the outro) and the sequencer that turns a
  * list of scenes into a video of exactly the slot's length.
  */
+import { Audio } from '@remotion/media';
 import { linearTiming, TransitionSeries } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { slide } from '@remotion/transitions/slide';
 import { wipe } from '@remotion/transitions/wipe';
 import type { ReactNode } from 'react';
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion';
+import { AbsoluteFill, staticFile, useCurrentFrame, useVideoConfig, spring } from 'remotion';
 
 import { Body, C, Drift, FPS, Frame, Header, Icon, IconTile, Kicker, Logo, Progress, SERIES, type Series, Stage, Title, TOTAL, rise, useFormat, useIn } from './kit';
 
@@ -25,6 +26,8 @@ const T = 16; // transition length in frames
  * Scenes back to back with transitions, the last one stretched or trimmed so
  * the video is exactly `total` frames -- a 90-second slot is a 90-second slot.
  * `headerAt` holds the header back, so the intro can reveal the logo first.
+ * The soundtrack is music/compose.py's cut of the same length, which carries
+ * its own fades and ends on a resolved chord under the closing card.
  */
 export function Video({ series, scenes, total = TOTAL, headerAt = 0 }: { series?: Series; scenes: Scene[]; total?: number; headerAt?: number }) {
   const frames = scenes.map((s) => Math.round(s.sec * FPS));
@@ -35,6 +38,7 @@ export function Video({ series, scenes, total = TOTAL, headerAt = 0 }: { series?
   }
   return (
     <Stage>
+      <Audio src={staticFile(`music/theme-${total / FPS}s.m4a`)} />
       <TransitionSeries>
         {scenes.flatMap((s, i) => {
           const seq = (
