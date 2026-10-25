@@ -1,6 +1,6 @@
 /**
  * Shared scenes (the W intro and the outro) and the sequencer that turns a
- * list of scenes into exactly 90 seconds.
+ * list of scenes into a video of exactly the slot's length.
  */
 import { linearTiming, TransitionSeries } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
@@ -23,14 +23,15 @@ const T = 16; // transition length in frames
 
 /**
  * Scenes back to back with transitions, the last one stretched or trimmed so
- * the video is exactly TOTAL frames -- a 90-second slot is a 90-second slot.
+ * the video is exactly `total` frames -- a 90-second slot is a 90-second slot.
+ * `headerAt` holds the header back, so the intro can reveal the logo first.
  */
-export function Video({ series, scenes }: { series: Series; scenes: Scene[] }) {
+export function Video({ series, scenes, total = TOTAL, headerAt = 0 }: { series?: Series; scenes: Scene[]; total?: number; headerAt?: number }) {
   const frames = scenes.map((s) => Math.round(s.sec * FPS));
   const rest = frames.slice(0, -1).reduce((a, b) => a + b, 0);
-  frames[frames.length - 1] = TOTAL - rest + T * (scenes.length - 1);
+  frames[frames.length - 1] = total - rest + T * (scenes.length - 1);
   if (frames[frames.length - 1] < 3 * FPS) {
-    throw new Error(`${series}: scenes run long -- the outro would be under 3s`);
+    throw new Error(`${series ?? 'Intro'}: scenes run long -- the outro would be under 3s`);
   }
   return (
     <Stage>
@@ -56,7 +57,7 @@ export function Video({ series, scenes }: { series: Series; scenes: Scene[] }) {
           return [transition, seq];
         })}
       </TransitionSeries>
-      <Header current={series} />
+      <Header current={series} delay={headerAt} />
       <Progress />
     </Stage>
   );
@@ -121,7 +122,7 @@ function StoreRow({ icon, who, app, where, delay }: { icon: string; who: string;
 }
 
 /** Closing card: brand, tagline, where each person finds it, and what's next. */
-export function Outro({ next }: { next?: Series }) {
+export function Outro({ next, lead = 'Next in the series' }: { next?: Series; lead?: string }) {
   const p = useIn(2, 16);
   const pn = useIn(60, 18);
   const nextIdx = next ? SERIES.indexOf(next) + 1 : 0;
@@ -139,7 +140,7 @@ export function Outro({ next }: { next?: Series }) {
         </div>
         {next ? (
           <div style={{ marginTop: 34, ...rise(pn, 20) }}>
-            <span style={{ fontSize: 26, fontWeight: 800, color: C.muted2 }}>{`Next in the series · ${nextIdx} of 5  `}</span>
+            <span style={{ fontSize: 26, fontWeight: 800, color: C.muted2 }}>{`${lead} · ${nextIdx} of 5  `}</span>
             <span style={{ fontSize: 26, fontWeight: 800, color: C.lime }}>{next.toUpperCase()}</span>
           </div>
         ) : (

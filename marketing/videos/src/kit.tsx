@@ -3,7 +3,8 @@
  *
  * Brand tokens are the product's own (apps/web/tailwind.config.js) and the
  * typeface is the apps' Plus Jakarta Sans, so the videos look like the thing
- * they advertise. Every video is 1080x1350 (4:5), 30fps, 90 seconds.
+ * they advertise. Every video is 1080x1350 (4:5) at 30fps: the five W's run
+ * 90 seconds each, the intro 60.
  */
 import { loadFont } from '@remotion/fonts';
 import type { CSSProperties, ReactNode } from 'react';
@@ -50,6 +51,7 @@ export const W = 1080;
 export const H = 1350;
 export const FPS = 30;
 export const TOTAL = 90 * FPS;
+export const INTRO_TOTAL = 60 * FPS;
 
 // ─── Motion ──────────────────────────────────────────────────────────────────
 
@@ -145,14 +147,14 @@ export function Logo({ size = 54, light = false, word = true }: { size?: number;
 export const SERIES = ['Who', 'What', 'Why', 'Where', 'When'] as const;
 export type Series = (typeof SERIES)[number];
 
-/** Persistent header: logo, and the five W's with this video's one lit. */
-export function Header({ current }: { current: Series }) {
-  const p = useIn(4, 22);
+/** Persistent header: logo, and the five W's with this video's one lit (the intro has none). */
+export function Header({ current, delay = 0 }: { current?: Series; delay?: number }) {
+  const p = useIn(delay + 4, 22);
   return (
     <div style={{ position: 'absolute', top: 54, left: 60, right: 60, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...rise(p, -20) }}>
       <Logo size={50} />
       <div style={{ display: 'flex', gap: 8 }}>
-        {SERIES.map((s) => (
+        {current && SERIES.map((s) => (
           <div
             key={s}
             style={{
@@ -174,7 +176,7 @@ export function Header({ current }: { current: Series }) {
   );
 }
 
-/** Thin progress bar along the bottom edge, over the whole 90 seconds. */
+/** Thin progress bar along the bottom edge, over the whole video. */
 export function Progress() {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
