@@ -26,8 +26,8 @@ const T = 16; // transition length in frames
  * Scenes back to back with transitions, the last one stretched or trimmed so
  * the video is exactly `total` frames -- a 90-second slot is a 90-second slot.
  * `headerAt` holds the header back, so the intro can reveal the logo first.
- * The soundtrack is music/compose.py's cut of the same length, which carries
- * its own fades and ends on a resolved chord under the closing card.
+ * Each video has its own track from music/compose.py, written to its exact
+ * length, with its own fades and a resolved chord under the closing card.
  */
 export function Video({ series, scenes, total = TOTAL, headerAt = 0 }: { series?: Series; scenes: Scene[]; total?: number; headerAt?: number }) {
   const frames = scenes.map((s) => Math.round(s.sec * FPS));
@@ -38,7 +38,7 @@ export function Video({ series, scenes, total = TOTAL, headerAt = 0 }: { series?
   }
   return (
     <Stage>
-      <Audio src={staticFile(`music/theme-${total / FPS}s.m4a`)} />
+      <Audio src={staticFile(`music/${(series ?? 'Intro').toLowerCase()}.m4a`)} />
       <TransitionSeries>
         {scenes.flatMap((s, i) => {
           const seq = (
