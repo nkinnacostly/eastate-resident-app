@@ -44,7 +44,7 @@ it gives a person nothing on its own.
 - [Home](https://myestateaccess.com/): what the product does, how a code moves from resident to visitor to guard, and who can see what.
 - [About](https://myestateaccess.com/about): the design decisions behind it — why the offline case was built first, why access expires on its own, and why refusals are logged.
 - [Contact](https://myestateaccess.com/contact): book a twenty-minute demo at your gate, ask about pricing, rollout and support.
-- [Privacy policy](https://myestateaccess.com/privacy): what is collected from residents, guards and administrators, who can see it, how long it is kept, and rights under POPIA.
+- [Privacy policy](https://myestateaccess.com/privacy): what is collected from residents, guards and administrators, who can see it, how long it is kept, and rights under the Nigeria Data Protection Act 2023.
 - [Delete your account](https://myestateaccess.com/delete-account): how to erase an account and what the estate's security log retains.
 
 ## Terms used
