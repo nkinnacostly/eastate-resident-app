@@ -72,7 +72,7 @@ Allow: /
 # ─── Model training ──────────────────────────────────────────────────────────
 #
 # Allowed deliberately. For a product nobody has heard of yet, being part of
-# what a model knows about South African estate access control is the point —
+# what a model knows about Nigerian estate access control is the point —
 # the asset is being recalled without a search happening at all. The usual
 # reason to refuse (protecting original work from being reproduced) does not
 # apply to a page whose entire job is to describe a product.

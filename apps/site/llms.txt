@@ -1,6 +1,6 @@
 # myestateaccess
 
-> Visitor management for gated residential estates in South Africa. A resident generates a short one-time code, sends it to their visitor by WhatsApp or SMS, and the guard verifies it at the boom — including when the gate has no internet connection.
+> Visitor management for gated residential estates in Nigeria. A resident generates a short one-time code, sends it to their visitor by WhatsApp or SMS, and the guard verifies it at the gate — including when there is no internet connection.
 
 myestateaccess replaces the paper visitor register at an estate gate. The three
 problems it exists to solve are that a handwritten name is never verified, that
@@ -15,7 +15,7 @@ message and read it out at the gate.
 - Visitor codes are **single use**. Once accepted at the gate a code is spent; a second attempt is refused and recorded as a double-entry attempt for the estate manager to review.
 - Codes **expire after six hours**, whether or not anyone arrives. Expiry is automatic and needs no action from the resident.
 - A resident may hold **up to three live codes** at once.
-- **Verification works offline.** The guard app keeps a local copy of the estate's live codes, so a network outage at the boom never becomes a gate outage. Entries queue on the phone and sync when the connection returns.
+- **Verification works offline.** The guard app keeps a local copy of the estate's live codes, so a network outage never becomes a gate outage. Entries queue on the phone and sync when the connection returns.
 - **Every attempt is logged, including refusals**, with the reason it was refused.
 - Residents join with two codes — one for the estate, one for their specific house — and an **estate administrator approves them** before any visitor code can be generated.
 - **Only the resident who created a code can see it.** Guards see a code when it is presented at the gate. Estate administrators see that an entry happened, not the code. Platform operators never see codes.
@@ -52,9 +52,9 @@ it gives a person nothing on its own.
 - **Visitor code** — the short one-time code a resident generates and forwards to a visitor.
 - **Estate code** — identifies an estate when a resident signs up.
 - **House code** — identifies one home within an estate, so a resident lands in the right household.
-- **Gate log** — the record of every verification attempt at the boom, successful or refused.
+- **Gate log** — the record of every verification attempt at the gate, successful or refused.
 
 ## Contact
 
 - Email: hello@myestateaccess.com
-- Serving: South Africa
+- Serving: Nigeria
