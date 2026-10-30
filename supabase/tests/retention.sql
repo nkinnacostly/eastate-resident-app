@@ -131,8 +131,8 @@ select pg_temp.check('fresh code untouched', (
   select count(*) = 1 from public.access_codes
    where id = 'c0000000-0000-4000-8000-00000000000f'));
 
--- 9. PSIRA's four-year floor beats the 90-day guidance for shifts.
-select pg_temp.check('200-day shift survives (PSIRA 4-year floor)', (
+-- 9. Shifts are kept four years, past the 90-day window for visitor data.
+select pg_temp.check('200-day shift survives (4-year floor)', (
   select membership_id is not null and de_identified_at is null
   from public.guard_shifts where id = 'f0000000-0000-4000-8000-000000000001'));
 
@@ -172,3 +172,12 @@ end $$;
 -- 12. No row is ever deleted from the register.
 select pg_temp.check('every seeded event still exists', (
   select count(*) = 5 from public.verification_events));
+
+-- 13. The four-year reason is stated without a regulator's name (20261030120000),
+-- and replacing the function kept it out of every client role's reach.
+select pg_temp.check('apply_retention names no regulator', (
+  select prosrc not ilike '%psira%' and prosrc like '%account for who was%'
+    from pg_proc where oid = 'public.apply_retention()'::regprocedure));
+select pg_temp.check('apply_retention is still not callable by anon or authenticated', (
+  not has_function_privilege('anon', 'public.apply_retention()', 'execute')
+  and not has_function_privilege('authenticated', 'public.apply_retention()', 'execute')));
