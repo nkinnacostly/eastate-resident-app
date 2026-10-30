@@ -4,8 +4,8 @@
 -- and so did every code string and every link back to the resident who minted
 -- it. That was a deliberate-looking choice that nobody had actually decided.
 --
--- Two regulators have now decided it for us, and they point in OPPOSITE
--- directions, which is the whole reason this file is more than one DELETE:
+-- Two requirements decide it for us, and they point in OPPOSITE directions,
+-- which is the whole reason this file is more than one DELETE:
 --
 --   * South Africa's Information Regulator, in its draft Code of Conduct on
 --     Gated Accesses (GG 54594, 30 April 2026), puts visitor registers and
@@ -13,9 +13,10 @@
 --     as non-compliant, and names "access Codes linked to individuals" as
 --     personal information carrying a deletion obligation. Incident reports,
 --     by contrast, it puts at 3-5 years.
---   * PSIRA regulation 10(2)(b) requires a security business to keep its
---     records -- including the reg 10(7)(f) posting sheet of who was deployed
---     where -- for AT LEAST four years.
+--   * A guard's shift is an employment record -- which guard held which gate,
+--     and when -- and an estate, and any security company guarding it under
+--     contract, must still be able to account for who was on duty when an
+--     incident is questioned long after it. That takes years, not days: four.
 --
 -- So a visitor's entry must go quickly and a guard's shift must not. Those are
 -- different records with different owners, and one retention number cannot
@@ -176,12 +177,12 @@ begin
 
   -- (d) Shifts: four years, and the long clock is the point.
   --
-  -- PSIRA reg 10(2)(b) sets a FLOOR of four years on the records a security
-  -- business must keep, and reg 10(7)(f) makes who-was-deployed-where one of
-  -- them. So the SA draft code's 30-90 days does not reach this table: it
-  -- governs visitor data, and a shift is an employment record belonging to the
-  -- guarding company's statutory file. Where two instruments disagree the
-  -- longer statutory floor wins until it expires.
+  -- A shift is an employment record, not visitor data -- which guard held which
+  -- gate, and when -- so the visitor-data windows above do not reach it. It
+  -- stays linked to the guard for four years so that an estate, and any
+  -- security company guarding it under contract, can still account for who was
+  -- on duty when a question about an incident comes up long after it. The
+  -- privacy policy (apps/site/privacy.html, "How long we keep it") says the same.
   update public.guard_shifts
      set membership_id    = null,
          de_identified_at = now()
