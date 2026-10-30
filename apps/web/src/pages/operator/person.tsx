@@ -105,8 +105,6 @@ export function Person() {
         </FieldCard>
         <FieldCard title="SECURITY LICENCE">
           <Field label="LICENCE NUMBER">{p.licence_number ?? 'Not recorded'}</Field>
-          {/* Grades A-E are PSIRA's (South Africa); a Nigerian licence has none. */}
-          {p.licence_grade ? <Field label="GRADE">{p.licence_grade}</Field> : null}
           <Field label="EXPIRES">
             {p.licence_expires_at ? (
               <span className={licenceExpired ? 'text-coral-ink' : undefined}>

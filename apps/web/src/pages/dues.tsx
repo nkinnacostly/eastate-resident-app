@@ -46,7 +46,6 @@ export function Dues() {
   const [draft, setDraft] = useState<{
     mode: DuesConfig['dues_billing_mode'];
     amount: string;
-    currency: string;
     grace: string;
   } | null>(null);
 
@@ -64,7 +63,6 @@ export function Dues() {
       setDraft({
         mode: c.dues_billing_mode,
         amount: c.dues_amount_minor ? String(c.dues_amount_minor / 100) : '',
-        currency: c.dues_currency ?? 'NGN',
         grace: String(c.dues_grace_days),
       });
       setError(null);
@@ -102,7 +100,8 @@ export function Dues() {
         activeEstateId,
         draft.mode,
         minor,
-        draft.mode === 'none' ? null : draft.currency,
+        // Dues are billed in naira; the database accepts nothing else.
+        draft.mode === 'none' ? null : 'NGN',
         Number(draft.grace),
       );
       // Raise this month straight away. An estate configured on the 8th would
@@ -239,22 +238,11 @@ export function Dues() {
           {draft?.mode !== 'none' ? (
             <>
               <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-bold text-muted">Currency</span>
-                <select
-                  value={draft?.currency ?? 'NGN'}
-                  onChange={(e) => setDraft((d) => (d ? { ...d, currency: e.target.value } : d))}
-                  className="h-11 rounded-[14px] bg-field px-3 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-lime"
-                >
-                  <option value="NGN">NGN</option>
-                  <option value="ZAR">ZAR</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
                 {/* Says WHO the figure is for. "Amount a month" beside "Each
                     resident" read as a house total to be split -- it is not:
                     every resident is billed this full amount (20260927240000). */}
                 <span className="text-[11px] font-bold text-muted">
-                  {draft?.mode === 'per_resident' ? 'Amount per resident, a month' : 'Amount per house, a month'}
+                  {draft?.mode === 'per_resident' ? 'Amount per resident, a month (₦)' : 'Amount per house, a month (₦)'}
                 </span>
                 <input
                   value={draft?.amount ?? ''}
@@ -314,10 +302,8 @@ export function Dues() {
       {/*
         Enforcement is its own decision, presented as its own decision.
         Configuring an amount is administrative; withholding a service over
-        arrears is a legal act the estate answers for. South Africa's CSOS
-        classifies a rule denying access for unpaid levies as undesirable and
-        will refuse to register it, so the default here is off and turning it on
-        asks what authorises it.
+        arrears is a legal act the estate answers for, so the default here is
+        off and turning it on asks what authorises it.
       */}
       <Card className="mt-4 p-5">
         <div className="flex items-start justify-between gap-6">

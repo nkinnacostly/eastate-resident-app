@@ -165,7 +165,7 @@ export interface DuesTransaction {
   covers_until: string;
 }
 
-/** Per estate, per currency — NGN and ZAR are never added together. */
+/** Per estate, per currency — two currencies are never added together. */
 export interface EstateDuesTotals {
   estate_id: string;
   estate_name: string;

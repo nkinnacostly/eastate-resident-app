@@ -229,7 +229,6 @@ export interface OperatorPersonDetail {
     last_sign_in_at: string | null;
     is_platform_admin: boolean;
     licence_number: string | null;
-    licence_grade: string | null;
     licence_expires_at: string | null;
     licence_verified_at: string | null;
   };
@@ -262,7 +261,6 @@ export interface AgencyOfficerDetail {
     joined_at: string;
     last_sign_in_at: string | null;
     licence_number: string | null;
-    licence_grade: string | null;
     licence_expires_at: string | null;
     licence_verified_at: string | null;
   };

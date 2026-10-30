@@ -20,7 +20,7 @@ export function sinceFor(w: Window): string | null {
   return days === null ? null : new Date(Date.now() - days * 86_400_000).toISOString();
 }
 
-/** Sum per currency and print each — an NGN and a ZAR figure added together is not a number. */
+/** Sum per currency and print each — figures in two currencies added together are not a number. */
 export function byCurrency<T extends { currency: string }>(rows: T[], pick: (r: T) => number): string {
   const sums = new Map<string, number>();
   for (const r of rows) sums.set(r.currency, (sums.get(r.currency) ?? 0) + pick(r));

@@ -26,8 +26,8 @@ const fieldLabel = 'text-[10.5px] font-extrabold tracking-label text-muted';
  *
  * WHY THE MAPPING IS EDITABLE AND NOT JUST SHOWN
  *
- * We guess which column is which, and the guess is good — it knows `Erf`,
- * `Stand`, `Unit`, and reads a bare headerless list. But it is still a guess
+ * We guess which column is which, and the guess is good — it knows `Plot`,
+ * `Flat`, `Unit`, and reads a bare headerless list. But it is still a guess
  * about a file exported from a system we have never seen, and a guess the
  * admin cannot correct is worse than no guess: their only recourse would be to
  * go and edit the spreadsheet, which is precisely the work this feature exists

@@ -29,7 +29,6 @@ const PROFILE: Profile = {
   last_sign_in_at: null,
   agency_name: null,
   licence_number: null,
-  licence_grade: null,
   licence_expires_at: null,
   licence_verified_at: null,
   on_duty_since: null,
@@ -55,21 +54,15 @@ function show(profile: Profile) {
   );
 }
 
-// An estate admin's view has no agency regulator to go on, and the estates are
-// Nigerian: the licence is a licence, never a "PSIRA number".
+// The estates are Nigerian: the licence is a licence number, never a "PSIRA
+// number", and there is no grade to show (20261030160000).
 describe("an estate admin's guard profile", () => {
-  it('labels the licence plainly and shows no grade a Nigerian licence does not have', async () => {
-    const { container } = show(PROFILE);
+  it('labels the licence plainly, with no grade', async () => {
+    const { container } = show({ ...PROFILE, licence_number: 'NSCDC/PGC/0042' });
     await screen.findByText('Musa Bello');
     expect(screen.getByText('LICENCE NUMBER')).toBeTruthy();
+    expect(screen.getByText('NSCDC/PGC/0042')).toBeTruthy();
     expect(screen.queryByText('GRADE')).toBeNull();
     expect(container.textContent).not.toMatch(/PSIRA/);
-  });
-
-  it('still shows a grade when one was recorded', async () => {
-    show({ ...PROFILE, licence_number: '1234567', licence_grade: 'C' });
-    await screen.findByText('Musa Bello');
-    expect(screen.getByText('GRADE')).toBeTruthy();
-    expect(screen.getByText('C')).toBeTruthy();
   });
 });

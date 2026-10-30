@@ -5,8 +5,6 @@ import {
   BackLink, DetailHead, DetailState, Field, FieldCard, SectionTitle, ShiftTable,
 } from '../../components/detail';
 import { Card, Chip, Empty, Stat } from '../../components/ui';
-import { answersToPsira } from '../../lib/agency';
-import { useAuth } from '../../lib/auth-context';
 import { getAgencyOfficer, type AgencyOfficerDetail } from '../../lib/detail';
 import { dateLabel, dayTime } from '../../lib/format';
 import { ago, count } from '../../lib/operator-format';
@@ -20,7 +18,6 @@ import { ago, count } from '../../lib/operator-format';
  */
 export function AgencyOfficer() {
   const { agencyMembershipId = '' } = useParams();
-  const psira = answersToPsira(useAuth().agencies[0]);
   const [d, setD] = useState<AgencyOfficerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,9 +80,8 @@ export function AgencyOfficer() {
           <Field label="EMAIL">{o.email}</Field>
           <Field label="LAST SIGNED IN">{o.last_sign_in_at ? ago(o.last_sign_in_at) : 'Never'}</Field>
         </FieldCard>
-        <FieldCard title={psira ? 'PSIRA REGISTRATION' : 'GUARD LICENCE'}>
+        <FieldCard title="GUARD LICENCE">
           <Field label="NUMBER">{o.licence_number ?? 'Not recorded'}</Field>
-          {psira || o.licence_grade ? <Field label="GRADE">{o.licence_grade}</Field> : null}
           <Field label="EXPIRES">
             {o.licence_expires_at ? (
               <span className={expired ? 'text-coral-ink' : undefined}>{dateLabel(o.licence_expires_at)}</span>

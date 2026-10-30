@@ -18,7 +18,7 @@
  *
  * Not "does it split on commas". The failures that matter all come from the
  * file being real: exported by Excel with a byte order mark, by Sheets with
- * CRLF, by a levy system with a column called Erf, or pasted as a bare list
+ * CRLF, by a levy system with a column called Plot, or pasted as a bare list
  * with no header at all. Each of those reads as valid CSV and produces wrong
  * houses, which is worse than an error.
  */
@@ -82,9 +82,9 @@ group('readHouses — headers', () => {
     { house_number: '15', landlord_name: undefined, landlord_phone: undefined, landlord_email: undefined },
   ]);
 
-  const erf = readHouses(parseCsv('Erf,Owner\n221B,Holmes'));
-  eq('erf / owner aliases', erf.houses[0].house_number, '221B');
-  eq('owner -> landlord_name', erf.houses[0].landlord_name, 'Holmes');
+  const plot = readHouses(parseCsv('Plot,Owner\n221B,Holmes'));
+  eq('plot / owner aliases', plot.houses[0].house_number, '221B');
+  eq('owner -> landlord_name', plot.houses[0].landlord_name, 'Holmes');
 });
 
 group('readHouses — bare list with no header', () => {
@@ -149,8 +149,8 @@ group('the header toggle — a wrong call either way costs a house', () => {
 });
 
 group('detectMapping — column labels for the controls', () => {
-  const d = detectMapping(parseCsv('Erf,Owner\n221B,Holmes'));
-  eq('labels come from the header', d.headers, ['Erf', 'Owner']);
+  const d = detectMapping(parseCsv('Plot,Owner\n221B,Holmes'));
+  eq('labels come from the header', d.headers, ['Plot', 'Owner']);
 
   const bare = detectMapping(parseCsv('12A,Thabo'));
   eq('headerless labels are positional', bare.headers, ['Column 1', 'Column 2']);

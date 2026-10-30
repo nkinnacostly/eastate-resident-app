@@ -89,7 +89,6 @@ export function Estates() {
     // operator types 25000, not 2500000.
     duesMode: 'none' as 'none' | 'per_house' | 'per_resident',
     duesAmount: '',
-    duesCurrency: 'NGN',
   };
   const [form, setForm] = useState(BLANK);
   const [result, setResult] = useState<OnboardResult | null>(null);
@@ -126,7 +125,8 @@ export function Estates() {
         dues_billing_mode: form.duesMode,
         dues_amount_minor:
           form.duesMode === 'none' ? undefined : Math.round(Number(form.duesAmount) * 100),
-        dues_currency: form.duesMode === 'none' ? undefined : form.duesCurrency,
+        // Dues are billed in naira; the database accepts nothing else.
+        dues_currency: form.duesMode === 'none' ? undefined : 'NGN',
       });
       setResult(res);
       setForm(BLANK);
@@ -221,19 +221,8 @@ export function Estates() {
             </label>
             {form.duesMode !== 'none' ? (
               <div className="flex gap-3">
-                <label className={`${label} flex-none`}>
-                  CURRENCY
-                  <select
-                    value={form.duesCurrency}
-                    onChange={(e) => setForm({ ...form, duesCurrency: e.target.value })}
-                    className={field}
-                  >
-                    <option value="NGN">NGN</option>
-                    <option value="ZAR">ZAR</option>
-                  </select>
-                </label>
                 <label className={`${label} flex-1`}>
-                  AMOUNT A MONTH
+                  AMOUNT A MONTH (₦)
                   <input
                     value={form.duesAmount}
                     onChange={(e) => setForm({ ...form, duesAmount: e.target.value })}

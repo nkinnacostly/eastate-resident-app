@@ -16,11 +16,8 @@ const DAYS: Record<(typeof RANGES)[number], number> = { '7 days': 7, '30 days': 
  * an unfinished feature. A guarding company aggregating identifiable visitor
  * data across its whole client base for its own reporting stops being an
  * operator acting on each estate's mandate and becomes legally responsible for
- * that processing in its own right -- and POPIA has no joint-controller regime
- * to share the load. Counts fall outside the Act entirely under s6(1)(b).
- *
- * PSIRA's Code adds an independent reason: clause 9(13)(b) forbids a provider
- * using a client's confidential information to compete with that client.
+ * that processing in its own right, as a data controller under the NDPA. Counts
+ * identify nobody, so they are not personal data at all (s65).
  *
  * It is also, straightforwardly, what an agency needs. It is watching its own
  * service -- is the gate manned, are officers arriving, how many people are

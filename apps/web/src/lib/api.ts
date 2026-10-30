@@ -134,7 +134,6 @@ export interface GuardProfile {
   last_sign_in_at: string | null;
   agency_name: string | null;
   licence_number: string | null;
-  licence_grade: string | null;
   licence_expires_at: string | null;
   licence_verified_at: string | null;
   on_duty_since: string | null;
@@ -639,9 +638,9 @@ export async function waiveDuesCharge(chargeId: string, reason: string): Promise
  * Record — or withdraw — the estate's authority to withhold code generation.
  *
  * Separate from configuring an amount on purpose. Billing is an administrative
- * decision; restricting a service over arrears is a legal one, and in South
- * Africa the CSOS classifies a rule doing so as undesirable. An estate that has
- * not recorded a basis bills normally and restricts nobody.
+ * decision; restricting a service over arrears is a legal one the estate
+ * answers for. An estate that has not recorded a basis bills normally and
+ * restricts nobody.
  */
 export async function setDuesEnforcement(
   estateId: string,
@@ -717,13 +716,13 @@ export async function remindDuesCharge(chargeId: string): Promise<number> {
 // reference, an admin could point an estate's dues at any account at all.
 
 export interface EstateSettlement {
-  country: 'NG' | 'ZA' | null;
+  country: 'NG' | null;
   bank_code: string | null;
   bank_name: string | null;
   /** Masked to the last four digits. The full number never leaves the server. */
   account_mask: string | null;
   account_name: string | null;
-  /** True only where the bank confirmed the name — Nigeria. Never for ZA. */
+  /** True where the bank confirmed the name. Every account is checked before it is saved. */
   account_verified: boolean;
   configured_at: string | null;
   fee_percent: number;
@@ -740,18 +739,17 @@ const settlementError = (code: string) =>
       + 'with account number 0690000032. To add the estate’s real account, the '
       + 'live Flutterwave keys need to be deployed first.',
     not_an_admin_at_this_estate: 'You are not an administrator of this estate.',
-    account_name_required: 'We could not verify this account, so please type the account name exactly as the bank has it.',
     banks_unavailable: 'We could not reach the bank list just now. Try again in a moment.',
     could_not_save_settlement: 'We could not set up the payout account. Nothing was saved — please try again.',
-    bank_code_account_number_country_required: 'Choose a country and bank, and enter the account number.',
+    bank_code_account_number_country_required: 'Choose a bank and enter the account number.',
   })[code] ?? 'Something went wrong setting up the payout account.';
 
-export async function listSettlementBanks(
-  country: 'NG' | 'ZA',
-): Promise<{ code: string; name: string }[]> {
+// Payout accounts are Nigerian; `country` is still sent because the edge
+// function's contract names it.
+export async function listSettlementBanks(): Promise<{ code: string; name: string }[]> {
   const r = await callEdgeFunction<{ banks: { code: string; name: string }[] }>(
     'estate-settlement',
-    { action: 'banks', country },
+    { action: 'banks', country: 'NG' },
     settlementError,
   );
   return r.banks;
@@ -771,43 +769,36 @@ export async function getEstateSettlement(
 /**
  * Ask the bank who owns this account, before anything is saved.
  *
- * `verified: false` with no error is South Africa, where there is no name
- * lookup on the rail at all — it means "we could not check", NOT "this is
- * wrong". Nigeria either returns a name or throws, because there a failed
- * lookup does mean the account does not exist.
+ * Returns the name or throws: a failed lookup means the account does not exist
+ * (or, on Flutterwave test keys, that it is not a sandbox account).
  */
 export async function resolveSettlementAccount(
   estateId: string,
-  country: 'NG' | 'ZA',
   bankCode: string,
   accountNumber: string,
-): Promise<{ account_name: string | null; verified: boolean; unverifiable?: boolean }> {
+): Promise<{ account_name: string; verified: boolean }> {
   return callEdgeFunction(
     'estate-settlement',
-    { action: 'resolve', estate_id: estateId, country, bank_code: bankCode, account_number: accountNumber },
+    { action: 'resolve', estate_id: estateId, country: 'NG', bank_code: bankCode, account_number: accountNumber },
     settlementError,
   );
 }
 
 export async function saveEstateSettlement(opts: {
   estateId: string;
-  country: 'NG' | 'ZA';
   bankCode: string;
   bankName: string;
   accountNumber: string;
-  /** Only used where the bank cannot confirm a name (South Africa). */
-  accountName?: string;
 }): Promise<{ account_name: string; verified: boolean }> {
   return callEdgeFunction(
     'estate-settlement',
     {
       action: 'save',
       estate_id: opts.estateId,
-      country: opts.country,
+      country: 'NG',
       bank_code: opts.bankCode,
       bank_name: opts.bankName,
       account_number: opts.accountNumber,
-      account_name: opts.accountName,
     },
     settlementError,
   );

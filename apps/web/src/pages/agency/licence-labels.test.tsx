@@ -9,9 +9,9 @@ import { AgencyOfficers } from './officers';
 
 afterEach(cleanup);
 
-// The product is built for Nigerian estates. PSIRA is South Africa's guard
-// regulator, so its name, grades and filing rules must reach only an agency
-// that registered with it -- a Nigerian agency sees plain licence wording.
+// The product is Nigerian only (20261030160000): a guard's licence is a licence
+// number with the NSCDC, with no grade and no PSIRA return. That holds whatever
+// an agency typed as its registration body -- even "PSIRA".
 
 const auth = vi.hoisted(() => ({ agencies: [] as Agency[] }));
 vi.mock('../../lib/auth-context', () => ({ useAuth: () => auth }));
@@ -46,7 +46,6 @@ const OFFICER: RosterRow = {
   role: 'officer',
   is_active: true,
   registration_number: null,
-  grade: null,
   registration_expires_at: null,
   registration_checked_at: null,
   estates_posted: 1,
@@ -55,7 +54,6 @@ const OFFICER: RosterRow = {
 const RETURN_ROW: ReturnRow = {
   officer_name: 'Musa Bello',
   registration_number: 'LIC-77',
-  grade: null,
   contact_phone: null,
   registration_expires_at: null,
   registration_checked_at: null,
@@ -78,25 +76,28 @@ const show = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter
 describe.each([
   ['an NSCDC-registered agency', 'NSCDC'],
   ['an agency with no registration body recorded', null],
+  ['an agency that typed PSIRA as its registration body', 'PSIRA'],
 ])('for %s', (_, body) => {
   beforeEach(() => {
     auth.agencies = [agency(body)];
   });
 
-  it('the officers page never says PSIRA, and has no grade column', async () => {
+  it('the officers page says licence number, with no grade and no PSIRA', async () => {
     const { container } = show(<AgencyOfficers />);
     await screen.findByText('Musa Bello');
     expect(screen.getByText('LICENCE NUMBER')).toBeTruthy();
     expect(screen.queryByText('GRADE')).toBeNull();
-    expect(container.textContent).not.toMatch(/PSIRA/);
+    expect(container.textContent).not.toMatch(/PSIRA|South Africa/);
+    expect(container.textContent).toMatch(/NSCDC/);
     expect(container.querySelector('a[href*="psira"]')).toBeNull();
   });
 
-  it('the monthly return and its CSV never say PSIRA', async () => {
+  it('the monthly return and its CSV say licence number, with no grade and no PSIRA', async () => {
     const { container } = show(<AgencyMonthlyReturn />);
     await screen.findByText('Palm Court');
     expect(screen.getByText('LICENCE NUMBER')).toBeTruthy();
     expect(screen.getByText('MISSING LICENCE NUMBER')).toBeTruthy();
+    expect(screen.queryByText('GRADE')).toBeNull();
     expect(container.textContent).not.toMatch(/PSIRA|South Africa/);
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Export CSV' }));
@@ -105,31 +106,5 @@ describe.each([
     const header = body.replace(/^﻿/, '').split(/\r?\n/)[0];
     expect(header).toContain('Licence number');
     expect(header).not.toMatch(/PSIRA|Grade/);
-  });
-});
-
-describe('for a PSIRA-registered agency', () => {
-  beforeEach(() => {
-    auth.agencies = [agency('PSIRA')];
-  });
-
-  it('the officers page keeps PSIRA wording, the grade column and the verification link', async () => {
-    const { container } = show(<AgencyOfficers />);
-    await screen.findByText('Musa Bello');
-    expect(screen.getByText('PSIRA NUMBER')).toBeTruthy();
-    expect(screen.getByText('GRADE')).toBeTruthy();
-    expect(container.querySelector('a[href*="psira.co.za"]')).toBeTruthy();
-  });
-
-  it('the monthly return is still the PSIRA return', async () => {
-    show(<AgencyMonthlyReturn />);
-    await screen.findByText('Palm Court');
-    expect(screen.getByText('MISSING PSIRA NUMBER')).toBeTruthy();
-
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Export CSV' }));
-    const [filename, body] = csv.downloadCsv.mock.calls[0] as [string, string];
-    expect(filename).toMatch(/^psira-return-/);
-    expect(body).toContain('PSIRA number');
-    expect(body).toContain('Grade');
   });
 });

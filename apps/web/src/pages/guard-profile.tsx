@@ -163,8 +163,6 @@ export function GuardProfile() {
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
             <Field label="AGENCY">{p.agency_name ?? 'Employed by the estate directly'}</Field>
             <Field label="LICENCE NUMBER">{p.licence_number ?? 'Not recorded'}</Field>
-            {/* Grades A-E are PSIRA's (South Africa); a Nigerian licence has none. */}
-            {p.licence_grade ? <Field label="GRADE">{p.licence_grade}</Field> : null}
             <Field label="EXPIRES">
               {p.licence_expires_at ? (
                 <span className={licenceExpired ? 'text-coral-ink' : undefined}>

@@ -12,10 +12,10 @@ import { Brand, EstatesIcon, GridIcon, GuardsIcon } from './icons';
  * editor, no shift planner, no patrol tour and no invoicing, because the moment
  * this grows those it stops being a window onto a guarding contract and becomes
  * workforce software competing with vendors who have sold it for fifteen years.
- * The agency is a distribution channel here, not a paying tenant: South African
- * estates increasingly buy security technology THROUGH the guarding contract,
- * and the one comparable product found gives agencies their dashboard free in
- * exchange for estate referrals. A free, read-mostly portal is the whole play.
+ * The agency is a distribution channel here, not a paying tenant: an estate can
+ * buy security technology THROUGH its guarding contract, and the one comparable
+ * product found gives agencies their dashboard free in exchange for estate
+ * referrals. A free, read-mostly portal is the whole play.
  *
  * Amber rather than the operator's lime, and it says AGENCY under the mark, for
  * a reason that is not decoration: the same person can be an estate admin and

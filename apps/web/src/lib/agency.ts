@@ -46,7 +46,6 @@ export interface RosterRow {
   role: 'officer' | 'admin';
   is_active: boolean;
   registration_number: string | null;
-  grade: string | null;
   registration_expires_at: string | null;
   registration_checked_at: string | null;
   estates_posted: number;
@@ -55,7 +54,6 @@ export interface RosterRow {
 export interface ReturnRow {
   officer_name: string | null;
   registration_number: string | null;
-  grade: string | null;
   contact_phone: string | null;
   registration_expires_at: string | null;
   registration_checked_at: string | null;
@@ -117,32 +115,17 @@ export async function monthlyReturn(agencyId: string, month: Date): Promise<Retu
 
 export async function recordRegistration(
   userId: string,
-  registrationNumber: string,
-  grade: string | null,
+  licenceNumber: string,
   expiresAt: string | null,
 ): Promise<void> {
   await rpc('record_guard_licence', {
     p_user_id: userId,
-    p_licence_number: registrationNumber,
-    p_grade: grade,
+    p_licence_number: licenceNumber,
     p_expires_at: expiresAt,
   });
 }
 
 // ─── Compliance state ────────────────────────────────────────────────────────
-
-/**
- * Whether this agency answers to South Africa's PSIRA.
- *
- * The guard-licence fields were first modelled on PSIRA (the columns were
- * psira_* until 20261030100000), but the product is built for Nigerian estates, where private guard
- * companies come under the NSCDC and there is no PSIRA number, A-E grade or
- * PSIRA monthly return. PSIRA's name and rules are shown only to an agency that
- * recorded PSIRA as its registration body; everyone else sees plain licence
- * wording. Estate and operator pages have no agency to ask, so they always do.
- */
-export const answersToPsira = (agency: Pick<Agency, 'registration_body'> | null | undefined): boolean =>
-  !!agency?.registration_body && /psira/i.test(agency.registration_body);
 
 export type RegistrationState = 'missing' | 'expired' | 'expiring' | 'unchecked' | 'ok';
 
@@ -151,14 +134,11 @@ export type RegistrationState = 'missing' | 'expired' | 'expiring' | 'unchecked'
  *
  * `unchecked` is the state nobody else models and the one that matters most. An
  * unexpired date is a claim somebody typed in; it says nothing about a
- * registration suspended yesterday. Neither PSIRA nor the NSCDC publishes an
- * API to re-check against -- PSIRA's portal is a JavaScript shell over an
- * undocumented third-party endpoint and the NSCDC's does not resolve -- so the
- * only honest signal is how long ago a human looked.
+ * registration suspended yesterday. The NSCDC publishes no API to re-check
+ * against, and its portal does not resolve, so the only honest signal is how
+ * long ago a human looked.
  *
- * 90 days because PSIRA registration runs in 24-month cycles with renewal
- * opening 90 days before expiry: a check older than that could have missed a
- * whole renewal window.
+ * 90 days, so every licence is looked at again at least once a quarter.
  */
 export function registrationState(row: {
   registration_number: string | null;
