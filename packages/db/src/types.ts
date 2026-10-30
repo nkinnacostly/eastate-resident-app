@@ -990,7 +990,6 @@ export type Database = {
           full_name: string | null
           id: string
           licence_expires_at: string | null
-          licence_grade: string | null
           licence_number: string | null
           licence_verified_at: string | null
           must_change_password: boolean
@@ -1001,7 +1000,6 @@ export type Database = {
           full_name?: string | null
           id: string
           licence_expires_at?: string | null
-          licence_grade?: string | null
           licence_number?: string | null
           licence_verified_at?: string | null
           must_change_password?: boolean
@@ -1012,7 +1010,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           licence_expires_at?: string | null
-          licence_grade?: string | null
           licence_number?: string | null
           licence_verified_at?: string | null
           must_change_password?: boolean
@@ -1224,7 +1221,6 @@ export type Database = {
           estate_address: string
           estate_name: string
           first_shift_at: string
-          grade: string
           hours: number
           last_shift_at: string
           officer_name: string
@@ -1244,7 +1240,6 @@ export type Database = {
           agency_membership_id: string
           estates_posted: number
           full_name: string
-          grade: string
           is_active: boolean
           registration_checked_at: string
           registration_expires_at: string
@@ -1472,7 +1467,6 @@ export type Database = {
           last_sign_in_at: string
           last_verification_at: string
           licence_expires_at: string
-          licence_grade: string
           licence_number: string
           licence_verified_at: string
           membership_id: string
@@ -1864,7 +1858,6 @@ export type Database = {
       record_guard_licence: {
         Args: {
           p_expires_at?: string
-          p_grade?: string
           p_licence_number: string
           p_user_id: string
         }
