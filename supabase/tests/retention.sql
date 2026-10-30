@@ -181,3 +181,17 @@ select pg_temp.check('apply_retention names no regulator', (
 select pg_temp.check('apply_retention is still not callable by anon or authenticated', (
   not has_function_privilege('anon', 'public.apply_retention()', 'execute')
   and not has_function_privilege('authenticated', 'public.apply_retention()', 'execute')));
+
+-- 14. The retention reasoning rests on Nigeria's Data Protection Act, not on
+-- South Africa's draft gated-access code or POPIA (20261030130000).
+select pg_temp.check('apply_retention''s comments cite the NDPA, not SA law', (
+  select prosrc ilike '%NDPA%'
+     and prosrc not ilike '%draft code%' and prosrc not ilike '%popia%'
+     and prosrc not ilike '%regulator has%'
+    from pg_proc where oid = 'public.apply_retention()'::regprocedure));
+select pg_temp.check('the retention window''s description cites the NDPA', (
+  select d ilike '%NDPA%' and d not ilike '%SA draft%' and d ilike '%keep forever%'
+    from (select col_description('public.estates'::regclass,
+                 (select attnum from pg_attribute
+                   where attrelid = 'public.estates'::regclass
+                     and attname = 'event_retention_days')) as d) x));

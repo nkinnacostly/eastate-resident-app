@@ -7,12 +7,12 @@
 -- Two requirements decide it for us, and they point in OPPOSITE directions,
 -- which is the whole reason this file is more than one DELETE:
 --
---   * South Africa's Information Regulator, in its draft Code of Conduct on
---     Gated Accesses (GG 54594, 30 April 2026), puts visitor registers and
---     access-control logs at 30-90 days, lists "indefinite retention of logs"
---     as non-compliant, and names "access Codes linked to individuals" as
---     personal information carrying a deletion obligation. Incident reports,
---     by contrast, it puts at 3-5 years.
+--   * Nigeria's Data Protection Act 2023 says personal data is to be kept for
+--     "not longer than is necessary" for the purpose it was collected for
+--     (s24(1)(d)). A visitor register serves that purpose for weeks, not
+--     forever: an indefinite log, and access codes that stay linked to the
+--     resident who made them, are what that principle rules out. Incident
+--     records are different, and are needed for years.
 --   * A guard's shift is an employment record -- which guard held which gate,
 --     and when -- and an estate, and any security company guarding it under
 --     contract, must still be able to account for who was on duty when an
@@ -29,9 +29,9 @@
 -- admin loses the ability to answer "how many entries were refused in March"
 -- and the visitor gains nothing they would not get from having their name cut.
 --
--- POPIA s6(1)(b) puts information "de-identified to the extent that it cannot
--- be re-identified again" outside the Act entirely. So we cut the links and
--- keep the shell. What survives is "on this date, at this estate, an entry was
+-- The NDPA protects personal data: information about someone who "can be
+-- identified or is identifiable" (s65). An entry with its links cut identifies
+-- nobody, so we cut the links and keep the shell. What survives is "on this date, at this estate, an entry was
 -- admitted / refused for this reason, against a pool this stale" -- a complete
 -- access register with no person in it.
 --
@@ -42,11 +42,13 @@
 
 -- ─── 1. The window is per-estate, but bounded ────────────────────────────────
 --
--- The draft code allows 30-90 days, and up to six months where the estate can
--- justify the risk. A CHECK rather than a plain default because the point of a
--- retention policy is that it cannot be opted out of: an estate may tune the
--- window inside the permitted band and cannot set it to "forever", which is
--- precisely the setting the Regulator has named as non-compliant.
+-- 90 days by default, 30 at the least, and up to six months where the estate
+-- can justify the risk. The NDPA sets no number, only that data goes once its
+-- purpose is served (s24(1)(d)); this band is our reading of that for a gate
+-- log. A CHECK rather than a plain default because the point of a retention
+-- policy is that it cannot be opted out of: an estate may tune the window
+-- inside the band and cannot set it to "forever", the one setting the
+-- principle can never support.
 
 alter table public.estates
   add column if not exists event_retention_days integer not null default 90;
@@ -59,8 +61,8 @@ alter table public.estates
   check (event_retention_days between 30 and 180);
 
 comment on column public.estates.event_retention_days is
-  'Days before a gate event is de-identified. Bounded 30-180 by the SA draft '
-  'gated-access code (30-90 ideal, up to 6 months where risk-justified). '
+  'Days before a gate event is de-identified. Bounded 30-180 (90 by default) under the '
+  'NDPA''s storage-limitation principle, s24(1)(d): up to 6 months where risk-justified. '
   'There is deliberately no value meaning "keep forever".';
 
 -- ─── 2. Record that it happened ──────────────────────────────────────────────
@@ -121,9 +123,9 @@ begin
   -- (a) Ordinary gate events, past their estate's own window.
   --
   -- code_attempted goes with the rest. It is the one field that looks harmless
-  -- and is not: the draft code names "access Codes linked to individuals" as
-  -- personal information, and a code plus a timestamp re-identifies the
-  -- resident who minted it for anyone holding a copy of the codes table.
+  -- and is not: a code is linked to the resident who minted it, so under the
+  -- NDPA it is personal data, and a code plus a timestamp re-identifies that
+  -- resident for anyone holding a copy of the codes table.
   --
   -- Flagged entries are excluded here and handled in (b). A guard admitting
   -- somebody with no matching code IS the incident report, and stripping the
@@ -141,8 +143,8 @@ begin
      and e.synced_at < now() - make_interval(days => s.event_retention_days);
   get diagnostics v_events = row_count;
 
-  -- (b) Flagged entries: three years, the floor of the draft code's 3-5 year
-  -- band for incident reports.
+  -- (b) Flagged entries: three years. They are incident records, still needed
+  -- long after an ordinary visitor log has served its purpose.
   update public.verification_events
      set verified_by_membership_id = null,
          code_id                   = null,

@@ -6,9 +6,11 @@
 -- security company guarding it, must be able to say who was on duty when an
 -- incident is questioned long after it. The comment says the same.
 --
--- Only that comment changes. The body is otherwise the live definition from
--- 20260926100000, byte for byte, and CREATE OR REPLACE keeps its grants (none
--- to any client role: it runs from cron) and its COMMENT.
+-- Only that comment changed when this ran: the body was otherwise the live
+-- definition from 20260926100000, byte for byte. Its other comments were later
+-- reframed for Nigeria in place, as 20261030130000 did to the live function.
+-- CREATE OR REPLACE keeps its grants (none to any client role: it runs from
+-- cron) and its COMMENT.
 
 create or replace function public.apply_retention()
  RETURNS TABLE(events_cleared integer, codes_deleted integer, shifts_cleared integer)
@@ -25,9 +27,9 @@ begin
   -- (a) Ordinary gate events, past their estate's own window.
   --
   -- code_attempted goes with the rest. It is the one field that looks harmless
-  -- and is not: the draft code names "access Codes linked to individuals" as
-  -- personal information, and a code plus a timestamp re-identifies the
-  -- resident who minted it for anyone holding a copy of the codes table.
+  -- and is not: a code is linked to the resident who minted it, so under the
+  -- NDPA it is personal data, and a code plus a timestamp re-identifies that
+  -- resident for anyone holding a copy of the codes table.
   --
   -- Flagged entries are excluded here and handled in (b). A guard admitting
   -- somebody with no matching code IS the incident report, and stripping the
@@ -45,8 +47,8 @@ begin
      and e.synced_at < now() - make_interval(days => s.event_retention_days);
   get diagnostics v_events = row_count;
 
-  -- (b) Flagged entries: three years, the floor of the draft code's 3-5 year
-  -- band for incident reports.
+  -- (b) Flagged entries: three years. They are incident records, still needed
+  -- long after an ordinary visitor log has served its purpose.
   update public.verification_events
      set verified_by_membership_id = null,
          code_id                   = null,
