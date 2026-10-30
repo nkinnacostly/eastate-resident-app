@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { Avatar, Button, Card, Chip, Empty, PageHead, Stat } from '../../components/ui';
 import {
+  answersToPsira,
   listRoster,
   registrationState,
   REGISTRATION_COPY,
@@ -12,7 +13,9 @@ import {
 import { useAuth } from '../../lib/auth-context';
 import { dayTime } from '../../lib/format';
 
-const COLS = 'grid grid-cols-[1.5fr_120px_70px_1fr_110px] gap-4';
+// PSIRA agencies get a grade column; a Nigerian licence has no grade.
+const COLS_PSIRA = 'grid grid-cols-[1.5fr_120px_70px_1fr_110px] gap-4';
+const COLS = 'grid grid-cols-[1.5fr_140px_1fr_110px] gap-4';
 
 const TONE: Record<RegistrationState, 'good' | 'bad' | undefined> = {
   ok: 'good',
@@ -36,10 +39,13 @@ const TONE: Record<RegistrationState, 'good' | 'bad' | undefined> = {
  * recently" is a real state we can show and a claim of "verified" would be a
  * lie. PSIRA's September 2026 circular tells estates to confirm that every
  * officer deployed is properly registered; this is the screen that answers it.
+ * Only a PSIRA-registered agency sees PSIRA named (see answersToPsira).
  */
 export function AgencyOfficers() {
   const { agencies } = useAuth();
   const agency = agencies[0] ?? null;
+  const psira = answersToPsira(agency);
+  const cols = psira ? COLS_PSIRA : COLS;
   const [rows, setRows] = useState<RosterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +77,11 @@ export function AgencyOfficers() {
     <>
       <PageHead
         title="Officers"
-        blurb="Everyone your agency employs, and where their registration stands. PSIRA expects the employer to have verified this before deployment, and an estate may ask to see it at the gate."
+        blurb={
+          psira
+            ? 'Everyone your agency employs, and where their registration stands. PSIRA expects the employer to have verified this before deployment, and an estate may ask to see it at the gate.'
+            : 'Everyone your agency employs, and where their licence stands. An estate may ask to see it at the gate.'
+        }
         right={
           <Button onClick={() => void load()} variant="quiet">
             Refresh
@@ -96,10 +106,10 @@ export function AgencyOfficers() {
       </div>
 
       <Card className="mt-6 py-4">
-        <div className={`${COLS} px-4 pb-2.5 text-[10.5px] font-extrabold tracking-label text-muted`}>
+        <div className={`${cols} px-4 pb-2.5 text-[10.5px] font-extrabold tracking-label text-muted`}>
           <span>OFFICER</span>
-          <span>PSIRA NUMBER</span>
-          <span>GRADE</span>
+          <span>{psira ? 'PSIRA NUMBER' : 'LICENCE NUMBER'}</span>
+          {psira ? <span>GRADE</span> : null}
           <span>REGISTRATION</span>
           <span>POSTED AT</span>
         </div>
@@ -113,7 +123,7 @@ export function AgencyOfficers() {
             return (
               <div
                 key={r.agency_membership_id}
-                className={`${COLS} items-center border-t border-hair px-4 py-3 ${
+                className={`${cols} items-center border-t border-hair px-4 py-3 ${
                   r.is_active ? '' : 'opacity-50'
                 }`}
               >
@@ -129,7 +139,7 @@ export function AgencyOfficers() {
                 <div className="text-[12.5px] tracking-code text-muted">
                   {r.registration_number ?? '—'}
                 </div>
-                <div className="text-[12.5px] font-bold">{r.grade ?? '—'}</div>
+                {psira ? <div className="text-[12.5px] font-bold">{r.grade ?? '—'}</div> : null}
                 <div>
                   <Chip tone={TONE[state]}>{REGISTRATION_COPY[state]}</Chip>
                   {r.registration_checked_at ? (
@@ -150,22 +160,31 @@ export function AgencyOfficers() {
       </Card>
 
       <Card className="mt-4 p-4">
-        <p className="text-[12.5px] leading-[19px] text-muted">
-          &ldquo;Checked&rdquo; means a person looked this up and recorded what they saw. PSIRA
-          publishes no way for software to verify a registration automatically, so we do not claim
-          to — check it at{' '}
-          <a
-            className="font-bold text-ink underline"
-            href="https://digitalservices.psira.co.za/verify-user/4"
-            target="_blank"
-            rel="noreferrer"
-          >
-            PSIRA&apos;s verification page
-          </a>{' '}
-          or scan the QR code on the officer&apos;s card. This portal cannot record a check yet, so send the result to the myestateaccess team. Anything older than
-          90 days shows as unchecked, because registration runs in 24-month cycles and renewal
-          opens 90 days out.
-        </p>
+        {psira ? (
+          <p className="text-[12.5px] leading-[19px] text-muted">
+            &ldquo;Checked&rdquo; means a person looked this up and recorded what they saw. PSIRA
+            publishes no way for software to verify a registration automatically, so we do not claim
+            to — check it at{' '}
+            <a
+              className="font-bold text-ink underline"
+              href="https://digitalservices.psira.co.za/verify-user/4"
+              target="_blank"
+              rel="noreferrer"
+            >
+              PSIRA&apos;s verification page
+            </a>{' '}
+            or scan the QR code on the officer&apos;s card. This portal cannot record a check yet, so send the result to the myestateaccess team. Anything older than
+            90 days shows as unchecked, because registration runs in 24-month cycles and renewal
+            opens 90 days out.
+          </p>
+        ) : (
+          <p className="text-[12.5px] leading-[19px] text-muted">
+            &ldquo;Checked&rdquo; means a person looked this up and recorded what they saw. The NSCDC
+            publishes no way for software to verify a guard&apos;s licence automatically, so we do not
+            claim to. This portal cannot record a check yet, so send the result to the myestateaccess
+            team. Anything older than 90 days shows as unchecked.
+          </p>
+        )}
       </Card>
     </>
   );

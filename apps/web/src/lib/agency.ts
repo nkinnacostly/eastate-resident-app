@@ -131,6 +131,19 @@ export async function recordRegistration(
 
 // ─── Compliance state ────────────────────────────────────────────────────────
 
+/**
+ * Whether this agency answers to South Africa's PSIRA.
+ *
+ * The guard-licence fields were first modelled on PSIRA (hence the psira_*
+ * columns), but the product is built for Nigerian estates, where private guard
+ * companies come under the NSCDC and there is no PSIRA number, A-E grade or
+ * PSIRA monthly return. PSIRA's name and rules are shown only to an agency that
+ * recorded PSIRA as its registration body; everyone else sees plain licence
+ * wording. Estate and operator pages have no agency to ask, so they always do.
+ */
+export const answersToPsira = (agency: Pick<Agency, 'registration_body'> | null | undefined): boolean =>
+  !!agency?.registration_body && /psira/i.test(agency.registration_body);
+
 export type RegistrationState = 'missing' | 'expired' | 'expiring' | 'unchecked' | 'ok';
 
 /**

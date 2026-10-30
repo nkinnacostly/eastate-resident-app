@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button, Card, Empty, PageHead, Stat } from '../../components/ui';
-import { monthlyReturn, type ReturnRow } from '../../lib/agency';
+import { answersToPsira, monthlyReturn, type ReturnRow } from '../../lib/agency';
 import { useAuth } from '../../lib/auth-context';
 import { downloadCsv, toCsv } from '../../lib/csv';
 import { dayTime } from '../../lib/format';
 
-const COLS = 'grid grid-cols-[1.3fr_110px_60px_1.2fr_100px_80px] gap-4';
+// PSIRA agencies get a grade column; a Nigerian licence has no grade.
+const COLS_PSIRA = 'grid grid-cols-[1.3fr_110px_60px_1.2fr_100px_80px] gap-4';
+const COLS = 'grid grid-cols-[1.3fr_130px_1.2fr_100px_80px] gap-4';
 
 /** The last twelve months, newest first. */
 function recentMonths(): Date[] {
@@ -17,7 +19,7 @@ function recentMonths(): Date[] {
 }
 
 const monthLabel = (d: Date) =>
-  d.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+  d.toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
 
 /**
  * The statutory monthly personnel return, assembled rather than typed.
@@ -34,10 +36,16 @@ const monthLabel = (d: Date) =>
  * number against the site and the hours; a system that logs a shared gate
  * tablet in, as most of this category does, can never say which human was
  * there. As far as the research found, nobody has automated this.
+ *
+ * All of that is PSIRA's, and only a PSIRA-registered agency sees it framed
+ * that way. The product is built for Nigerian estates; for any other agency the
+ * same report goes out without PSIRA's name, grades or filing deadline on it.
  */
 export function AgencyMonthlyReturn() {
   const { agencies } = useAuth();
   const agency = agencies[0] ?? null;
+  const psira = answersToPsira(agency);
+  const cols = psira ? COLS_PSIRA : COLS;
   const months = recentMonths();
   const [month, setMonth] = useState<Date>(months[0]);
   const [rows, setRows] = useState<ReturnRow[]>([]);
@@ -69,12 +77,12 @@ export function AgencyMonthlyReturn() {
 
   const exportCsv = () => {
     const header = [
-      'Officer', 'PSIRA number', 'Grade', 'Contact', 'Registration expires',
-      'Registration checked', 'Site', 'Site address', 'First shift', 'Last shift',
-      'Shifts', 'Hours',
+      'Officer', psira ? 'PSIRA number' : 'Licence number', ...(psira ? ['Grade'] : []), 'Contact',
+      'Registration expires', 'Registration checked', 'Site', 'Site address', 'First shift',
+      'Last shift', 'Shifts', 'Hours',
     ];
     const body = rows.map((r) => [
-      r.officer_name, r.registration_number, r.grade, r.contact_phone,
+      r.officer_name, r.registration_number, ...(psira ? [r.grade] : []), r.contact_phone,
       r.registration_expires_at, r.registration_checked_at,
       r.estate_name, r.estate_address, r.first_shift_at, r.last_shift_at,
       String(r.shifts), String(r.hours),
@@ -82,7 +90,7 @@ export function AgencyMonthlyReturn() {
     // toCsv neutralises leading = + - @ so a name or note cannot execute as a
     // formula when the return is opened in Excel, and downloadCsv writes a BOM.
     const stamp = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
-    downloadCsv(`psira-return-${stamp}.csv`, toCsv([header, ...body]));
+    downloadCsv(`${psira ? 'psira' : 'officer'}-return-${stamp}.csv`, toCsv([header, ...body]));
   };
 
   return (
@@ -121,7 +129,7 @@ export function AgencyMonthlyReturn() {
         <Stat label="OFFICERS DEPLOYED" value={officers} />
         <Stat label="TOTAL HOURS" value={hours.toFixed(2)} />
         <Stat
-          label="MISSING PSIRA NUMBER"
+          label={psira ? 'MISSING PSIRA NUMBER' : 'MISSING LICENCE NUMBER'}
           value={missing}
           tone={missing ? 'bad' : undefined}
         />
@@ -129,16 +137,18 @@ export function AgencyMonthlyReturn() {
 
       {missing > 0 ? (
         <div className="mt-3.5 rounded-[14px] bg-coral-soft px-4 py-3 text-[13px] font-semibold text-coral-ink">
-          {missing} {missing === 1 ? 'line has' : 'lines have'} no registration number. Filing a
-          return with those blank is worse than filing late — add them on the Officers page first.
+          {missing} {missing === 1 ? 'line has' : 'lines have'} no {psira ? 'registration' : 'licence'} number.
+          {psira
+            ? ' Filing a return with those blank is worse than filing late — add them on the Officers page first.'
+            : ' Add them on the Officers page before you send this return to anyone.'}
         </div>
       ) : null}
 
       <Card className="mt-3.5 py-4">
-        <div className={`${COLS} px-4 pb-2.5 text-[10.5px] font-extrabold tracking-label text-muted`}>
+        <div className={`${cols} px-4 pb-2.5 text-[10.5px] font-extrabold tracking-label text-muted`}>
           <span>OFFICER</span>
-          <span>PSIRA NUMBER</span>
-          <span>GRADE</span>
+          <span>{psira ? 'PSIRA NUMBER' : 'LICENCE NUMBER'}</span>
+          {psira ? <span>GRADE</span> : null}
           <span>SITE</span>
           <span>PERIOD</span>
           <span>HOURS</span>
@@ -151,7 +161,7 @@ export function AgencyMonthlyReturn() {
           rows.map((r, i) => (
             <div
               key={`${r.officer_name}-${r.estate_name}-${i}`}
-              className={`${COLS} items-center border-t border-hair px-4 py-3`}
+              className={`${cols} items-center border-t border-hair px-4 py-3`}
             >
               <div className="truncate text-[13px] font-bold">{r.officer_name ?? 'Unnamed'}</div>
               <div
@@ -161,7 +171,7 @@ export function AgencyMonthlyReturn() {
               >
                 {r.registration_number ?? 'MISSING'}
               </div>
-              <div className="text-[12.5px] font-bold">{r.grade ?? '—'}</div>
+              {psira ? <div className="text-[12.5px] font-bold">{r.grade ?? '—'}</div> : null}
               <div className="min-w-0">
                 <div className="truncate text-[12.5px] text-muted">{r.estate_name}</div>
                 {r.estate_address ? (
@@ -178,13 +188,22 @@ export function AgencyMonthlyReturn() {
       </Card>
 
       <Card className="mt-4 p-4">
-        <p className="text-[12.5px] leading-[19px] text-muted">
-          In South Africa this return is due to PSIRA by the 15th of the following month, covering
-          every officer employed or deployed. The export carries the fields the return asks for —
-          names, registration numbers, period of service and the site where each worked. Check it
-          before you file it: we can only report the shifts your officers actually started in the
-          app.
-        </p>
+        {psira ? (
+          <p className="text-[12.5px] leading-[19px] text-muted">
+            In South Africa this return is due to PSIRA by the 15th of the following month, covering
+            every officer employed or deployed. The export carries the fields the return asks for —
+            names, registration numbers, period of service and the site where each worked. Check it
+            before you file it: we can only report the shifts your officers actually started in the
+            app.
+          </p>
+        ) : (
+          <p className="text-[12.5px] leading-[19px] text-muted">
+            The export lists every officer deployed this month with their licence number, period of
+            service and the site where each worked — ready to send to a client estate. Check it
+            before you send it: we can only report the shifts your officers actually started in the
+            app.
+          </p>
+        )}
       </Card>
     </>
   );

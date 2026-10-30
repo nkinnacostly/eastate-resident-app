@@ -104,8 +104,9 @@ export function Person() {
           <Field label="EMAIL CONFIRMED">{p.email_confirmed ? 'Yes' : 'No'}</Field>
         </FieldCard>
         <FieldCard title="SECURITY LICENCE">
-          <Field label="PSIRA NUMBER">{p.psira_registration_number ?? 'Not recorded'}</Field>
-          <Field label="GRADE">{p.psira_grade}</Field>
+          <Field label="LICENCE NUMBER">{p.psira_registration_number ?? 'Not recorded'}</Field>
+          {/* Grades A-E are PSIRA's (South Africa); a Nigerian licence has none. */}
+          {p.psira_grade ? <Field label="GRADE">{p.psira_grade}</Field> : null}
           <Field label="EXPIRES">
             {p.psira_expires_at ? (
               <span className={licenceExpired ? 'text-coral-ink' : undefined}>
