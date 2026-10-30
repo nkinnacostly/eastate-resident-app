@@ -77,6 +77,14 @@ select pg_temp.check('grants survived the drop and create', (
   and not has_function_privilege('authenticated', 'private.guard_profile_row(uuid)', 'execute')
   and not has_function_privilege('anon', 'private.guard_profile_row(uuid)', 'execute')));
 
+select pg_temp.check('each licence column and the RPC is described, by its new name', (
+  select bool_and(col_description('public.profiles'::regclass, a.attnum) is not null)
+     and bool_and(col_description('public.profiles'::regclass, a.attnum) not like '%psira\_%')
+    from pg_attribute a
+   where a.attrelid = 'public.profiles'::regclass and a.attname like 'licence\_%')
+  and obj_description('public.record_guard_licence(uuid, text, text, timestamptz)'::regprocedure, 'pg_proc')
+      like '%licence_verified_at%');
+
 -- ─── Recording a licence ─────────────────────────────────────────────────────
 
 -- An attestation is the employer's, never the officer's about themselves.
