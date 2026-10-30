@@ -1,13 +1,14 @@
 -- apply_retention's comments and the retention-window description, framed by
--- Nigeria's Data Protection Act rather than South African law.
+-- Nigeria's Data Protection Act.
 --
 -- The comments inside apply_retention, and the description on
 -- estates.event_retention_days, justified the 30-180 day window, the treatment
--- of access codes and the three years for flagged entries by South Africa's
--- draft Code of Conduct on Gated Accesses and POPIA. The product is built for
--- Nigerian estates. They now rest on the NDPA: personal data is kept no longer
--- than its purpose needs (s24(1)(d)), and what identifies nobody is not
--- personal data (s65). The Act sets no number of days; the band is our reading.
+-- of access codes and the three years for flagged entries by a draft
+-- gated-access code of conduct and POPIA, neither of which governs the
+-- Nigerian estates the product is built for. They now rest on the NDPA:
+-- personal data is kept no longer than its purpose needs (s24(1)(d)), and what
+-- identifies nobody is not personal data (s65). The Act sets no number of days;
+-- the band is our reading.
 --
 -- Comments only. The function body is unchanged apart from its comments, and
 -- CREATE OR REPLACE keeps its grants (none to any client role) and COMMENT.

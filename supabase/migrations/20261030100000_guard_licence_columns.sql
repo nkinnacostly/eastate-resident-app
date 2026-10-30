@@ -1,7 +1,7 @@
 -- Guard licence columns lose the PSIRA name.
 --
--- The licence fields on profiles were modelled on South Africa's PSIRA and
--- named after it (psira_registration_number, psira_grade, ...). The product is
+-- The licence fields on profiles were modelled on PSIRA's register and named
+-- after it (psira_registration_number, psira_grade, ...). The product is
 -- built for Nigerian estates, where private guards come under the NSCDC, so a
 -- regulator's name in the schema was wrong for most of the people it describes.
 -- The fields themselves are regulator-neutral: an opaque licence number, an

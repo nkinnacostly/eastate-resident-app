@@ -1,7 +1,7 @@
 -- apply_retention's reason for keeping shifts four years, without PSIRA.
 --
--- The comment above the shift cut justified the four years by South Africa's
--- PSIRA regulations. The product is built for Nigerian estates, and the
+-- The comment above the shift cut justified the four years by PSIRA's
+-- regulations. The product is built for Nigerian estates, and the
 -- privacy policy now gives the operational reason instead: an estate, and any
 -- security company guarding it, must be able to say who was on duty when an
 -- incident is questioned long after it. The comment says the same.
