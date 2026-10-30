@@ -41,14 +41,13 @@ insert into auth.users (id, email, last_sign_in_at) values
   ('c7000000-0000-4000-8000-000000000002', 'other.guard@example.com', null),
   ('c7000000-0000-4000-8000-000000000003', 'resident7@example.com', now());
 
-insert into public.profiles (id, full_name, phone, licence_number, licence_grade,
-                             licence_expires_at) values
-  ('c7000000-0000-4000-8000-00000000000a', 'Admin A', null, null, null, null),
-  ('c7000000-0000-4000-8000-00000000000b', 'Admin B', null, null, null, null),
-  ('c7000000-0000-4000-8000-000000000001', 'Gary Guard', '+27820000001', '4455667', 'C',
+insert into public.profiles (id, full_name, phone, licence_number, licence_expires_at) values
+  ('c7000000-0000-4000-8000-00000000000a', 'Admin A', null, null, null),
+  ('c7000000-0000-4000-8000-00000000000b', 'Admin B', null, null, null),
+  ('c7000000-0000-4000-8000-000000000001', 'Gary Guard', '+2348020000001', '4455667',
    now() + interval '200 days'),
-  ('c7000000-0000-4000-8000-000000000002', 'Other Guard', null, null, null, null),
-  ('c7000000-0000-4000-8000-000000000003', 'Resident Seven', null, null, null, null);
+  ('c7000000-0000-4000-8000-000000000002', 'Other Guard', null, null, null),
+  ('c7000000-0000-4000-8000-000000000003', 'Resident Seven', null, null, null);
 
 insert into public.agencies (id, name, registration_number, registration_body) values
   ('b7000000-0000-4000-8000-000000000001', 'Gatekeepers Ltd', '1234567', 'ZA-PSIRA');
@@ -102,10 +101,10 @@ select * from public.estate_guard_profile(
   'e7000000-0000-4000-8000-000000000001', 'a7000000-0000-4000-8000-000000000001') \gset g_
 
 select pg_temp.check('identity and contact: name, phone, sign-in email, last sign-in', (
-  :'g_full_name' = 'Gary Guard' and :'g_phone' = '+27820000001'
+  :'g_full_name' = 'Gary Guard' and :'g_phone' = '+2348020000001'
   and :'g_email' = 'gary.guard@example.com' and :'g_last_sign_in_at' <> ''));
 select pg_temp.check('licence and placing agency', (
-  :'g_licence_number' = '4455667' and :'g_licence_grade' = 'C'
+  :'g_licence_number' = '4455667'
   and :'g_agency_name' = 'Gatekeepers Ltd'));
 select pg_temp.check('on duty now', :'g_on_duty_since' <> '');
 select pg_temp.check('shifts in the last 30 days include one that only overlaps it', :'g_shifts_30d'::int = 3);
