@@ -121,9 +121,9 @@ export async function recordRegistration(
   grade: string | null,
   expiresAt: string | null,
 ): Promise<void> {
-  await rpc('record_psira_registration', {
+  await rpc('record_guard_licence', {
     p_user_id: userId,
-    p_registration_number: registrationNumber,
+    p_licence_number: registrationNumber,
     p_grade: grade,
     p_expires_at: expiresAt,
   });
@@ -134,8 +134,8 @@ export async function recordRegistration(
 /**
  * Whether this agency answers to South Africa's PSIRA.
  *
- * The guard-licence fields were first modelled on PSIRA (hence the psira_*
- * columns), but the product is built for Nigerian estates, where private guard
+ * The guard-licence fields were first modelled on PSIRA (the columns were
+ * psira_* until 20261030100000), but the product is built for Nigerian estates, where private guard
  * companies come under the NSCDC and there is no PSIRA number, A-E grade or
  * PSIRA monthly return. PSIRA's name and rules are shown only to an agency that
  * recorded PSIRA as its registration body; everyone else sees plain licence

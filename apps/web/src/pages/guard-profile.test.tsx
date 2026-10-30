@@ -28,10 +28,10 @@ const PROFILE: Profile = {
   joined_at: '2026-09-01T08:00:00Z',
   last_sign_in_at: null,
   agency_name: null,
-  psira_registration_number: null,
-  psira_grade: null,
-  psira_expires_at: null,
-  psira_verified_at: null,
+  licence_number: null,
+  licence_grade: null,
+  licence_expires_at: null,
+  licence_verified_at: null,
   on_duty_since: null,
   shifts_30d: 0,
   hours_on_duty_30d: 0,
@@ -67,7 +67,7 @@ describe("an estate admin's guard profile", () => {
   });
 
   it('still shows a grade when one was recorded', async () => {
-    show({ ...PROFILE, psira_registration_number: '1234567', psira_grade: 'C' });
+    show({ ...PROFILE, licence_number: '1234567', licence_grade: 'C' });
     await screen.findByText('Musa Bello');
     expect(screen.getByText('GRADE')).toBeTruthy();
     expect(screen.getByText('C')).toBeTruthy();

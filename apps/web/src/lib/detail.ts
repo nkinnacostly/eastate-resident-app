@@ -228,10 +228,10 @@ export interface OperatorPersonDetail {
     email_confirmed: boolean;
     last_sign_in_at: string | null;
     is_platform_admin: boolean;
-    psira_registration_number: string | null;
-    psira_grade: string | null;
-    psira_expires_at: string | null;
-    psira_verified_at: string | null;
+    licence_number: string | null;
+    licence_grade: string | null;
+    licence_expires_at: string | null;
+    licence_verified_at: string | null;
   };
   memberships: {
     membership_id: string;
@@ -261,10 +261,10 @@ export interface AgencyOfficerDetail {
     is_active: boolean;
     joined_at: string;
     last_sign_in_at: string | null;
-    psira_registration_number: string | null;
-    psira_grade: string | null;
-    psira_expires_at: string | null;
-    psira_verified_at: string | null;
+    licence_number: string | null;
+    licence_grade: string | null;
+    licence_expires_at: string | null;
+    licence_verified_at: string | null;
   };
   postings: {
     estate_id: string;

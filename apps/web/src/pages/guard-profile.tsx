@@ -104,7 +104,7 @@ export function GuardProfile() {
   }
 
   const p = profile;
-  const licenceExpired = p.psira_expires_at !== null && new Date(p.psira_expires_at) < new Date();
+  const licenceExpired = p.licence_expires_at !== null && new Date(p.licence_expires_at) < new Date();
 
   return (
     <>
@@ -162,19 +162,19 @@ export function GuardProfile() {
           <div className="text-[10.5px] font-extrabold tracking-label text-muted">LICENCE & AGENCY</div>
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
             <Field label="AGENCY">{p.agency_name ?? 'Employed by the estate directly'}</Field>
-            <Field label="LICENCE NUMBER">{p.psira_registration_number ?? 'Not recorded'}</Field>
+            <Field label="LICENCE NUMBER">{p.licence_number ?? 'Not recorded'}</Field>
             {/* Grades A-E are PSIRA's (South Africa); a Nigerian licence has none. */}
-            {p.psira_grade ? <Field label="GRADE">{p.psira_grade}</Field> : null}
+            {p.licence_grade ? <Field label="GRADE">{p.licence_grade}</Field> : null}
             <Field label="EXPIRES">
-              {p.psira_expires_at ? (
+              {p.licence_expires_at ? (
                 <span className={licenceExpired ? 'text-coral-ink' : undefined}>
-                  {date(p.psira_expires_at)}
+                  {date(p.licence_expires_at)}
                   {licenceExpired ? ' · expired' : ''}
                 </span>
               ) : null}
             </Field>
             <Field label="CHECKED BY THE AGENCY">
-              {p.psira_verified_at ? date(p.psira_verified_at) : 'Not verified'}
+              {p.licence_verified_at ? date(p.licence_verified_at) : 'Not verified'}
             </Field>
           </div>
         </Card>

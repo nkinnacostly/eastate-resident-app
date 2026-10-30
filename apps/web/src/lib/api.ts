@@ -133,10 +133,10 @@ export interface GuardProfile {
   /** Null when the account has never been signed into -- a handover that never happened. */
   last_sign_in_at: string | null;
   agency_name: string | null;
-  psira_registration_number: string | null;
-  psira_grade: string | null;
-  psira_expires_at: string | null;
-  psira_verified_at: string | null;
+  licence_number: string | null;
+  licence_grade: string | null;
+  licence_expires_at: string | null;
+  licence_verified_at: string | null;
   on_duty_since: string | null;
   shifts_30d: number;
   hours_on_duty_30d: number;

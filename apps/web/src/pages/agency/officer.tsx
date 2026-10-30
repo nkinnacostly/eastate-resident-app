@@ -52,7 +52,7 @@ export function AgencyOfficer() {
 
   const o = d.officer;
   const onDuty = d.postings.find((p) => p.on_duty_since);
-  const expired = o.psira_expires_at !== null && new Date(o.psira_expires_at) < new Date();
+  const expired = o.licence_expires_at !== null && new Date(o.licence_expires_at) < new Date();
 
   return (
     <>
@@ -84,14 +84,14 @@ export function AgencyOfficer() {
           <Field label="LAST SIGNED IN">{o.last_sign_in_at ? ago(o.last_sign_in_at) : 'Never'}</Field>
         </FieldCard>
         <FieldCard title={psira ? 'PSIRA REGISTRATION' : 'GUARD LICENCE'}>
-          <Field label="NUMBER">{o.psira_registration_number ?? 'Not recorded'}</Field>
-          {psira || o.psira_grade ? <Field label="GRADE">{o.psira_grade}</Field> : null}
+          <Field label="NUMBER">{o.licence_number ?? 'Not recorded'}</Field>
+          {psira || o.licence_grade ? <Field label="GRADE">{o.licence_grade}</Field> : null}
           <Field label="EXPIRES">
-            {o.psira_expires_at ? (
-              <span className={expired ? 'text-coral-ink' : undefined}>{dateLabel(o.psira_expires_at)}</span>
+            {o.licence_expires_at ? (
+              <span className={expired ? 'text-coral-ink' : undefined}>{dateLabel(o.licence_expires_at)}</span>
             ) : null}
           </Field>
-          <Field label="CHECKED">{o.psira_verified_at ? dateLabel(o.psira_verified_at) : 'Not verified'}</Field>
+          <Field label="CHECKED">{o.licence_verified_at ? dateLabel(o.licence_verified_at) : 'Not verified'}</Field>
         </FieldCard>
       </div>
 

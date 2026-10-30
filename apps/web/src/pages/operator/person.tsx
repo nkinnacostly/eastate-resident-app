@@ -70,7 +70,7 @@ export function Person() {
     }),
     { verified: 0, flagged: 0, hours: 0, shifts: 0 },
   );
-  const licenceExpired = p.psira_expires_at !== null && new Date(p.psira_expires_at) < new Date();
+  const licenceExpired = p.licence_expires_at !== null && new Date(p.licence_expires_at) < new Date();
 
   return (
     <>
@@ -104,18 +104,18 @@ export function Person() {
           <Field label="EMAIL CONFIRMED">{p.email_confirmed ? 'Yes' : 'No'}</Field>
         </FieldCard>
         <FieldCard title="SECURITY LICENCE">
-          <Field label="LICENCE NUMBER">{p.psira_registration_number ?? 'Not recorded'}</Field>
+          <Field label="LICENCE NUMBER">{p.licence_number ?? 'Not recorded'}</Field>
           {/* Grades A-E are PSIRA's (South Africa); a Nigerian licence has none. */}
-          {p.psira_grade ? <Field label="GRADE">{p.psira_grade}</Field> : null}
+          {p.licence_grade ? <Field label="GRADE">{p.licence_grade}</Field> : null}
           <Field label="EXPIRES">
-            {p.psira_expires_at ? (
+            {p.licence_expires_at ? (
               <span className={licenceExpired ? 'text-coral-ink' : undefined}>
-                {dateLabel(p.psira_expires_at)}
+                {dateLabel(p.licence_expires_at)}
                 {licenceExpired ? ' · expired' : ''}
               </span>
             ) : null}
           </Field>
-          <Field label="CHECKED">{p.psira_verified_at ? dateLabel(p.psira_verified_at) : 'Not verified'}</Field>
+          <Field label="CHECKED">{p.licence_verified_at ? dateLabel(p.licence_verified_at) : 'Not verified'}</Field>
         </FieldCard>
       </div>
 
