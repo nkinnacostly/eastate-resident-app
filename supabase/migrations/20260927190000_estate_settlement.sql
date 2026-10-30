@@ -20,7 +20,7 @@
 -- cannot confer a permission it does not itself have. The CBN fined Paystack
 -- ₦250m in April 2025 over exactly that argument.
 --
--- SOUTH AFRICA. Accepting money from multiple payers on behalf of a
+-- ZA ACCOUNTS. Accepting money from multiple payers on behalf of a
 -- beneficiary makes us a Beneficiary Service Provider -- a TPPP under SARB
 -- Directive 1 of 2007 -- requiring registration through a sponsoring bank.
 -- Decisively, CSOS Consolidated Practice Directive 1 of 2025 §13.3 and PMR
@@ -68,7 +68,7 @@
 --     to exist BEFORE it is stored, because the payment path will never tell
 --     us. That is what settlement_subaccount_id (the numeric one) is for.
 --
---  3. NIGERIA CAN VERIFY AN ACCOUNT NAME; SOUTH AFRICA CANNOT. POST
+--  3. AN NG ACCOUNT NAME CAN BE VERIFIED; A ZA ONE CANNOT. POST
 --     /accounts/resolve returns the registered holder's name for an NG account
 --     and 400 "invalid account" for a bad number. The same call for a ZA
 --     account returns 400 "invalid account" even for a well-formed one -- there
@@ -150,8 +150,8 @@ comment on column public.estates.settlement_subaccount_ref is
   'Flutterwave subaccount (RS_...) that dues settle into. The charge payload '
   'uses this; GET/DELETE need settlement_subaccount_id instead.';
 comment on column public.estates.settlement_account_verified is
-  'True only where the bank confirmed the account holder name (Nigeria). '
-  'South Africa has no name lookup, so false there means unverified, not wrong.';
+  'True only where the bank confirmed the account holder name (NG accounts). '
+  'A ZA account has no name lookup, so false there means unverified, not wrong.';
 
 -- ─── Who changed the payout destination ──────────────────────────────────────
 --

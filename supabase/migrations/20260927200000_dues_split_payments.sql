@@ -62,8 +62,8 @@ begin
       raise exception 'settlement_account_required' using errcode = '22023';
     end if;
 
-    -- A Nigerian account cannot receive rand and a South African one cannot
-    -- receive naira. Caught here rather than at the gateway, where it would
+    -- An NG account cannot receive rand and a ZA one cannot receive
+    -- naira. Caught here rather than at the gateway, where it would
     -- surface as a failed payment for a resident who did nothing wrong.
     if (p_currency = 'NGN' and v_scountry <> 'NG')
        or (p_currency = 'ZAR' and v_scountry <> 'ZA') then

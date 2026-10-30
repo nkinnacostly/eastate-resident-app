@@ -46,8 +46,8 @@ create table public.agencies (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
 
-  -- PSIRA in South Africa, NSCDC (under the Private Guard Companies Act) in
-  -- Nigeria. Stored as an OPAQUE STRING and deliberately not validated: PSIRA
+  -- NSCDC (under the Private Guard Companies Act) for Nigerian estates, PSIRA
+  -- for a PSIRA-registered agency. Stored as an OPAQUE STRING and deliberately not validated: PSIRA
   -- prescribes no format for a registration number anywhere in the Act or the
   -- Regulations, so a client-side pattern check would invent a rule the
   -- regulator has not made and reject numbers that are perfectly valid.
@@ -164,8 +164,8 @@ create index agency_contracts_estate_idx on public.agency_contracts (estate_id);
 -- On memberships, because that is the authorisation record and this is an
 -- authorisation fact. Null for a guard the estate employs directly -- in-house
 -- security is a real and legally distinct arrangement (Nigeria's Private Guard
--- Companies Act s36(3)(b) exempts it from the Act entirely; South Africa's
--- Code of Conduct clause 23 does not), so this must not be made mandatory.
+-- Companies Act s36(3)(b) exempts it from the Act entirely; PSIRA's Code of
+-- Conduct clause 23 does not), so this must not be made mandatory.
 
 alter table public.memberships
   add column placed_by_agency_id uuid references public.agencies (id) on delete set null;

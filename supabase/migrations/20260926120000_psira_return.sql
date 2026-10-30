@@ -1,7 +1,7 @@
 -- Estate Access Platform — officer registration and the statutory monthly return
 --
--- South African law already specifies, in detail, a record every guarding
--- company must keep and file. Almost nobody automates it, and of thirty-odd
+-- PSIRA's regulations already specify, in detail, a record every guarding
+-- company registered with it must keep and file. Almost nobody automates it, and of thirty-odd
 -- products surveyed across four markets not one models PSIRA, SIA, BSIS or any
 -- other regulator as a first-class scheme -- they all store a generic
 -- credential with a user-typed expiry date.

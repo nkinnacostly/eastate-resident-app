@@ -98,6 +98,13 @@ select pg_temp.check('licence and monthly-return descriptions name no country', 
                        and attname = 'licence_grade')) as g,
                  obj_description('public.agency_monthly_return(uuid, date)'::regprocedure, 'pg_proc') as r) x));
 
+-- And the payout-account description says NG and ZA accounts (20261030150000).
+select pg_temp.check('the payout-account description names account types, not a country', (
+  select d ilike '%NG accounts%' and d ilike '%ZA account%' and d not ilike '%south afric%'
+    from (select col_description('public.estates'::regclass,
+                   (select attnum from pg_attribute where attrelid = 'public.estates'::regclass
+                       and attname = 'settlement_account_verified')) as d) x));
+
 -- ─── Recording a licence ─────────────────────────────────────────────────────
 
 -- An attestation is the employer's, never the officer's about themselves.

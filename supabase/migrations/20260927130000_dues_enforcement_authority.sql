@@ -6,7 +6,7 @@
 --
 -- ─── The law, briefly, because it shapes the column ──────────────────────────
 --
--- SOUTH AFRICA. The CSOS Consolidated Practice Directive 1 of 2025 lists as
+-- ZA COMMUNITY SCHEMES. The CSOS Consolidated Practice Directive 1 of 2025 lists as
 -- UNDESIRABLE: "Rules preventing the member/tenant/occupier access to the
 -- property for non-payment of levies will not be passed." The Chief Ombud's own
 -- training material goes further -- "deny OR LIMIT access" -- and CSOS treats a
@@ -46,7 +46,7 @@
 -- timestamp and a recorded basis, and dues_in_arrears returns false without it.
 --
 -- An estate can therefore bill dues through this platform and never restrict
--- anybody, which is the default and, in South Africa, the safer posture.
+-- anybody, which is the default and, for a ZA community scheme, the safer posture.
 
 alter table public.estates
   add column dues_enforcement_authorised_at timestamptz;
