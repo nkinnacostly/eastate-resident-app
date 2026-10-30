@@ -89,3 +89,7 @@ fcm-v1*.json
 # this is the file that would leak the passwords to open them.
 credentials.json
 
+
+# Claude Code settings, local to each machine (any depth, including the
+# per-app ones create-expo-app generates).
+.claude/
