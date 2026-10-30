@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   graphql_public: {
     Tables: {
@@ -391,6 +391,7 @@ export type Database = {
           currency: string
           id: string
           initiated_by_membership_id: string | null
+          last_checked_at: string | null
           months: number
           payer_email: string | null
           platform_fee_percent: number | null
@@ -408,6 +409,7 @@ export type Database = {
           currency: string
           id?: string
           initiated_by_membership_id?: string | null
+          last_checked_at?: string | null
           months?: number
           payer_email?: string | null
           platform_fee_percent?: number | null
@@ -425,6 +427,7 @@ export type Database = {
           currency?: string
           id?: string
           initiated_by_membership_id?: string | null
+          last_checked_at?: string | null
           months?: number
           payer_email?: string | null
           platform_fee_percent?: number | null
@@ -640,6 +643,51 @@ export type Database = {
           settlement_verified_at?: string | null
         }
         Relationships: []
+      }
+      guard_invites: {
+        Row: {
+          created_at: string
+          estate_id: string
+          id: string
+          invited_by_membership_id: string | null
+          responded_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estate_id: string
+          id?: string
+          invited_by_membership_id?: string | null
+          responded_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estate_id?: string
+          id?: string
+          invited_by_membership_id?: string | null
+          responded_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_invites_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_invites_invited_by_membership_id_fkey"
+            columns: ["invited_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guard_shifts: {
         Row: {
@@ -941,34 +989,34 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          licence_expires_at: string | null
+          licence_grade: string | null
+          licence_number: string | null
+          licence_verified_at: string | null
           must_change_password: boolean
           phone: string | null
-          psira_expires_at: string | null
-          psira_grade: string | null
-          psira_registration_number: string | null
-          psira_verified_at: string | null
         }
         Insert: {
           created_at?: string
           full_name?: string | null
           id: string
+          licence_expires_at?: string | null
+          licence_grade?: string | null
+          licence_number?: string | null
+          licence_verified_at?: string | null
           must_change_password?: boolean
           phone?: string | null
-          psira_expires_at?: string | null
-          psira_grade?: string | null
-          psira_registration_number?: string | null
-          psira_verified_at?: string | null
         }
         Update: {
           created_at?: string
           full_name?: string | null
           id?: string
+          licence_expires_at?: string | null
+          licence_grade?: string | null
+          licence_number?: string | null
+          licence_verified_at?: string | null
           must_change_password?: boolean
           phone?: string | null
-          psira_expires_at?: string | null
-          psira_grade?: string | null
-          psira_registration_number?: string | null
-          psira_verified_at?: string | null
         }
         Relationships: []
       }
@@ -1306,7 +1354,7 @@ export type Database = {
       dispatch_notifications_tick: { Args: never; Returns: undefined }
       dues_in_arrears: { Args: { p_membership_id: string }; Returns: boolean }
       dues_payments_awaiting_verification: {
-        Args: { p_older_than?: string }
+        Args: { p_limit?: number; p_older_than?: string }
         Returns: {
           created_at: string
           provider_tx_id: string
@@ -1423,14 +1471,14 @@ export type Database = {
           last_shift_at: string
           last_sign_in_at: string
           last_verification_at: string
+          licence_expires_at: string
+          licence_grade: string
+          licence_number: string
+          licence_verified_at: string
           membership_id: string
           offline_30d: number
           on_duty_since: string
           phone: string
-          psira_expires_at: string
-          psira_grade: string
-          psira_registration_number: string
-          psira_verified_at: string
           rejected_30d: number
           shifts_30d: number
           user_id: string
@@ -1813,11 +1861,11 @@ export type Database = {
       prove_email_ownership: { Args: never; Returns: boolean }
       purge_password_reset_attempts: { Args: never; Returns: undefined }
       raise_current_dues: { Args: { p_estate_id: string }; Returns: number }
-      record_psira_registration: {
+      record_guard_licence: {
         Args: {
           p_expires_at?: string
           p_grade?: string
-          p_registration_number: string
+          p_licence_number: string
           p_user_id: string
         }
         Returns: undefined
