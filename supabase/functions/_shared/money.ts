@@ -14,7 +14,7 @@
 export function formatMoney(minor: number, currency: string): string {
   const major = minor / 100;
   try {
-    return new Intl.NumberFormat(currency === 'ZAR' ? 'en-ZA' : 'en-NG', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency,
       maximumFractionDigits: major % 1 === 0 ? 0 : 2,

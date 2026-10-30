@@ -49,8 +49,10 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-type Country = 'NG' | 'ZA';
-const isCountry = (v: unknown): v is Country => v === 'NG' || v === 'ZA';
+// Payout accounts are Nigerian (20261030160000). `country` stays in the request
+// so the contract is unchanged, and anything but NG is refused.
+type Country = 'NG';
+const isCountry = (v: unknown): v is Country => v === 'NG';
 
 /**
  * One email per estate admin and platform operator, through the queue.
@@ -160,21 +162,17 @@ Deno.serve(async (req) => {
     }
     const name = await resolveAccountName(String(account_number), String(bank_code));
     if (name) return json({ account_name: name, verified: true });
-    // South Africa has no name lookup, so a null here is expected and is not a
-    // rejection. Nigeria does, so a null there means the account is not real...
-    if (country === 'ZA') {
-      return json({ account_name: null, verified: false, unverifiable: true });
-    }
-    // ...UNLESS we are on a sandbox key, where the lookup only knows
-    // Flutterwave's own test accounts and every real account fails the same
-    // way. Reporting "that number is wrong" there is simply untrue.
+    // A null means the account is not real -- UNLESS we are on a sandbox key,
+    // where the lookup only knows Flutterwave's own test accounts and every
+    // real account fails the same way. Reporting "that number is wrong" there
+    // is simply untrue.
     if (isTestKey()) return json({ error: 'test_mode_real_account' }, 400);
     return json({ error: 'invalid_account' }, 400);
   }
 
   if (action !== 'save') return json({ error: 'unknown_action' }, 400);
 
-  const { bank_code, bank_name, account_number, country, account_name } = body;
+  const { bank_code, bank_name, account_number, country } = body;
   if (!isCountry(country) || !bank_code || !account_number) {
     return json({ error: 'bank_code_account_number_country_required' }, 400);
   }
@@ -183,13 +181,13 @@ Deno.serve(async (req) => {
   // the resolve step. Otherwise the confirmation is theatre: a caller could
   // show one name to the admin and save another.
   const resolved = await resolveAccountName(String(account_number), String(bank_code));
-  if (!resolved && country === 'NG') {
+  if (!resolved) {
     return json({ error: isTestKey() ? 'test_mode_real_account' : 'invalid_account' }, 400);
   }
-  if (!resolved && !account_name) return json({ error: 'account_name_required' }, 400);
 
-  const finalName = resolved ?? String(account_name);
-  const verified = Boolean(resolved);
+  // Always the bank's name: every account here is checked before it is saved.
+  const finalName = resolved;
+  const verified = true;
 
   // The estate's own name on the subaccount, so it is recognisable in the
   // Flutterwave dashboard and on the payer's statement.

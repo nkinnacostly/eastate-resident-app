@@ -236,21 +236,9 @@ ok('...and a subaccount cannot be created against it either', realSubaccountRefu
 ok('a SANDBOX account still resolves, so the lookup itself works',
    (await fw.resolveAccountName('0690000032', '044')) !== null);
 
-// South Africa has no name lookup at all -- a well-formed ZA account returns
-// 400 "invalid account" exactly as a bad one does. That is why
-// settlement_account_verified exists: "the bank confirmed this" and "an admin
-// typed this" must not render identically on the dashboard.
-ok('South Africa cannot verify an account name, and that is expected',
-   (await fw.resolveAccountName('62152854587', 'FNB')) === null);
-
 const ngBanks = await fw.listBanks('NG');
-const zaBanks = await fw.listBanks('ZA');
 ok('Nigerian banks list with numeric codes',
    ngBanks.length > 100 && ngBanks.some((b) => /^\d+$/.test(b.code)));
-// Worth asserting because it is surprising: ZA codes are names, not numbers.
-// A schema that assumed numeric bank codes would reject every ZA estate.
-ok('South African banks list with alphabetic codes',
-   zaBanks.length > 5 && zaBanks.some((b) => /^[A-Za-z]/.test(b.code)));
 
 console.log('\n— live sandbox: checkout —');
 const txRef = `dues-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

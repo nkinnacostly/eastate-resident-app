@@ -287,7 +287,7 @@ export interface Subaccount {
   created: boolean;
   /** RS_... reference. The only id a charge accepts. */
   ref: string;
-  /** For NG this is the bank's own record of the holder; for ZA, what we sent. */
+  /** The bank's own record of the account holder. */
   fullName: string;
   bankName: string | null;
 }
@@ -303,8 +303,8 @@ async function fw(method: string, path: string, body?: unknown) {
   return { ok: res.ok && json?.status === 'success', status: res.status, json };
 }
 
-/** Banks we can pay out to, for the dropdown. NG returns ~600, ZA ~21. */
-export async function listBanks(country: 'NG' | 'ZA'): Promise<{ code: string; name: string }[]> {
+/** Banks we can pay out to, for the dropdown: about 600 Nigerian banks. */
+export async function listBanks(country: 'NG'): Promise<{ code: string; name: string }[]> {
   const r = await fw('GET', `/banks/${country}`);
   if (!r.ok) throw new Error(`could not list banks: ${r.status}`);
   return (r.json.data as { code: string; name: string }[])
@@ -315,16 +315,9 @@ export async function listBanks(country: 'NG' | 'ZA'): Promise<{ code: string; n
 /**
  * Ask the bank who owns an account number.
  *
- * ⚠️ NIGERIA ONLY, IN PRACTICE. NG returns the registered holder's name. ZA
- * returns 400 "invalid account" even for a perfectly valid account -- there is
- * no name lookup on that rail. Verified in their sandbox, 27 Sep 2026.
- *
- * `null` therefore means two different things by country, and the caller has to
- * keep them apart: in NG it means the account does not exist and we must
- * refuse; in ZA it means we cannot check, which is not the same as wrong. That
- * distinction is what estates.settlement_account_verified records, so a screen
- * can say "First National Bank confirmed this is the body corporate's account"
- * in one case and "we could not verify this -- please check it" in the other.
+ * Returns the registered holder's name for a Nigerian account, and `null` when
+ * the account does not exist -- the caller must refuse it. (On a sandbox key the
+ * lookup only knows Flutterwave's own test accounts, so a real one is null too.)
  */
 export async function resolveAccountName(
   accountNumber: string,
@@ -372,7 +365,7 @@ async function findSubaccount(
 }
 
 export async function createSubaccount(opts: {
-  country: 'NG' | 'ZA';
+  country: 'NG';
   bankCode: string;
   accountNumber: string;
   businessName: string;
