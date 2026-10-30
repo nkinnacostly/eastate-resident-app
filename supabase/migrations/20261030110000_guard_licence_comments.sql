@@ -7,13 +7,13 @@
 -- PSIRA-only parts (the A-E grade) saying so.
 
 comment on column public.profiles.licence_number is
-  'The guard''s licence or registration number with the body that regulates private guards '
-  '(the NSCDC in Nigeria, PSIRA in South Africa). Person-scoped and portable between employers. '
-  'Opaque string: no regulator publishes a format to validate against.';
+  'The guard''s licence or registration number with the body that regulates private guards: '
+  'the NSCDC for Nigerian estates, or PSIRA for a PSIRA-registered agency. Person-scoped and '
+  'portable between employers. Opaque string: no regulator publishes a format to validate against.';
 
 comment on column public.profiles.licence_grade is
-  'PSIRA''s A-E grade, for a South African licence (profiles_licence_grade_ck). '
-  'Null for a Nigerian licence, which has no grade.';
+  'A PSIRA grade, A to E (profiles_licence_grade_ck), recorded only for a PSIRA-registered '
+  'agency''s guards. Null for a Nigerian licence, which has no grade.';
 
 comment on column public.profiles.licence_expires_at is
   'When the licence lapses, as the employer recorded it. A typed-in claim, not a checked fact: '

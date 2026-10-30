@@ -85,6 +85,19 @@ select pg_temp.check('each licence column and the RPC is described, by its new n
   and obj_description('public.record_guard_licence(uuid, text, text, timestamptz)'::regprocedure, 'pg_proc')
       like '%licence_verified_at%');
 
+-- The descriptions name the regulators without a country (20261030140000).
+select pg_temp.check('licence and monthly-return descriptions name no country', (
+  select n ilike '%NSCDC%' and n ilike '%PSIRA-registered%' and g ilike '%PSIRA-registered%'
+     and r ilike '%PSIRA-registered%'
+     and concat(n, g, r) not ilike '%south afric%'
+    from (select col_description('public.profiles'::regclass,
+                   (select attnum from pg_attribute where attrelid = 'public.profiles'::regclass
+                       and attname = 'licence_number')) as n,
+                 col_description('public.profiles'::regclass,
+                   (select attnum from pg_attribute where attrelid = 'public.profiles'::regclass
+                       and attname = 'licence_grade')) as g,
+                 obj_description('public.agency_monthly_return(uuid, date)'::regprocedure, 'pg_proc') as r) x));
+
 -- ─── Recording a licence ─────────────────────────────────────────────────────
 
 -- An attestation is the employer's, never the officer's about themselves.

@@ -415,4 +415,5 @@ revoke execute on function public.record_guard_licence(uuid, text, text, timesta
 grant  execute on function public.record_guard_licence(uuid, text, text, timestamptz) to authenticated;
 
 comment on function public.agency_monthly_return(uuid, date) is
-  'Monthly personnel return assembled from stamped shifts (for a South African agency, PSIRA GN 2209).';
+  'Monthly personnel return assembled from stamped shifts: each officer''s licence number, sites '
+  'and hours. For a PSIRA-registered agency it is the PSIRA GN 2209 return.';
