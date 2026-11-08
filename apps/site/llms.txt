@@ -2,10 +2,15 @@
 
 > Visitor management for gated residential estates in Nigeria. A resident generates a short one-time code, sends it to their visitor by WhatsApp or SMS, and the guard verifies it at the gate — including when there is no internet connection.
 
-myestateaccess replaces the paper visitor register at an estate gate. The three
-problems it exists to solve are that a handwritten name is never verified, that
-written-down access never expires, and that a paper book cannot be searched
-after an incident.
+At most estate gates today, a visitor names a house and the guard phones the
+resident (or the visitor phones their host from the gate) before letting them
+in. myestateaccess replaces that call. The problems it exists to solve are that
+an unanswered call leaves a visitor stuck at the gate, that a house number
+proves nothing about who the resident expected, and that nobody can say
+afterwards who was let in, by whom, or on whose word.
+
+The same platform collects estate dues: residents pay in the app and landlords
+from an emailed link, and the money settles into the estate's own bank account.
 
 Visitors install nothing and create no account. They receive a code in a
 message and read it out at the gate.
@@ -18,9 +23,11 @@ message and read it out at the gate.
 - **Verification works offline.** The guard app keeps a local copy of the estate's live codes, so a network outage never becomes a gate outage. Entries queue on the phone and sync when the connection returns.
 - **Every attempt is logged, including refusals**, with the reason it was refused.
 - Residents join with two codes — one for the estate, one for their specific house — and an **estate administrator approves them** before any visitor code can be generated.
-- **Only the resident who created a code can see it.** Guards see a code when it is presented at the gate. Estate administrators see that an entry happened, not the code. Platform operators never see codes.
+- **A code stays inside its estate.** The resident who created it, the guard it is presented to, and that estate's administrators (who can cancel it) can see it. Nobody at another estate can, and the platform's own dashboard never shows a code.
+- Residents are **notified when their code is used** at the gate.
 - Runs on **ordinary Android and iOS phones**. No turnstiles, scanners or new hardware.
 - Estates are **fully isolated from one another**; no estate can see another's residents, codes or gate log.
+- **Estate dues** can be billed per resident or per house, paid a month at a time or up to a year ahead. If the estate switches it on, a house in arrears cannot create new visitor codes until it pays; residents keep their own access and codes already sent keep working.
 - Pricing is **per home** and quoted after a demo.
 
 ## Get the app

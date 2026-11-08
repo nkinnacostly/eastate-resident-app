@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>Visitor Management System for Gated Estates | myestateaccess</title>
-<meta name="description" content="Visitor management for gated estates in Nigeria. Residents issue one-time codes that expire in six hours; guards verify them at the gate, offline.">
+<meta name="description" content="Visitor access and dues for gated estates in Nigeria. Residents send a one-time code instead of the gate phoning the house, and guards verify it even offline.">
 <link rel="canonical" href="https://myestateaccess.com/">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#16181c">
@@ -15,7 +15,7 @@
   <meta property="og:site_name" content="myestateaccess">
 <meta property="og:url" content="https://myestateaccess.com/">
 <meta property="og:title" content="Visitor Management System for Gated Estates | myestateaccess">
-<meta property="og:description" content="One-time visitor codes that expire in six hours and work at the gate even when the network does not. Built for residential estates and gated communities across Nigeria.">
+<meta property="og:description" content="Visitors get in with a code, not a phone call. One-time codes that expire in six hours, checked at the gate even with no signal, with estate dues in the same place.">
 <meta property="og:image" content="https://myestateaccess.com/og.png">
 <meta property="og:image:alt" content="myestateaccess — visitor management for gated estates, with one-time codes that expire in six hours.">
   <meta property="og:image:type" content="image/png">
@@ -23,7 +23,7 @@
   <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Visitor Management for Gated Estates | myestateaccess">
-<meta name="twitter:description" content="One-time visitor codes that expire in six hours and work at the gate even when the network does not.">
+<meta name="twitter:description" content="Visitors get in with a code, not a phone call. One-time codes, checked at the gate even with no signal.">
 <meta name="twitter:image" content="https://myestateaccess.com/og.png">
   <meta name="twitter:image:alt" content="myestateaccess — visitor management for gated estates, with one-time codes that expire in six hours.">
 
@@ -50,6 +50,10 @@
   page are one company. Pointing it at a profile we do not control, or one that
   does not exist, actively breaks that link instead of leaving it unmade —
   which is worse than the current silence.
+
+  The FAQPage answers below must match the visible FAQ word for word. Search
+  engines treat structured data that says something the page does not as
+  spam, so edit both together.
 -->
 <script type="application/ld+json">
   {
@@ -61,7 +65,7 @@
         "name": "myestateaccess",
         "url": "https://myestateaccess.com/",
         "logo": "https://myestateaccess.com/favicon.svg",
-        "description": "Visitor management software for gated residential estates in Nigeria.",
+        "description": "Visitor management and estate dues software for gated residential estates in Nigeria.",
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "sales",
@@ -105,9 +109,12 @@
         "featureList": [
           "One-time visitor codes with a six-hour expiry",
           "Offline verification at the gate",
+          "Arrival notifications for residents",
+          "Delivery codes with instructions for the rider",
+          "Estate dues paid into the estate's own bank account",
           "Per-house resident onboarding",
-          "Complete entry audit trail",
-          "Multi-estate management"
+          "Landlord and security company access",
+          "Complete entry audit trail, including refusals"
         ],
         "offers": {
           "@type": "Offer",
@@ -129,7 +136,15 @@
             "name": "How does a visitor code work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "A resident opens the app and generates a short code. They forward it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types the code in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours."
+              "text": "A resident opens the app and generates a short code, then forwards it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types it in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the guard still need to call the resident?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Not for a visitor with a code. The code is the resident's say-so, given in advance, so the guard checks it instead of phoning the house. The resident gets a notification the moment it is used."
             }
           },
           {
@@ -153,7 +168,15 @@
             "name": "How do residents join an estate?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Every estate has a code and every house within it has its own code. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated."
+              "text": "Every estate has a code and every house within it has its own. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated. Nobody adds themselves to an estate."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do estate dues work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The estate office sets the dues and who pays them: each resident, or the landlord of each house. Residents pay in the app and landlords from an emailed link, for a month or up to a year ahead, and the money settles into the estate's own bank account. If the estate switches it on, a house in arrears cannot create new visitor codes until it pays; residents keep their own access, and codes already sent keep working."
             }
           },
           {
@@ -161,15 +184,23 @@
             "name": "Who can see a resident's visitor codes?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "The resident who created it, the guard it is presented to at the gate, and the administrators of that estate, who can see their own estate's codes and entries so they can answer questions and cancel a code. Nobody at any other estate can see them, and the platform's own dashboard never shows a code."
+              "text": "The resident who created them, the guard they are presented to, and the administrators of that estate, who can see their own estate's codes and entries so they can answer questions and cancel a code. Nobody at any other estate can, and the platform's own dashboard never shows a code."
             }
           },
           {
             "@type": "Question",
-            "name": "Do visitors need to install anything?",
+            "name": "Do visitors or guards need anything new?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Visitors receive a short code by whatever messaging app the resident already uses. There is nothing to download and no account to create."
+              "text": "Visitors install nothing and create no account; they receive a short code through whatever messaging app the resident already uses. Guards use the guard app on an ordinary Android phone. There are no turnstiles, scanners or barrier controllers to buy."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens when a resident moves out?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The estate manager deactivates their membership. Their account stays intact — people move between estates — but they can no longer generate codes for the home they left, and any live codes are revoked."
             }
           }
         ]
@@ -215,9 +246,9 @@
   <section class="hero">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">Visitor management for gated estates in Nigeria</p>
-        <h1>The gate book, replaced by a code that expires.</h1>
-        <p class="lede">Residents generate a one-time code and forward it to their visitor. The guard verifies it at the gate in seconds — even with no signal. Every entry is recorded, so the estate finally has an access trail worth reading.</p>
+        <p class="eyebrow">Visitor access and estate dues for gated estates in Nigeria</p>
+        <h1>Visitors get in with a code, not a phone call.</h1>
+        <p class="lede">No more ringing the house from the gatehouse while a visitor waits outside. Residents send a one-time code ahead, the guard checks it in seconds — even with no signal — and the resident is told the moment their visitor arrives. Dues, houses, guards and landlords run from the same place.</p>
         <div class="btn-row">
           <a class="btn btn-primary" href="/contact#demo">Book a demo</a>
           <a class="btn btn-ghost" href="#how">See how it works</a>
@@ -258,23 +289,24 @@
   <!-- ── problem ──────────────────────────────────────────────── -->
   <section class="tight">
     <div class="wrap">
-      <h2>A paper book at the gate is not access control.</h2>
-      <p class="lede" style="margin-top:16px">It is a queue, an illegible name and a phone number nobody will ever call. When something goes wrong at three in the morning, the estate has a page of handwriting and no way to tell who actually came through.</p>
+      <p class="eyebrow">How the gate works today</p>
+      <h2>Most estate gates still run on phone calls.</h2>
+      <p class="lede" style="margin-top:16px">A visitor pulls up and names a house. The guard rings the resident, or the visitor rings their host from the gate, and everyone waits for someone to pick up. It is slow when it works, and a guess when it does not.</p>
       <div class="grid grid-3" style="margin-top:36px">
         <div class="card">
           <div class="card-icon" aria-hidden="true">01</div>
-          <h3>Nobody verifies the name</h3>
-          <p>A visitor writes anything they like. There is no link between the person at the gate and the resident they claim to be visiting.</p>
+          <h3>The call goes unanswered</h3>
+          <p>The resident is in a meeting, on silent or out of battery. The visitor waits at the gate, or the guard decides on their own.</p>
         </div>
         <div class="card">
           <div class="card-icon" aria-hidden="true">02</div>
-          <h3>Access never expires</h3>
-          <p>A gate code shared once on a residents' group chat keeps working for months, for everyone who ever saw it.</p>
+          <h3>A house number proves nothing</h3>
+          <p>Anyone can say they are visiting house 14. Nothing ties the person at the gate to a visit the resident actually expected.</p>
         </div>
         <div class="card">
           <div class="card-icon" aria-hidden="true">03</div>
-          <h3>The record is unusable</h3>
-          <p>Reconstructing one evening means leafing through pages. Nobody does it, so the book is written but never read.</p>
+          <h3>Nobody can say who came in</h3>
+          <p>After an incident there is no record of who was let in, by which guard, or on whose word.</p>
         </div>
       </div>
     </div>
@@ -287,16 +319,50 @@
       <h2>Three steps, about twenty seconds.</h2>
       <div class="steps" style="margin-top:36px">
         <div class="step">
-          <h3>The resident makes a code</h3>
-          <p>They open the app and tap once. A short code appears — no ambiguous letters, so it survives being read aloud down a phone line. They forward it however they already talk to their visitor.</p>
+          <h3>The resident sends a code</h3>
+          <p>One tap in the app makes a short code — no look-alike letters, so it survives being read aloud. They forward it on WhatsApp, by SMS or in a call.</p>
         </div>
         <div class="step">
-          <h3>The visitor arrives</h3>
-          <p>They give the code at the gate. Nothing to install, no account, no app. The code is the whole interaction.</p>
+          <h3>The visitor reads it out</h3>
+          <p>Nothing to install and no account to create. At the gate, the code is the whole conversation.</p>
         </div>
         <div class="step">
-          <h3>The guard verifies</h3>
-          <p>The guard types it in and gets a clear answer with the house name: admit, or refuse with the reason. The code is spent the moment it is accepted.</p>
+          <h3>The guard checks it</h3>
+          <p>The guard types it in and sees the house: admit, or refuse with the reason. The code is spent on the spot, and the resident's phone tells them their visitor has arrived.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── features ─────────────────────────────────────────────── -->
+  <section class="tight">
+    <div class="wrap">
+      <p class="eyebrow">What you get</p>
+      <h2>One app for the gate. One dashboard for the estate office.</h2>
+      <div class="grid grid-3" style="margin-top:36px">
+        <div class="card">
+          <h3>One-time visitor codes</h3>
+          <p>Six characters, single use, dead after six hours whether or not anyone came. A resident can hold three at once.</p>
+        </div>
+        <div class="card">
+          <h3>Arrival alerts</h3>
+          <p>The resident is notified the moment their code is used at the gate, so nobody has to call to ask whether the visitor got in.</p>
+        </div>
+        <div class="card">
+          <h3>Delivery codes</h3>
+          <p>Mark a code as a delivery and add a note for the rider. The instructions go out with the code, ready to forward again.</p>
+        </div>
+        <div class="card">
+          <h3>Works without signal</h3>
+          <p>The guard's phone keeps the estate's live codes, so checks carry on through a network outage and sync when it returns.</p>
+        </div>
+        <div class="card">
+          <h3>Estate dues</h3>
+          <p>Bill each resident or each house, and collect in the app or by payment link, straight into the estate's own bank account.</p>
+        </div>
+        <div class="card">
+          <h3>A record of every entry</h3>
+          <p>Every check at the gate, including the refusals and why, kept for the estate office to search.</p>
         </div>
       </div>
     </div>
@@ -309,7 +375,7 @@
         <div>
           <p class="eyebrow on-dark">Built for the real world</p>
           <h2>The gate keeps working when the internet does not.</h2>
-          <p>Estate gates sit behind concrete walls, in dead spots, on ADSL lines that drop. Most access systems fail closed and the queue backs up onto the road.</p>
+          <p>Gatehouses sit behind concrete walls and in dead spots, and data runs out. A system that needs the internet to let a visitor in turns every outage into a queue on the road.</p>
           <ul class="band-list">
             <li><b>&rarr;</b><span>The guard's phone keeps a local copy of the estate's live codes, so verification carries on with no signal at all.</span></li>
             <li><b>&rarr;</b><span>Entries are queued on the device and sync the moment the connection returns.</span></li>
@@ -321,6 +387,29 @@
                      https://images.unsplash.com/photo-1787672358211-0c04bd24656f?auto=format&fit=crop&w=900&q=70 900w"
              sizes="(max-width: 940px) 100vw, 38vw" width="900" height="675" loading="lazy"
              alt="A closed steel gate set into a brick boundary wall, with electric fencing strung above it.">
+      </div>
+    </div>
+  </section>
+
+  <!-- ── dues ─────────────────────────────────────────────────── -->
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">Estate dues</p>
+      <h2>Dues collected without going house to house.</h2>
+      <p class="lede" style="margin-top:16px">The estate office sets the dues once. Residents and landlords pay online, the money lands in the estate's account, and the office can see at a glance which houses are settled.</p>
+      <div class="grid grid-3" style="margin-top:36px">
+        <div class="card">
+          <h3>Pay in the app or by link</h3>
+          <p>Residents pay in the app. Landlords pay from an emailed link, with no account needed. A month at a time, or up to a year ahead.</p>
+        </div>
+        <div class="card">
+          <h3>Paid into the estate's account</h3>
+          <p>Payments go through Flutterwave and settle straight into the estate's own bank account. The money never passes through ours.</p>
+        </div>
+        <div class="card">
+          <h3>Arrears, handled fairly</h3>
+          <p>Reminders go out on their own. If the estate switches it on, a house in arrears cannot create new visitor codes until it pays — residents keep their own access, and codes already sent keep working.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -348,24 +437,32 @@
   <!-- ── roles ────────────────────────────────────────────────── -->
   <section class="tight">
     <div class="wrap">
-      <p class="eyebrow">One platform, four jobs</p>
+      <p class="eyebrow">Who it is for</p>
       <h2>Everybody sees exactly what they need, and nothing else.</h2>
-      <div class="grid grid-2" style="margin-top:36px">
+      <div class="grid grid-3" style="margin-top:36px">
         <div class="card">
           <h3>Residents</h3>
-          <p>Generate up to three live codes at a time, watch them count down, and cancel one early if plans change. Their code history is theirs alone.</p>
+          <p>Make up to three live codes at a time, hear when a visitor arrives, and pay dues from the same app.</p>
         </div>
         <div class="card">
           <h3>Guards</h3>
-          <p>One screen, one input. Type the code, get an answer with the house name. The shift log shows every check made on that phone.</p>
+          <p>One screen, one input. Type the code and get the house with a clear answer. Shifts start and end on the same phone.</p>
         </div>
         <div class="card">
-          <h3>Estate managers</h3>
-          <p>Add houses and landlords, approve residents, manage guards, and read a searchable trail of every entry and every refusal.</p>
+          <h3>Estate office</h3>
+          <p>Add houses and landlords, approve residents, invite guards, set dues, and search every entry and every refusal.</p>
         </div>
         <div class="card">
-          <h3>Platform operators</h3>
-          <p>Onboard estates and watch platform health across all of them — without the ability to see a single resident's address or code.</p>
+          <h3>Landlords</h3>
+          <p>See their houses and pay the dues billed to them, without living on the estate.</p>
+        </div>
+        <div class="card">
+          <h3>Security companies</h3>
+          <p>See their officers and shift cover — never residents' names, houses or codes. Change company and the gate history stays with the estate.</p>
+        </div>
+        <div class="card">
+          <h3>Us</h3>
+          <p>We set up your estate and watch the platform's health. Our own dashboard is built never to show a resident's code.</p>
         </div>
       </div>
     </div>
@@ -400,7 +497,7 @@
     </div>
   </section>
 
-  <!-- FAQ────────────────────────────────────────────────── -->
+  <!-- FAQ — keep in step with the FAQPage JSON-LD in <head>. ───── -->
   <section id="faq">
     <div class="wrap">
       <p class="eyebrow">Questions</p>
@@ -409,6 +506,10 @@
         <details open>
           <summary>How does a visitor code work?</summary>
           <p>A resident opens the app and generates a short code, then forwards it to their visitor by WhatsApp, SMS or a phone call. At the gate the guard types it in and the app either admits the visitor or refuses, telling the guard exactly why. Each code works once and expires after six hours.</p>
+        </details>
+        <details>
+          <summary>Does the guard still need to call the resident?</summary>
+          <p>Not for a visitor with a code. The code is the resident's say-so, given in advance, so the guard checks it instead of phoning the house. The resident gets a notification the moment it is used.</p>
         </details>
         <details>
           <summary>What happens if the gate has no internet?</summary>
@@ -423,12 +524,16 @@
           <p>Every estate has a code and every house within it has its own. A resident signs up with both, which places them in the right home, and an estate administrator approves them before any code can be generated. Nobody adds themselves to an estate.</p>
         </details>
         <details>
+          <summary>How do estate dues work?</summary>
+          <p>The estate office sets the dues and who pays them: each resident, or the landlord of each house. Residents pay in the app and landlords from an emailed link, for a month or up to a year ahead, and the money settles into the estate's own bank account. If the estate switches it on, a house in arrears cannot create new visitor codes until it pays; residents keep their own access, and codes already sent keep working.</p>
+        </details>
+        <details>
           <summary>Who can see a resident's visitor codes?</summary>
           <p>The resident who created them, the guard they are presented to, and the administrators of that estate, who can see their own estate's codes and entries so they can answer questions and cancel a code. Nobody at any other estate can, and the platform's own dashboard never shows a code.</p>
         </details>
         <details>
-          <summary>Do visitors need to install anything?</summary>
-          <p>No. Visitors receive a short code through whatever messaging app the resident already uses. There is nothing to download and no account to create.</p>
+          <summary>Do visitors or guards need anything new?</summary>
+          <p>Visitors install nothing and create no account; they receive a short code through whatever messaging app the resident already uses. Guards use the guard app on an ordinary Android phone. There are no turnstiles, scanners or barrier controllers to buy.</p>
         </details>
         <details>
           <summary>What happens when a resident moves out?</summary>
