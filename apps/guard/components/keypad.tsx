@@ -2,6 +2,8 @@ import { CODE_CHARSET, CODE_LENGTH } from '@estate/core';
 import * as Haptics from 'expo-haptics';
 import { Pressable, Text, View } from 'react-native';
 
+import { QrIcon } from './icons';
+
 /**
  * The keypad shows EXACTLY the glyphs a code can contain.
  *
@@ -83,6 +85,8 @@ export function Keypad({
   onBlur,
   busy,
   canSubmit,
+  onScan,
+  canScan = false,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -96,6 +100,14 @@ export function Keypad({
    * is, or the two will drift.
    */
   canSubmit: boolean;
+  /**
+   * Opens the QR scanner. Sits in the bottom row rather than above the keys so
+   * it costs no height: the keypad already fills a small phone, and a full
+   * row of its own pushed the Check key under the tab bar on a 667pt screen
+   * with the offline banner showing -- exactly when the gate is busiest.
+   */
+  onScan?: () => void;
+  canScan?: boolean;
 }) {
   const full = value.length === CODE_LENGTH;
   const press = (c: string) => {
@@ -137,6 +149,25 @@ export function Keypad({
           className="flex-1 bg-field"
           textClassName="text-sub text-muted"
         />
+        {onScan ? (
+          // Ink, not lime: lime is Check, the one key that commits anything.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Scan QR code"
+            accessibilityState={{ disabled: !canScan }}
+            disabled={!canScan}
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onScan();
+            }}
+            className={`h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-ink active:opacity-60 ${
+              canScan ? '' : 'opacity-40'
+            }`}
+          >
+            <QrIcon color="#cdf24a" size={17} />
+            <Text className="font-jk-b text-sub text-canvas">Scan</Text>
+          </Pressable>
+        ) : null}
         <Key
           label={busy ? 'Checking…' : 'Check'}
           onPress={onSubmit}

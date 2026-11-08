@@ -68,3 +68,22 @@ export const EyeOffIcon = (p: IconProps) => (
     <Path d="M3.6 3.6 20.4 20.4" />
   </S>
 );
+
+/** Scan a visitor's QR. Three finder squares and a scatter of modules. */
+export const QrIcon = (p: IconProps) => (
+  <S {...p}>
+    <Rect x="3.6" y="3.6" width="6.4" height="6.4" rx="1.2" />
+    <Rect x="14" y="3.6" width="6.4" height="6.4" rx="1.2" />
+    <Rect x="3.6" y="14" width="6.4" height="6.4" rx="1.2" />
+    <Path d="M14 14h2.6M20.4 14v.01M14 17.2v3.2M17.2 17.2h3.2v3.2M17.2 20.4h.01" />
+  </S>
+);
+
+/** Torch, for a printed pass at night. A screen lights itself; paper does not. */
+export const TorchIcon = (p: IconProps) => (
+  <S {...p}>
+    <Path d="M8 3.6h8l-1.6 4.8H9.6L8 3.6Z" />
+    <Path d="M9.6 8.4v10.4a1.6 1.6 0 0 0 1.6 1.6h1.6a1.6 1.6 0 0 0 1.6-1.6V8.4" />
+    <Path d="M12 12.4v2.4" />
+  </S>
+);

@@ -14,6 +14,31 @@ export const CODE_CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const CODE_LENGTH = 6;
 export const CODE_TTL_HOURS = 6;
 
+/**
+ * What a visitor-pass QR holds: the code, and nothing else.
+ *
+ * Not a link. A URL needs a phone with signal to mean anything, and the point
+ * of the guard's scanner is that it decodes on the device and hands the code
+ * to the same check the keypad uses -- the server when there is signal, the
+ * pool on the phone when there is not. A QR is a faster way to ENTER a code,
+ * never a second way to check one.
+ *
+ * No prefix or version tag either. Six characters from CODE_CHARSET fit the
+ * smallest QR symbol (21x21) even at the highest error correction, which is
+ * what lets it scan off a cracked screen at night. A foreign QR -- a URL, a
+ * Wi-Fi login, another product's pass -- is told apart by failing this check.
+ *
+ * Returns the code ready to verify, or null when the QR is not one of ours.
+ */
+export function codeFromQr(data: string): string | null {
+  const code = data.trim().toUpperCase();
+  if (code.length !== CODE_LENGTH) return null;
+  for (const char of code) {
+    if (!CODE_CHARSET.includes(char)) return null;
+  }
+  return code;
+}
+
 /** Locked at 3 (§3.1). Enforced transactionally in mint_access_code(). */
 export const MAX_ACTIVE_CODES_PER_RESIDENT = 3;
 

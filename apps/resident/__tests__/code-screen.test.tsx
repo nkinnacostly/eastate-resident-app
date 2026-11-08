@@ -1,8 +1,20 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
 import { Linking, Share } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 
 import CodeIssued from '@/app/code/[code]';
+
+// Native modules with no JS fallback. The capture is asserted by what it was
+// asked to capture (the pass card), and the share by what it was handed.
+jest.mock('react-native-view-shot', () => ({
+  captureRef: jest.fn(async () => 'file:///tmp/pass.png'),
+}));
+jest.mock('expo-sharing', () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  shareAsync: jest.fn(async () => {}),
+}));
 
 const EXPIRES = new Date(Date.now() + 5 * 3600_000).toISOString();
 
@@ -128,6 +140,69 @@ describe('code screen', () => {
 
       expect((global as any).__router.back).not.toHaveBeenCalled();
       expect((global as any).__router.replace).toHaveBeenCalledWith('/(tabs)');
+    });
+  });
+
+  describe('QR pass', () => {
+    const pass = () => within(screen.getByTestId('visitor-pass'));
+
+    it('puts the QR, the code, the expiry and the privacy link on the pass', () => {
+      render(<CodeIssued />);
+      expect(pass().getByLabelText('QR code for B 7 P J U 6')).toBeTruthy();
+      expect(pass().getByText('B7PJU6')).toBeTruthy();
+      expect(pass().getByText('Demo Estate')).toBeTruthy();
+      expect(pass().getByText(/^Valid until /)).toBeTruthy();
+      expect(pass().getByText('ONE ENTRY ONLY')).toBeTruthy();
+      // An image cannot carry a tappable link, so it is printed. Without it a
+      // visitor sent only the image never sees what the gate records.
+      expect(pass().getByText(/What the gate records: myestateaccess\.com\/privacy/)).toBeTruthy();
+    });
+
+    it('carries delivery instructions on the pass itself', () => {
+      mockCodes[0] = { ...mockCodes[0], is_delivery: true, delivery_note: 'Leave it with the guard' };
+      render(<CodeIssued />);
+      expect(pass().getByText('Leave it with the guard')).toBeTruthy();
+      expect(pass().getByText('DELIVERY')).toBeTruthy();
+    });
+
+    it('sends the pass card as a PNG through the share sheet', async () => {
+      render(<CodeIssued />);
+      fireEvent.press(screen.getByText('Send to visitor'));
+      fireEvent.press(screen.getByText('Send QR pass'));
+
+      await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalledTimes(1));
+      // Captured from the card on screen, so the image cannot differ from it.
+      const [target, options] = (captureRef as jest.Mock).mock.calls[0];
+      // Under jest the ref holds the mocked View's instance, which carries the
+      // props it was rendered with -- enough to say WHICH view was captured.
+      expect(target.current?.props?.testID).toBe('visitor-pass');
+      expect(options).toMatchObject({ format: 'png', result: 'tmpfile' });
+      expect(Sharing.shareAsync).toHaveBeenCalledWith(
+        'file:///tmp/pass.png',
+        expect.objectContaining({ mimeType: 'image/png' }),
+      );
+      expect(Share.share).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the text message if the image cannot be made', async () => {
+      (captureRef as jest.Mock).mockRejectedValueOnce(new Error('view not found'));
+      render(<CodeIssued />);
+      fireEvent.press(screen.getByText('Send to visitor'));
+      fireEvent.press(screen.getByText('Send QR pass'));
+
+      await waitFor(() => expect(Share.share).toHaveBeenCalledTimes(1));
+      expect((Share.share as jest.Mock).mock.calls[0][0].message).toContain('B7PJU6');
+      expect(Sharing.shareAsync).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the text message where file sharing is unavailable', async () => {
+      (Sharing.isAvailableAsync as jest.Mock).mockResolvedValueOnce(false);
+      render(<CodeIssued />);
+      fireEvent.press(screen.getByText('Send to visitor'));
+      fireEvent.press(screen.getByText('Send QR pass'));
+
+      await waitFor(() => expect(Share.share).toHaveBeenCalledTimes(1));
+      expect(captureRef).not.toHaveBeenCalled();
     });
   });
 

@@ -86,6 +86,14 @@
       "expo-secure-store",
       "expo-sqlite",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Used to scan visitors' QR passes at the gate. No photos are taken or kept.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

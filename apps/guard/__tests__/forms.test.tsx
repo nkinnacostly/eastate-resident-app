@@ -232,6 +232,26 @@ describe('code entry', () => {
     expect(readVerdict(params.id)).toEqual(verdict);
   });
 
+  // The scanner is a second way to enter a code, not a second way to check
+  // one: it opens the camera route, and that route calls the same lib/check.
+  it('opens the QR scanner', () => {
+    render(<Check />);
+    fireEvent.press(button('Scan QR code'));
+    const push = (global as { __router?: { push: jest.Mock } }).__router!.push;
+    expect(push).toHaveBeenCalledWith('/scan');
+  });
+
+  it('will not open the scanner without a post to verify against', () => {
+    const post = mockShift.post;
+    mockShift.post = null as unknown as typeof post;
+    try {
+      render(<Check />);
+      expect(button('Scan QR code')).toBeDisabled();
+    } finally {
+      mockShift.post = post;
+    }
+  });
+
   it('will not verify without a post to verify against', async () => {
     const post = mockShift.post;
     mockShift.post = null as unknown as typeof post;

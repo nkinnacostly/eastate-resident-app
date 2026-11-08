@@ -24,7 +24,9 @@ global.__resetUuidSeq = () => {
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => {}),
+  notificationAsync: jest.fn(async () => {}),
   ImpactFeedbackStyle: { Light: 'light' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
 
 jest.mock('expo-network', () => ({

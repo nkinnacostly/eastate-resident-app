@@ -70,6 +70,9 @@ function Gate() {
           has one decision to make and the only way out is the button that
           closes it. Fade, because there is no spatial "back" to imply. */}
       <Stack.Screen name="verdict" options={{ animation: 'fade', gestureEnabled: false }} />
+      {/* The camera rises over the keypad and drops back down to it -- it is
+          a way of filling in the keypad, not a place of its own. */}
+      <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
     </Stack>
   );
 }

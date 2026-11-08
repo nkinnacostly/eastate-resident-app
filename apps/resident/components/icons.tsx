@@ -140,3 +140,13 @@ export const EyeOffIcon = (p: IconProps) => (
     <Path d="M3.6 3.6 20.4 20.4" />
   </S>
 );
+
+/** A visitor pass sent as a QR image. Three finder squares and a scatter of modules. */
+export const QrIcon = (p: IconProps) => (
+  <S {...p}>
+    <Rect x="3.6" y="3.6" width="6.4" height="6.4" rx="1.2" />
+    <Rect x="14" y="3.6" width="6.4" height="6.4" rx="1.2" />
+    <Rect x="3.6" y="14" width="6.4" height="6.4" rx="1.2" />
+    <Path d="M14 14h2.6M20.4 14v.01M14 17.2v3.2M17.2 17.2h3.2v3.2M17.2 20.4h.01" />
+  </S>
+);

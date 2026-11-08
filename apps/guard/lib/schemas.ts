@@ -98,10 +98,12 @@ export type SetPasswordValues = z.infer<typeof setPasswordSchema>;
  * The charset check is not belt-and-braces over the keypad.
  *
  * The keypad can only emit these glyphs today, but it is one component away
- * from a paste handler, a scanner, or a bluetooth keyboard — and the whole
- * reason 0/O and 1/I/L are excluded is that they get misread at a gate. Stating
- * the rule as data means a future input path inherits it, instead of quietly
- * sending `7K4P9O` to the server to come back `unknown_code`.
+ * from a paste handler or a bluetooth keyboard — and the whole reason 0/O and
+ * 1/I/L are excluded is that they get misread at a gate. Stating the rule as
+ * data means a future input path inherits it, instead of quietly sending
+ * `7K4P9O` to the server to come back `unknown_code`. The QR scanner is the
+ * one that exists: it applies the same rule through codeFromQr in
+ * @estate/core, built on the same two constants.
  *
  * Mirrors public.generate_code(); CODE_CHARSET is the shared constant.
  */

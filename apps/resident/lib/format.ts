@@ -60,7 +60,7 @@ export function madeAt(iso: string): string {
  *
  * Kept last and on its own line so it never competes with the code.
  */
-const PRIVACY_URL = 'https://myestateaccess.com/privacy';
+export const PRIVACY_URL = 'https://myestateaccess.com/privacy';
 
 /**
  * The message a resident forwards. Carries the estate so it makes sense alone.

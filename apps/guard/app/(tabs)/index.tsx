@@ -8,10 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CodeBoxes, Keypad } from '@/components/keypad';
 import { Eyebrow, StatusDot, TAB_BAR_CLEARANCE, WarnBanner } from '@/components/ui';
+import { checkCode } from '@/lib/check';
 import { codeSchema, type CodeValues } from '@/lib/schemas';
 import { useShift } from '@/lib/shift';
 import { holdVerdict } from '@/lib/verdicts';
-import { verifyOffline, verifyOnline, type Verdict } from '@/lib/verify';
+import type { Verdict } from '@/lib/verify';
 
 function minutes(seconds: number | null): string {
   if (seconds === null) return 'never';
@@ -53,33 +54,26 @@ export default function Check() {
 
   // Only ever called with a code the schema accepted, and `code` is the PARSED
   // value — trimmed and upper-cased — so what reaches the server is what was
-  // validated.
+  // validated. lib/check decides server or phone; the QR scanner calls the
+  // same function, so a scanned code is checked exactly like a typed one.
   const submit = handleSubmit(async ({ code }) => {
     if (!post) return;
     try {
-      // Online verdicts are authoritative; offline ones are provisional and say
-      // so on the verdict screen. The choice is made HERE rather than by
-      // catching a network error, so a slow gate does not double-burn a code.
-      const verdict = online
-        ? await verifyOnline(post.estate_id, code)
-        : await verifyOffline(code);
-
+      const verdict = await checkCode(post.estate_id, code, online);
       reset();
       show(verdict);
     } catch (e) {
-      // The server was reachable a moment ago and is not now. Fall back to the
-      // pool rather than making the guard retype — the visitor is waiting.
-      try {
-        const verdict = await verifyOffline(code);
-        reset();
-        show(verdict);
-      } catch {
-        Alert.alert('Could not check that code', (e as Error).message);
-      }
+      Alert.alert('Could not check that code', (e as Error).message);
     } finally {
       void refresh();
     }
   });
+
+  // The gate for both the Check key and the Scan key, minus the typed code: no
+  // post means nothing to verify against, and an expired authorisation offline
+  // means the phone cannot answer. Opening a camera only to be told that wastes
+  // the visitor's time as well as the guard's.
+  const canCheck = Boolean(post) && (online || !authorisationExpired);
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
@@ -155,7 +149,9 @@ export default function Check() {
                 // answer. The banner above already says so; the key should not
                 // invite the tap. When the phone is ONLINE this does not apply
                 // — a server check re-proves authorisation by making it.
-                canSubmit={isValid && Boolean(post) && (online || !authorisationExpired)}
+                canSubmit={isValid && canCheck}
+                onScan={() => router.push('/scan')}
+                canScan={canCheck}
               />
             </>
           )}
