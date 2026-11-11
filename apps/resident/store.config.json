@@ -1,0 +1,30 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "info": {
+      "en-US": {
+        "title": "My Estate Access",
+        "privacyPolicyUrl": "https://www.myestateaccess.com/privacy",
+        "supportUrl": "https://myestateaccess.com/contact",
+        "marketingUrl": "https://myestateaccess.com",
+        "description": "My Estate Access lets your visitors in with a code, not a phone call.\n\nMake a one-time code in the app and send it to your visitor as a QR pass or as text. At the gate, the guard scans the QR or types the code and sees your house in seconds, even when the gate has no signal. Your phone tells you the moment your visitor arrives.\n\nHOW IT WORKS\n• Make a visitor code in two taps\n• Send it as a QR pass or as text, on WhatsApp, by SMS or in a call\n• Your visitor shows the QR or reads out the code at the gate\n• The guard checks it, the code is spent, and you are told your visitor has arrived\n\nBUILT FOR GATED ESTATES\n• Every code works once and expires after six hours\n• Up to three active codes at a time\n• Delivery codes carry your instructions for the rider\n• Checks at the gate work with no signal\n• Every entry is recorded for the estate office, refusals included\n• If your estate collects dues through My Estate Access, pay them in the app and see what you have already paid\n\nGETTING STARTED\nMy Estate Access is provided by your estate. You will need your estate code and your house code to sign up, and an administrator approves your account before you can make codes.\n\nQuestions: hello@myestateaccess.com",
+        "keywords": [
+          "visitor",
+          "gate",
+          "security",
+          "guard",
+          "boom",
+          "gated",
+          "complex",
+          "entry",
+          "code",
+          "gatehouse",
+          "sectional title",
+          "pass",
+          "qr"
+        ],
+        "promoText": "Visitors get a code that works once and expires in six hours. Your guard verifies it at the boom, even with no signal. Every entry recorded."
+      }
+    }
+  }
+}
