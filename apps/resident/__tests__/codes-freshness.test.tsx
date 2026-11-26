@@ -1,6 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react-native';
-import { Text } from 'react-native';
-import { AppState } from 'react-native';
+import { AppState, Text } from 'react-native';
 
 import { CodesProvider, useCodesOnFocus } from '@/lib/codes';
 

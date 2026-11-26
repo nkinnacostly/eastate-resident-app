@@ -41,11 +41,23 @@ describe('validUntil', () => {
     }
   });
 
-  it('drops "tonight" once the expiry falls on the next day', () => {
+  it('says "tomorrow", not "tonight", once the expiry falls on the next day', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-14T23:30:00'));
     try {
       const s = validUntil(new Date('2026-08-15T00:30:00').toISOString());
-      expect(s).toMatch(/^Valid until /);
+      expect(s).toMatch(/^Valid until .+ tomorrow$/);
+      expect(s).not.toMatch(/tonight/);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // REGRESSION: a code made at 08:00 told the visitor "valid until 14:00 tonight".
+  it('says "today" for an expiry earlier than the evening', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-14T08:00:00'));
+    try {
+      const s = validUntil(new Date('2026-08-14T14:00:00').toISOString());
+      expect(s).toMatch(/^Valid until .+ today$/);
       expect(s).not.toMatch(/tonight/);
     } finally {
       jest.useRealTimers();

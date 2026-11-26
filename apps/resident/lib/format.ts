@@ -31,12 +31,29 @@ export function clock(iso: string): string {
   return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 }
 
-/** "Valid until 00:42 tonight" — the phrasing the design uses on the code card. */
+/**
+ * "Valid until 21:42 tonight", "Valid until 14:00 today", "Valid until 02:15
+ * tomorrow" -- the code card's phrasing, and the line the visitor reads.
+ *
+ * "Tonight" only from 18:00. It used to be added to any expiry on the same
+ * day, so a code made at 08:00 told the visitor it was "valid until 14:00
+ * tonight". A code lives six hours, so the expiry is always today or
+ * tomorrow.
+ */
 export function validUntil(expiresAt: string): string {
   const d = parse(expiresAt);
   if (!d) return 'Valid for 6 hours';
-  const sameDay = d.toDateString() === new Date().toDateString();
-  return `Valid until ${clock(expiresAt)}${sameDay ? ' tonight' : ''}`;
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const when =
+    d.toDateString() === now.toDateString()
+      ? d.getHours() >= 18
+        ? ' tonight'
+        : ' today'
+      : d.toDateString() === tomorrow.toDateString()
+        ? ' tomorrow'
+        : '';
+  return `Valid until ${clock(expiresAt)}${when}`;
 }
 
 /** "Made 18:42", or a date once it is no longer today. */
