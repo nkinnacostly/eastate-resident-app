@@ -66,9 +66,6 @@ Deno.serve(async (req) => {
   if (!isOwner) return json({ error: 'not_a_platform_admin' }, 403);
 
   let body: {
-    dues_billing_mode?: 'none' | 'per_house' | 'per_resident';
-    dues_amount_minor?: number;
-    dues_currency?: string;
     estate_name?: string;
     address?: string;
     contact_info?: string;
@@ -104,24 +101,12 @@ Deno.serve(async (req) => {
   });
   if (estateErr) return json({ error: 'create_estate_failed', detail: estateErr.message }, 400);
 
-  // Dues, if the operator chose a model. A separate call rather than more
-  // parameters on create_estate: this is optional, it is the estate admin's to
-  // change later, and widening the estate-creation signature for it would put
-  // billing into the one function that must not fail.
-  //
-  // A failure here is logged and swallowed on purpose. The estate and its admin
-  // are the point of this endpoint; losing the dues setting is a one-field fix
-  // on the Dues page, whereas failing the whole call would leave an orphaned
-  // auth account behind -- the exact thing the cleanup below exists to prevent.
-  if (body.dues_billing_mode && body.dues_billing_mode !== 'none') {
-    const { error: duesErr } = await caller.rpc('set_dues_config', {
-      p_estate_id: estateId,
-      p_billing_mode: body.dues_billing_mode,
-      p_amount_minor: body.dues_amount_minor,
-      p_currency: body.dues_currency ?? 'NGN',
-    });
-    if (duesErr) console.error('[onboard-estate] dues config failed:', duesErr.message);
-  }
+  // No dues here. This endpoint used to accept a billing model and call
+  // set_dues_config, which could never succeed: billing needs the estate's
+  // payout account (settlement_account_required) and an estate created a line
+  // above has none. The refusal was logged and swallowed, so the dashboard
+  // reported success for dues that were never set. The estate admin sets dues
+  // on the Dues page once the payout account is in.
 
   // ─── 2. the admin's account ───────────────────────────────────────────────
   // One person can run more than one estate, so an existing address is reused

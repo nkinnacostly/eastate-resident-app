@@ -82,14 +82,12 @@ export function Estates() {
     address: '',
     adminName: '',
     adminEmail: '',
-    // Dues are chosen here because who pays decides what a resident sees the
-    // first time they are blocked: their landlord's number to chase, or a Pay
-    // button. 'none' is a real and common answer, and the estate admin can
-    // change it later on the Dues page. Amount is in MAJOR units -- the
-    // operator types 25000, not 2500000.
-    duesMode: 'none' as 'none' | 'per_house' | 'per_resident',
-    duesAmount: '',
-    duesCurrency: 'NGN',
+    // No dues here. They used to be offered, and could never apply: billing
+    // needs the estate's payout account first (set_dues_config raises
+    // settlement_account_required), a brand-new estate has none, and the
+    // refusal was swallowed -- so an operator who chose rand dues here saw an
+    // estate with none. The estate sets dues on its Dues page once its
+    // account is in.
   };
   const [form, setForm] = useState(BLANK);
   const [result, setResult] = useState<OnboardResult | null>(null);
@@ -123,10 +121,6 @@ export function Estates() {
         address: form.address.trim() || undefined,
         admin_email: form.adminEmail.trim(),
         admin_name: form.adminName.trim() || undefined,
-        dues_billing_mode: form.duesMode,
-        dues_amount_minor:
-          form.duesMode === 'none' ? undefined : Math.round(Number(form.duesAmount) * 100),
-        dues_currency: form.duesMode === 'none' ? undefined : form.duesCurrency,
       });
       setResult(res);
       setForm(BLANK);
@@ -206,45 +200,6 @@ export function Estates() {
               />
             </label>
             <label className={label}>
-              ESTATE DUES
-              <select
-                value={form.duesMode}
-                onChange={(e) =>
-                  setForm({ ...form, duesMode: e.target.value as typeof form.duesMode })
-                }
-                className={field}
-              >
-                <option value="none">Not collected through the app</option>
-                <option value="per_house">Paid by the landlord / owner of each house</option>
-                <option value="per_resident">Paid by each resident</option>
-              </select>
-            </label>
-            {form.duesMode !== 'none' ? (
-              <div className="flex gap-3">
-                <label className={`${label} flex-none`}>
-                  CURRENCY
-                  <select
-                    value={form.duesCurrency}
-                    onChange={(e) => setForm({ ...form, duesCurrency: e.target.value })}
-                    className={field}
-                  >
-                    <option value="NGN">NGN</option>
-                    <option value="ZAR">ZAR</option>
-                  </select>
-                </label>
-                <label className={`${label} flex-1`}>
-                  AMOUNT A MONTH
-                  <input
-                    value={form.duesAmount}
-                    onChange={(e) => setForm({ ...form, duesAmount: e.target.value })}
-                    inputMode="decimal"
-                    placeholder="25000"
-                    className={field}
-                  />
-                </label>
-              </div>
-            ) : null}
-            <label className={label}>
               ESTATE ADMIN EMAIL
               <input
                 type="email"
@@ -265,7 +220,8 @@ export function Estates() {
                 address that already has an account keeps its own password. */}
             <span className="text-[12px] text-muted">
               Creates the account immediately and shows a temporary password once. The admin is also
-              emailed a link to set their own password, valid for 24 hours.
+              emailed a link to set their own password, valid for 24 hours. Dues are set later by the
+              estate on its Dues page, once its payout account is added.
             </span>
           </div>
         </Card>
