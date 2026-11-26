@@ -161,7 +161,7 @@ export function LandlordHouse() {
         )}
       </Card>
       <p className="mt-3 text-[11.5px] text-muted">
-        Flutterwave emails a receipt to whoever paid, at the moment they pay.
+        Payments are handled by Flutterwave. We never see or store a full card number.
       </p>
     </>
   );

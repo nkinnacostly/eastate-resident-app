@@ -84,7 +84,7 @@ describe('a South African payout account', () => {
 
     // Unverified is not failed: the card says the bank cannot confirm it and asks for the name.
     const name = await screen.findByPlaceholderText(/as the bank has it/);
-    expect(container.textContent).toMatch(/South African banks do not offer an account-name check/);
+    expect(container.textContent).toMatch(/no account-name check for South African accounts/);
     expect(save().disabled).toBe(true);
 
     await user.type(name, 'Silver Oaks HOA');

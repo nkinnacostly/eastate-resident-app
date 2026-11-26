@@ -208,9 +208,9 @@ export function SettlementCard({
           </div>
           {!current?.account_verified ? (
             <p className="mt-2 max-w-prose text-[12px] leading-[18px] text-muted">
-              South African banks do not offer an account-name check, so we could not confirm
-              this with the bank. Please make sure it is exactly right — a wrong number here
-              sends the estate&apos;s money somewhere else.
+              Our payment provider offers no account-name check for South African accounts, so
+              this could not be confirmed with the bank. Please make sure it is exactly right — a
+              wrong number here sends the estate&apos;s money somewhere else.
             </p>
           ) : null}
           <div className="mt-4 flex gap-2">
@@ -309,9 +309,9 @@ export function SettlementCard({
           {needsTypedName ? (
             <div className="mt-4 rounded-[14px] bg-field px-4 py-3">
               <p className="max-w-prose text-[12.5px] leading-[19px] text-muted">
-                South African banks do not offer an account-name check, so we cannot confirm who
-                owns this account. Type the name exactly as the bank has it, and check the number
-                once more before saving.
+                Our payment provider offers no account-name check for South African accounts, so
+                we cannot confirm who owns this account. Type the name exactly as the bank has it,
+                and check the number once more before saving.
               </p>
               <input
                 value={typedName}

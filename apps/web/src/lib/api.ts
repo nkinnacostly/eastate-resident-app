@@ -566,6 +566,29 @@ export interface DuesConfig {
   dues_enforcement_basis: string | null;
 }
 
+/**
+ * The currency an estate bills in: what it has set, else what its payout
+ * account can receive (rand into a South African account). The form used to
+ * start at NGN whatever the account, and saving that against a South African
+ * account failed with a raw currency_does_not_match_settlement_account.
+ */
+export function defaultDuesCurrency(
+  duesCurrency: string | null | undefined,
+  payoutCountry: 'NG' | 'ZA' | null | undefined,
+): string {
+  if (duesCurrency) return duesCurrency;
+  return payoutCountry === 'ZA' ? 'ZAR' : 'NGN';
+}
+
+/** set_dues_config's refusals, as sentences an estate admin can act on. */
+export function describeDuesError(message: string): string {
+  if (message.includes('currency_does_not_match_settlement_account'))
+    return 'The currency must match the payout account: rand (ZAR) for a South African account, naira (NGN) for a Nigerian one.';
+  if (message.includes('settlement_account_required'))
+    return 'Add the estate’s payout account first. Billing cannot start until there is somewhere for the money to go.';
+  return message;
+}
+
 export interface AdminDuesCharge {
   id: string;
   period: string;
@@ -681,7 +704,7 @@ export async function setDuesConfig(
     p_currency: currency ?? undefined,
     p_grace_days: graceDays,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(describeDuesError(error.message));
 }
 
 /** Raise this month's charges now, rather than waiting for the 1st. */

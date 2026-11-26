@@ -291,7 +291,7 @@ export function Houses() {
               {form.payer === 'residents'
                 ? 'Each resident of this house is billed this amount separately — it is not a total split between them, so nobody’s bill changes when a housemate moves in or out.'
                 : form.payer === 'landlord'
-                  ? 'One charge for the whole house. Reminders go to the landlord’s email, and everyone living here can generate codes once it is paid.'
+                  ? 'One charge for the whole house. Reminders go to the landlord’s email.'
                   : 'Left as it is, this house follows the estate’s own dues setting — and keeps following it if the estate’s rate changes later.'}
             </p>
           </div>

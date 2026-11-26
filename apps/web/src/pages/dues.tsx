@@ -5,7 +5,9 @@ import { SettlementCard } from '../components/settlement-card';
 import { Toast } from '../components/toast';
 import { Button, Card, Chip, Empty, HeadActions, PageHead, Stat } from '../components/ui';
 import {
+  defaultDuesCurrency,
   getDuesConfig,
+  getEstateSettlement,
   listDuesCharges,
   raiseCurrentDues,
   remindDuesCharge,
@@ -31,6 +33,7 @@ const MODE_COPY: Record<DuesConfig['dues_billing_mode'], string> = {
 export function Dues() {
   const { activeEstateId, activeEstate } = useAuth();
   const [config, setConfig] = useState<DuesConfig | null>(null);
+  const [payoutCountry, setPayoutCountry] = useState<'NG' | 'ZA' | null>(null);
   const [rows, setRows] = useState<AdminDuesCharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,17 +57,23 @@ export function Dues() {
     if (!activeEstateId) return;
     setLoading(true);
     try {
-      const [c, r] = await Promise.all([
+      // The payout account's country (read through the Edge Function, as the
+      // payout card does: the settlement columns are not client-readable)
+      // decides the currency a new config starts in. Best effort: without it
+      // the form still loads, starting at NGN as before.
+      const [c, r, payout] = await Promise.all([
         getDuesConfig(activeEstateId),
         listDuesCharges(activeEstateId),
+        getEstateSettlement(activeEstateId).catch(() => null),
       ]);
+      setPayoutCountry(payout?.settlement?.country ?? null);
       setConfig(c);
       setRows(r);
       setBasis(c.dues_enforcement_basis ?? '');
       setDraft({
         mode: c.dues_billing_mode,
         amount: c.dues_amount_minor ? String(c.dues_amount_minor / 100) : '',
-        currency: c.dues_currency ?? 'NGN',
+        currency: defaultDuesCurrency(c.dues_currency, payout?.settlement?.country),
         grace: String(c.dues_grace_days),
       });
       setError(null);
@@ -166,7 +175,7 @@ export function Dues() {
   const open = rows.filter((r) => r.status === 'open');
   const overdue = open.filter((r) => new Date(r.due_on) < new Date());
   const owed = open.reduce((n, r) => n + r.amount_minor, 0);
-  const currency = rows[0]?.currency ?? config?.dues_currency ?? 'NGN';
+  const currency = rows[0]?.currency ?? defaultDuesCurrency(config?.dues_currency, payoutCountry);
   const enforcing = Boolean(config?.dues_enforcement_authorised_at);
 
   return (
