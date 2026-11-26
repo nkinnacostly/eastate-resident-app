@@ -1,6 +1,6 @@
 # myestateaccess
 
-> Visitor management for gated residential estates in Nigeria. A resident generates a short one-time code, sends it to their visitor by WhatsApp or SMS, and the guard verifies it at the gate — including when there is no internet connection.
+> Visitor management for gated residential estates across Africa. A resident generates a short one-time code, sends it to their visitor by WhatsApp or SMS, and the guard verifies it at the gate — including when there is no internet connection.
 
 At most estate gates today, a visitor names a house and the guard phones the
 resident (or the visitor phones their host from the gate) before letting them
@@ -51,7 +51,7 @@ it gives a person nothing on its own.
 - [Home](https://myestateaccess.com/): what the product does, how a code moves from resident to visitor to guard, and who can see what.
 - [About](https://myestateaccess.com/about): the design decisions behind it — why the offline case was built first, why access expires on its own, and why refusals are logged.
 - [Contact](https://myestateaccess.com/contact): book a twenty-minute demo at your gate, ask about pricing, rollout and support.
-- [Privacy policy](https://myestateaccess.com/privacy): what is collected from residents, guards and administrators, who can see it, how long it is kept, and rights under the Nigeria Data Protection Act 2023.
+- [Privacy policy](https://myestateaccess.com/privacy): what is collected from residents, guards and administrators, who can see it, how long it is kept, and rights under Nigeria's NDPA and South Africa's POPIA.
 - [Delete your account](https://myestateaccess.com/delete-account): how to erase an account and what the estate's security log retains.
 
 ## Terms used
@@ -64,4 +64,4 @@ it gives a person nothing on its own.
 ## Contact
 
 - Email: hello@myestateaccess.com
-- Serving: Nigeria
+- Serving: estates across Africa; estate dues are collected in Nigeria (naira) and South Africa (rand)
