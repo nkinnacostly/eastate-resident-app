@@ -1,6 +1,7 @@
 import { Composition } from 'remotion';
 
 import { FORMATS, FPS, INTRO_TOTAL, TOTAL } from './kit';
+import { Film, filmFrames } from './trustees/Film';
 import { Intro } from './videos/Intro';
 import { What } from './videos/What';
 import { When } from './videos/When';
@@ -22,6 +23,8 @@ const VIDEOS = [
 export function Root() {
   return (
     <>
+      {/* The trustees' walkthrough: 16:9, under ten minutes, captions and music. */}
+      <Composition id="Trustees" component={Film} durationInFrames={filmFrames()} fps={FPS} width={1920} height={1080} />
       {VIDEOS.flatMap((v) =>
         Object.entries(FORMATS).map(([format, size]) => {
           const id = format === '9x16' ? v.id : `${v.id}-${format}`;

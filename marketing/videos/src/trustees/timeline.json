@@ -1,0 +1,18 @@
+{
+  "_comment": "Seconds each scene is on screen, per chapter, in order. Film.tsx and music/explainer.py both read this, so the score changes texture exactly where a chapter starts. Each transition overlaps two scenes by T frames.",
+  "fps": 30,
+  "T": 16,
+  "chapters": [
+    { "title": "Welcome", "scenes": [9, 13] },
+    { "title": "Why it exists", "scenes": [8, 12, 11] },
+    { "title": "The three pieces", "scenes": [13, 13] },
+    { "title": "Onboarding, step by step", "scenes": [7, 13, 13, 10, 13, 12, 13, 13, 13, 11, 11, 14, 12, 13, 10] },
+    { "title": "A visit, start to finish", "scenes": [6, 8, 10, 11, 11, 9, 11, 8, 11, 11] },
+    { "title": "When the network is down", "scenes": [6, 14, 13, 12] },
+    { "title": "Running the estate", "scenes": [6, 12, 10, 11, 13] },
+    { "title": "Levies", "scenes": [6, 12, 11, 12, 13] },
+    { "title": "Owners and security companies", "scenes": [5, 14] },
+    { "title": "Privacy and POPIA", "scenes": [5, 14, 13] },
+    { "title": "Getting started", "scenes": [14, 18] }
+  ]
+}
