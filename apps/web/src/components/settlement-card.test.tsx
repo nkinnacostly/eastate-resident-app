@@ -6,15 +6,19 @@ import { SettlementCard } from './settlement-card';
 
 afterEach(cleanup);
 
-// Payout accounts are Nigerian only (20261030160000). Every one is checked
-// with the bank before it can be saved; there is no country to pick and no
-// "type the name yourself" path for an account the bank cannot confirm.
+// Payout accounts are Nigerian or South African. A Nigerian bank confirms the
+// account holder's name, so a Nigerian account saves only with that name. South
+// African banks have no name lookup on the rail: the check comes back
+// unverified rather than failed, and the admin types the name exactly as the
+// bank has it before saving.
 
 const api = vi.hoisted(() => ({
   getEstateSettlement: vi.fn(async () => ({ settlement: null, testMode: false })),
-  listSettlementBanks: vi.fn(async () => [{ code: '044', name: 'Access Bank' }]),
+  listSettlementBanks: vi.fn(async (country: 'NG' | 'ZA') =>
+    country === 'NG' ? [{ code: '044', name: 'Access Bank' }] : [{ code: 'FNB', name: 'First National Bank' }],
+  ),
   resolveSettlementAccount: vi.fn(),
-  saveEstateSettlement: vi.fn(async () => ({ account_name: 'PALM COURT RA', verified: true })),
+  saveEstateSettlement: vi.fn(async () => ({ account_name: 'SAVED', verified: true })),
   clearEstateSettlement: vi.fn(),
 }));
 vi.mock('../lib/api', () => api);
@@ -29,46 +33,65 @@ async function startAdding() {
   return { user, container };
 }
 
-describe('adding the estate’s payout account', () => {
-  it('offers no country, and never mentions South Africa', async () => {
-    const { container } = await startAdding();
-    expect(screen.queryByText('Country')).toBeNull();
-    expect(container.textContent).not.toMatch(/South Africa/);
-    expect(api.listSettlementBanks).toHaveBeenCalledWith();
-  });
+const save = () => screen.getByRole('button', { name: 'Save this account' }) as HTMLButtonElement;
 
-  it('saves only after the bank has named the account, and sends no country', async () => {
+describe('a Nigerian payout account', () => {
+  it('saves only after the bank has named it', async () => {
     api.resolveSettlementAccount.mockResolvedValueOnce({ account_name: 'PALM COURT RA', verified: true });
     const { user } = await startAdding();
-    await user.selectOptions(screen.getAllByRole('combobox')[0], '044');
+    expect(api.listSettlementBanks).toHaveBeenCalledWith('NG');
+    await user.selectOptions(screen.getByDisplayValue('Choose a bank'), '044');
     await user.type(screen.getByPlaceholderText('0690000032'), '0690000032');
-
-    const save = screen.getByRole('button', { name: 'Save this account' });
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(save().disabled).toBe(true);
 
     await user.click(screen.getByRole('button', { name: 'Check account' }));
     await screen.findByText('PALM COURT RA');
-    expect(api.resolveSettlementAccount).toHaveBeenCalledWith('est-1', '044', '0690000032');
-    expect((save as HTMLButtonElement).disabled).toBe(false);
+    expect(api.resolveSettlementAccount).toHaveBeenCalledWith('est-1', 'NG', '044', '0690000032');
+    expect(screen.queryByPlaceholderText(/as the bank has it/)).toBeNull();
+    expect(save().disabled).toBe(false);
 
-    await user.click(save);
-    expect(api.saveEstateSettlement).toHaveBeenCalledWith({
-      estateId: 'est-1',
-      bankCode: '044',
-      bankName: 'Access Bank',
-      accountNumber: '0690000032',
-    });
+    await user.click(save());
+    expect(api.saveEstateSettlement).toHaveBeenCalledWith(
+      expect.objectContaining({ estateId: 'est-1', country: 'NG', bankCode: '044', accountNumber: '0690000032', accountName: 'PALM COURT RA' }),
+    );
   });
 
   it('a lookup the bank rejects leaves Save disabled, with no name to type instead', async () => {
     api.resolveSettlementAccount.mockRejectedValueOnce(new Error('That account number is not valid at the bank you chose.'));
     const { user } = await startAdding();
-    await user.selectOptions(screen.getAllByRole('combobox')[0], '044');
+    await user.selectOptions(screen.getByDisplayValue('Choose a bank'), '044');
     await user.type(screen.getByPlaceholderText('0690000032'), '1234567890');
     await user.click(screen.getByRole('button', { name: 'Check account' }));
 
     await screen.findByText(/not valid at the bank/);
-    expect((screen.getByRole('button', { name: 'Save this account' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(save().disabled).toBe(true);
     expect(screen.queryByPlaceholderText(/as the bank has it/)).toBeNull();
+  });
+});
+
+describe('a South African payout account', () => {
+  it('lists South African banks, and saves with the name the admin types', async () => {
+    api.resolveSettlementAccount.mockResolvedValueOnce({ account_name: null, verified: false, unverifiable: true });
+    const { user, container } = await startAdding();
+    await user.selectOptions(screen.getByDisplayValue('Nigeria'), 'ZA');
+    await screen.findByRole('option', { name: 'First National Bank' });
+    expect(api.listSettlementBanks).toHaveBeenLastCalledWith('ZA');
+
+    await user.selectOptions(screen.getByDisplayValue('Choose a bank'), 'FNB');
+    await user.type(screen.getByPlaceholderText('0690000032'), '62152854587');
+    await user.click(screen.getByRole('button', { name: 'Check account' }));
+    expect(api.resolveSettlementAccount).toHaveBeenCalledWith('est-1', 'ZA', 'FNB', '62152854587');
+
+    // Unverified is not failed: the card says the bank cannot confirm it and asks for the name.
+    const name = await screen.findByPlaceholderText(/as the bank has it/);
+    expect(container.textContent).toMatch(/South African banks do not offer an account-name check/);
+    expect(save().disabled).toBe(true);
+
+    await user.type(name, 'Silver Oaks HOA');
+    expect(save().disabled).toBe(false);
+    await user.click(save());
+    expect(api.saveEstateSettlement).toHaveBeenCalledWith(
+      expect.objectContaining({ country: 'ZA', bankCode: 'FNB', accountNumber: '62152854587', accountName: 'Silver Oaks HOA' }),
+    );
   });
 });

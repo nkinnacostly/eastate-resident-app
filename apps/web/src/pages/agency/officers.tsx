@@ -31,8 +31,8 @@ const TONE: Record<RegistrationState, 'good' | 'bad' | undefined> = {
  *
  * The column that matters is the last one. Every product surveyed stores a
  * registration number and an expiry date, and an unexpired date is worth very
- * little -- it says nothing about a registration suspended yesterday. The NSCDC
- * publishes no API to re-check against, so "not checked recently" is a real
+ * little -- it says nothing about a registration suspended yesterday. Neither the
+ * NSCDC nor PSIRA publishes an API to re-check against, so "not checked recently" is a real
  * state we can show and a claim of "verified" would be a lie. An estate that
  * asks whether every officer at its gate is licensed is answered by this screen.
  */
@@ -148,9 +148,9 @@ export function AgencyOfficers() {
 
       <Card className="mt-4 p-4">
         <p className="text-[12.5px] leading-[19px] text-muted">
-          &ldquo;Checked&rdquo; means a person looked this up and recorded what they saw. The NSCDC
-          publishes no way for software to verify a guard&apos;s licence automatically, so we do not
-          claim to. This portal cannot record a check yet, so send the result to the myestateaccess
+          &ldquo;Checked&rdquo; means a person looked this up and recorded what they saw. No guard
+          regulator, the NSCDC or PSIRA, publishes a way for software to verify a licence
+          automatically, so we do not claim to. This portal cannot record a check yet, so send the result to the myestateaccess
           team. Anything older than 90 days shows as unchecked.
         </p>
       </Card>

@@ -9,9 +9,10 @@ import { AgencyOfficers } from './officers';
 
 afterEach(cleanup);
 
-// The product is Nigerian only (20261030160000): a guard's licence is a licence
-// number with the NSCDC, with no grade and no PSIRA return. That holds whatever
-// an agency typed as its registration body -- even "PSIRA".
+// A guard's licence is one neutral licence number with the regulator in the
+// estate's country (the NSCDC in Nigeria, PSIRA in South Africa): no grade, no
+// PSIRA-only number label or return. That holds whatever an agency typed as its
+// registration body -- even "PSIRA".
 
 const auth = vi.hoisted(() => ({ agencies: [] as Agency[] }));
 vi.mock('../../lib/auth-context', () => ({ useAuth: () => auth }));
@@ -82,13 +83,13 @@ describe.each([
     auth.agencies = [agency(body)];
   });
 
-  it('the officers page says licence number, with no grade and no PSIRA', async () => {
+  it('the officers page says licence number, with no grade, naming both regulators alike', async () => {
     const { container } = show(<AgencyOfficers />);
     await screen.findByText('Musa Bello');
     expect(screen.getByText('LICENCE NUMBER')).toBeTruthy();
     expect(screen.queryByText('GRADE')).toBeNull();
-    expect(container.textContent).not.toMatch(/PSIRA|South Africa/);
-    expect(container.textContent).toMatch(/NSCDC/);
+    expect(container.textContent).not.toMatch(/PSIRA NUMBER|PSIRA REGISTRATION|South Africa/);
+    expect(container.textContent).toMatch(/the NSCDC or PSIRA/);
     expect(container.querySelector('a[href*="psira"]')).toBeNull();
   });
 

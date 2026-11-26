@@ -85,6 +85,9 @@ group('readHouses — headers', () => {
   const plot = readHouses(parseCsv('Plot,Owner\n221B,Holmes'));
   eq('plot / owner aliases', plot.houses[0].house_number, '221B');
   eq('owner -> landlord_name', plot.houses[0].landlord_name, 'Holmes');
+  // South African schemes export their units as erven or stands.
+  eq('erf alias', readHouses(parseCsv('Erf,Owner\n412,Naidoo')).houses[0].house_number, '412');
+  eq('stand number alias', readHouses(parseCsv('Stand Number,Owner\n77,Dlamini')).houses[0].house_number, '77');
 });
 
 group('readHouses — bare list with no header', () => {

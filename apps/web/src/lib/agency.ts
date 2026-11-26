@@ -134,9 +134,9 @@ export type RegistrationState = 'missing' | 'expired' | 'expiring' | 'unchecked'
  *
  * `unchecked` is the state nobody else models and the one that matters most. An
  * unexpired date is a claim somebody typed in; it says nothing about a
- * registration suspended yesterday. The NSCDC publishes no API to re-check
- * against, and its portal does not resolve, so the only honest signal is how
- * long ago a human looked.
+ * registration suspended yesterday. Neither the NSCDC (Nigeria) nor PSIRA
+ * (South Africa) publishes an API to re-check against, so the only honest
+ * signal is how long ago a human looked.
  *
  * 90 days, so every licence is looked at again at least once a quarter.
  */

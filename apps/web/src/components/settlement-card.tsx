@@ -15,7 +15,10 @@ import { Button, Card, Chip } from './ui';
  *
  * Dues are paid straight into this account by Flutterwave's split — the money
  * never passes through us. That is not a convenience: holding an estate's
- * levies would make us an unlicensed fund-holder under the CBN's rules.
+ * levies would make us an unlicensed fund-holder in Nigeria and a Third Party
+ * Payment Provider in South Africa, and CSOS Practice Directive 13.3 allows a
+ * body corporate's money in exactly two places, neither of which is a
+ * platform's balance.
  *
  * So this card sits ABOVE the billing settings and says so plainly. An estate
  * that has not set it cannot switch dues on at all — the database refuses —
@@ -28,6 +31,10 @@ import { Button, Card, Chip } from './ui';
  * has against it, and only then commits. Saving first and showing the name
  * afterwards is the version where a transposed digit is discovered a month
  * later by the treasurer who never got the money.
+ *
+ * South Africa has no account-name lookup on the rail, so there is nothing to
+ * check against and the card says exactly that rather than implying a
+ * verification that did not happen.
  */
 export function SettlementCard({
   estateId,
@@ -48,12 +55,14 @@ export function SettlementCard({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [country, setCountry] = useState<'NG' | 'ZA'>('NG');
   const [banks, setBanks] = useState<{ code: string; name: string }[]>([]);
   const [bankCode, setBankCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+  const [typedName, setTypedName] = useState('');
   // The result of the check. `null` means not checked yet, which is not the
   // same as checked-and-failed, so Save stays disabled until it is set.
-  const [checked, setChecked] = useState<{ name: string; verified: boolean } | null>(null);
+  const [checked, setChecked] = useState<{ name: string | null; verified: boolean } | null>(null);
 
   // Held in a ref so a caller passing an inline arrow does not re-run load on
   // every render.
@@ -66,6 +75,7 @@ export function SettlementCard({
       const { settlement: s, testMode: t } = await getEstateSettlement(estateId);
       setCurrent(s);
       setTestMode(t);
+      if (s?.country) setCountry(s.country);
       onChangeRef.current?.(s);
     } catch (e) {
       setError((e as Error).message);
@@ -82,8 +92,8 @@ export function SettlementCard({
     if (!editing) return;
     setBanks([]);
     setBankCode('');
-    listSettlementBanks().then(setBanks).catch((e) => setError((e as Error).message));
-  }, [editing]);
+    listSettlementBanks(country).then(setBanks).catch((e) => setError((e as Error).message));
+  }, [country, editing]);
 
   // Any edit to the account invalidates a previous check. Without this the
   // admin could check one number, change a digit, and save the name that was
@@ -94,7 +104,7 @@ export function SettlementCard({
     setBusy(true);
     setError(null);
     try {
-      const r = await resolveSettlementAccount(estateId, bankCode, accountNumber.trim());
+      const r = await resolveSettlementAccount(estateId, country, bankCode, accountNumber.trim());
       setChecked({ name: r.account_name, verified: r.verified });
     } catch (e) {
       setChecked(null);
@@ -110,13 +120,16 @@ export function SettlementCard({
     try {
       await saveEstateSettlement({
         estateId,
+        country,
         bankCode,
         bankName: banks.find((b) => b.code === bankCode)?.name ?? '',
         accountNumber: accountNumber.trim(),
+        accountName: checked?.name ?? typedName.trim(),
       });
       setEditing(false);
       setChecked(null);
       setAccountNumber('');
+      setTypedName('');
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -145,7 +158,13 @@ export function SettlementCard({
   if (loading) return null;
 
   const configured = Boolean(current?.account_mask);
-  const canSave = Boolean(bankCode) && accountNumber.trim().length >= 6 && Boolean(checked?.verified);
+  // ZA cannot be verified, so a typed name is required there and only there.
+  const needsTypedName = checked !== null && !checked.verified;
+  const canSave =
+    Boolean(bankCode) &&
+    accountNumber.trim().length >= 6 &&
+    checked !== null &&
+    (checked.verified || typedName.trim().length > 2);
 
   return (
     <Card className={`mt-6 p-5 ${configured ? '' : 'ring-2 ring-lime'}`}>
@@ -189,9 +208,9 @@ export function SettlementCard({
           </div>
           {!current?.account_verified ? (
             <p className="mt-2 max-w-prose text-[12px] leading-[18px] text-muted">
-              The bank has not confirmed this account&apos;s name. Please make sure it is exactly
-              right — a wrong number here sends the estate&apos;s money somewhere else. Changing
-              the account checks the new one with the bank.
+              South African banks do not offer an account-name check, so we could not confirm
+              this with the bank. Please make sure it is exactly right — a wrong number here
+              sends the estate&apos;s money somewhere else.
             </p>
           ) : null}
           <div className="mt-4 flex gap-2">
@@ -219,6 +238,21 @@ export function SettlementCard({
       {editing ? (
         <div className="mt-4">
           <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-muted">Country</span>
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value as 'NG' | 'ZA');
+                  invalidate();
+                }}
+                className="h-11 rounded-[14px] bg-field px-3 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-lime"
+              >
+                <option value="NG">Nigeria</option>
+                <option value="ZA">South Africa</option>
+              </select>
+            </label>
+
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold text-muted">Bank</span>
               <select
@@ -269,6 +303,22 @@ export function SettlementCard({
               <p className="mt-1 text-[12px] text-lime-ink">
                 If that is not the estate&apos;s account, do not save it.
               </p>
+            </div>
+          ) : null}
+
+          {needsTypedName ? (
+            <div className="mt-4 rounded-[14px] bg-field px-4 py-3">
+              <p className="max-w-prose text-[12.5px] leading-[19px] text-muted">
+                South African banks do not offer an account-name check, so we cannot confirm who
+                owns this account. Type the name exactly as the bank has it, and check the number
+                once more before saving.
+              </p>
+              <input
+                value={typedName}
+                onChange={(e) => setTypedName(e.target.value)}
+                placeholder="Body corporate name as the bank has it"
+                className="mt-3 h-11 w-full max-w-md rounded-[14px] bg-canvas px-4 text-[13px] outline-none focus:ring-2 focus:ring-lime"
+              />
             </div>
           ) : null}
 

@@ -106,15 +106,15 @@ export interface HouseInput {
  * Column names we accept, lower-cased and stripped of punctuation.
  *
  * Generous on purpose. The admin is exporting from a system we have never
- * seen, and rejecting their file because the column says "Plot" rather than
+ * seen, and rejecting their file because the column says "Erf" rather than
  * "house_number" means they go and edit a spreadsheet instead of onboarding
- * an estate. `plot` is what most estates call it; `flat` and `unit` are what a
- * block of flats calls it.
+ * an estate. `plot` is what a Nigerian estate calls it, `erf` and `stand` are
+ * the South African terms, and `unit` or `flat` is what a complex calls it.
  */
 const ALIASES: Record<keyof HouseInput, string[]> = {
   house_number: [
     'housenumber', 'house', 'houseno', 'number', 'no', 'unit', 'unitnumber',
-    'address', 'plot', 'plotnumber', 'plotno',
+    'stand', 'standnumber', 'erf', 'erfnumber', 'address', 'plot', 'plotnumber', 'plotno',
     'property', 'propertynumber', 'door', 'doornumber', 'flat', 'apartment',
   ],
   landlord_name: [
