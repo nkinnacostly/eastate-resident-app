@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CodeBoxes, Keypad } from '@/components/keypad';
 import { Eyebrow, StatusDot, TAB_BAR_CLEARANCE, WarnBanner } from '@/components/ui';
-import { checkCode } from '@/lib/check';
+import { checkCode, NoLongerOnPostError } from '@/lib/check';
 import { codeSchema, type CodeValues } from '@/lib/schemas';
 import { useShift } from '@/lib/shift';
 import { holdVerdict } from '@/lib/verdicts';
@@ -22,7 +22,7 @@ function minutes(seconds: number | null): string {
 }
 
 export default function Check() {
-  const { post, online, poolCount, poolAgeSeconds, stale, authorisationExpired, refresh } =
+  const { post, online, poolCount, poolAgeSeconds, stale, authorisationExpired, refresh, recheckPost } =
     useShift();
   const router = useRouter();
 
@@ -63,6 +63,8 @@ export default function Check() {
       reset();
       show(verdict);
     } catch (e) {
+      // Removed from the gate: re-resolving the post clears this phone's codes.
+      if (e instanceof NoLongerOnPostError) recheckPost();
       Alert.alert('Could not check that code', (e as Error).message);
     } finally {
       void refresh();
@@ -94,7 +96,7 @@ export default function Check() {
                 may be old, this one says there are no answers. Showing both
                 would bury the one the guard has to act on. */}
             <WarnBanner>
-              Out of contact for {minutes(poolAgeSeconds)} — longer than a code stays valid, so
+              Last in contact {minutes(poolAgeSeconds)} — longer than a code stays valid, so
               every code on this phone has expired. Get signal and sync before checking anyone in.
             </WarnBanner>
           </View>

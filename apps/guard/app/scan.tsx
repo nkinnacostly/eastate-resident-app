@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TorchIcon } from '@/components/icons';
 import { PrimaryButton } from '@/components/ui';
-import { checkCode } from '@/lib/check';
+import { checkCode, NoLongerOnPostError } from '@/lib/check';
 import { useShift } from '@/lib/shift';
 import { holdVerdict } from '@/lib/verdicts';
 
@@ -29,7 +29,7 @@ import { holdVerdict } from '@/lib/verdicts';
  */
 export default function Scan() {
   const router = useRouter();
-  const { post, online, authorisationExpired, refresh } = useShift();
+  const { post, online, authorisationExpired, refresh, recheckPost } = useShift();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [checking, setChecking] = useState<string | null>(null);
@@ -93,6 +93,8 @@ export default function Scan() {
       // to a camera still pointed at the code it just burned.
       router.replace({ pathname: '/verdict', params: { id: holdVerdict(verdict) } });
     } catch (e) {
+      // Removed from the gate: re-resolving the post clears this phone's codes.
+      if (e instanceof NoLongerOnPostError) recheckPost();
       // Stays claimed until the guard taps to try again. The QR is still in
       // front of the camera, so re-arming on its own would retry in a loop.
       setChecking(null);

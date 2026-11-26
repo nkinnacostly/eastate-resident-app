@@ -73,7 +73,7 @@ describe('verdict screen', () => {
 
     expect(screen.getByText('CHECKED WITH THE SERVER')).toBeTruthy();
     expect(screen.getByText('7K4P92')).toBeTruthy();
-    expect(screen.getByText('Thandi Nkosi · Unit 12')).toBeTruthy();
+    expect(screen.getByText('Thandi Nkosi · House 12')).toBeTruthy();
   });
 
   // The attack, exactly as a visitor would send it.

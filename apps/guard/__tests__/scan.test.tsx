@@ -44,6 +44,7 @@ const mockShift = {
   online: true,
   authorisationExpired: false,
   refresh: jest.fn(async () => {}),
+  recheckPost: jest.fn(),
 };
 jest.mock('@/lib/shift', () => ({ useShift: () => mockShift }));
 
@@ -305,5 +306,34 @@ describe('camera permission', () => {
     render(<Scan />);
     fireEvent.press(screen.getByText('Type the code instead'));
     expect(router().back).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a guard the estate has removed', () => {
+  // deactivate_membership: the server now refuses every check from this login.
+  const REFUSED = { data: null, error: { message: 'not_a_guard_at_this_estate' } };
+
+  it('is not let through by the pool on the phone, and the post is re-checked', async () => {
+    mockRpc.mockResolvedValue(REFUSED);
+    render(<Scan />);
+    await showQr('7K4P92');
+
+    await waitFor(() => expect(mockShift.recheckPost).toHaveBeenCalledTimes(1));
+    // No verdict, no burn, nothing queued: the pool did not stand in for a server that said no.
+    expect(router().replace).not.toHaveBeenCalled();
+    expect(mockDb.burned).toEqual([]);
+    expect(mockDb.enqueued).toEqual([]);
+    expect(await screen.findByText(/no longer a guard at this estate/)).toBeTruthy();
+  });
+
+  it('...while an ordinary server failure still falls back to the phone', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'upstream request timeout' } });
+    render(<Scan />);
+    await showQr('7K4P92');
+
+    await waitFor(() => expect(router().replace).toHaveBeenCalledTimes(1));
+    expect(mockShift.recheckPost).not.toHaveBeenCalled();
+    expect(mockDb.burned).toEqual(['code-1']);
+    expect(lastVerdict()).toMatchObject({ decision: 'admit', checkedWith: 'device' });
   });
 });

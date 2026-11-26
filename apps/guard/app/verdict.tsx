@@ -118,7 +118,7 @@ export default function VerdictScreen() {
               value={
                 verdict.host
                   ? verdict.host.unit
-                    ? `${verdict.host.name} · Unit ${verdict.host.unit}`
+                    ? `${verdict.host.name} · House ${verdict.host.unit}`
                     : verdict.host.name
                   : 'Not available offline'
               }
