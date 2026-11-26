@@ -35,7 +35,7 @@ message and read it out at the gate.
 The resident app is published on both stores. Visitors install nothing — they
 receive a code in a message and read it out at the gate.
 
-- [App Store](https://apps.apple.com/app/id6811966469) — iPhone and iPad
+- [App Store](https://apps.apple.com/app/id6811966469) — iPhone
 - [Google Play](https://play.google.com/store/apps/details?id=com.myestateaccess.resident) — Android
 
 Downloading it is not enough on its own: signing in requires an estate that

@@ -63,7 +63,7 @@ async function alertSettlementChange(
   admin: SupabaseClient,
   c: {
     estateId: string; estateName: string; bankName: string | null; accountNumber: string;
-    accountName: string; subaccountRef: string; changedBy: string;
+    accountName: string; subaccountRef: string; changedBy: string; country: Country;
   },
 ): Promise<void> {
   const [{ data: admins }, { data: operators }] = await Promise.all([
@@ -76,7 +76,10 @@ async function alertSettlementChange(
     const { data } = await admin.auth.admin.getUserById(id);
     if (data?.user?.email) emails.add(data.user.email.toLowerCase());
   }
-  const changedAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short' }) + ' (Lagos)';
+  // In the estate's own time: the admins reading this are in the country the
+  // account is in, and a Johannesburg trustee should not convert from Lagos.
+  const [timeZone, city] = c.country === 'ZA' ? ['Africa/Johannesburg', 'Johannesburg'] : ['Africa/Lagos', 'Lagos'];
+  const changedAt = new Date().toLocaleString('en-GB', { timeZone, dateStyle: 'medium', timeStyle: 'short' }) + ` (${city})`;
   for (const to of emails) {
     await admin.rpc('enqueue_email', {
       p_kind: 'settlement_changed',
@@ -244,6 +247,7 @@ Deno.serve(async (req) => {
       accountNumber: String(account_number),
       accountName: finalName,
       subaccountRef: confirmed.ref,
+      country,
       changedBy: user.email ?? 'an estate admin',
     }).catch((e) => console.error('[estate-settlement] alert', (e as Error).message));
 

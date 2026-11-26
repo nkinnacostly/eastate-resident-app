@@ -259,10 +259,13 @@ export function Estates() {
             <Button onClick={() => void submit()} disabled={busy}>
               {busy ? 'Onboarding…' : 'Create estate and admin'}
             </Button>
-            {/* Worth saying before they press it: nothing is emailed, so the
-                password has to be carried out of this screen by hand. */}
+            {/* Worth saying before they press it. onboard-estate shows a
+                temporary password once AND emails the admin a set-password
+                link (24 hours); this used to say "Nothing is emailed". An
+                address that already has an account keeps its own password. */}
             <span className="text-[12px] text-muted">
-              Creates the account immediately and shows its password once. Nothing is emailed.
+              Creates the account immediately and shows a temporary password once. The admin is also
+              emailed a link to set their own password, valid for 24 hours.
             </span>
           </div>
         </Card>

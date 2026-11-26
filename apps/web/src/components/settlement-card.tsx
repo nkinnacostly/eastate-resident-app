@@ -194,8 +194,8 @@ export function SettlementCard({
           <p className="mt-1 max-w-prose text-[12.5px] leading-[19px] text-muted">
             Payments are running on Flutterwave test keys. A real bank account cannot be added
             yet — the bank lookup only knows Flutterwave&apos;s sandbox, so any real account is
-            rejected no matter how correct it is. Use Access Bank / 0690000032 to try the flow.
-            Nothing here moves real money until the live keys are deployed.
+            rejected no matter how correct it is. To try the flow, use Access Bank / 0690000032
+            in Nigeria. Nothing here moves real money until the live keys are deployed.
           </p>
         </div>
       ) : null}
