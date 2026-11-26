@@ -87,18 +87,19 @@ select pg_temp.check('each licence column and the RPC is described, by its new n
   and obj_description('public.record_guard_licence(uuid, text, timestamptz)'::regprocedure, 'pg_proc')
       like '%licence_verified_at%');
 
--- The descriptions name the NSCDC only (20261030160000).
-select pg_temp.check('licence and monthly-return descriptions name the NSCDC, not PSIRA', (
-  select n ilike '%NSCDC%' and concat(n, r) not ilike '%psira%'
-     and concat(n, r) not ilike '%south afric%'
+-- One neutral licence (20261126100000): the description names each country's
+-- regulator; the monthly return names none.
+select pg_temp.check('the licence description names both regulators; the monthly return neither', (
+  select n ilike '%NSCDC in Nigeria%' and n ilike '%PSIRA in South Africa%'
+     and r not ilike '%psira%' and r not ilike '%nscdc%'
     from (select col_description('public.profiles'::regclass,
                    (select attnum from pg_attribute where attrelid = 'public.profiles'::regclass
                        and attname = 'licence_number')) as n,
                  obj_description('public.agency_monthly_return(uuid, date)'::regprocedure, 'pg_proc') as r) x));
 
--- And every payout account is Nigerian and checked against the bank.
-select pg_temp.check('the payout-account description no longer mentions ZA accounts', (
-  select d ilike '%checked against the bank%' and d !~ '\mZA\M' and d not ilike '%south afric%'
+-- The payout-account description says a ZA account has no name lookup.
+select pg_temp.check('the payout-account description explains NG verification and ZA lookups', (
+  select d ilike '%NG accounts%' and d ilike '%ZA account has no name lookup%'
     from (select col_description('public.estates'::regclass,
                    (select attnum from pg_attribute where attrelid = 'public.estates'::regclass
                        and attname = 'settlement_account_verified')) as d) x));
