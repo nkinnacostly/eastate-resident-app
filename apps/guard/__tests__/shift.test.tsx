@@ -343,6 +343,41 @@ describe('when the post or the session ends', () => {
     );
   });
 
+  // Removed on the dashboard mid-shift: the next sync is refused with
+  // not_a_guard_at_this_estate. That is an answer, so the post is asked again
+  // and, gone, takes the codes off the phone -- not an hour later at the next
+  // token refresh.
+  it('re-checks the post, and clears the pool, when a sync says this guard was removed', async () => {
+    const { syncNow } = jest.requireMock('@/lib/sync') as { syncNow: jest.Mock };
+    mount();
+    await waitFor(() => expect(shift.post).toEqual(ACACIA));
+    expect(clearPool).not.toHaveBeenCalled();
+
+    mockServer.memberships = NO_POST;
+    syncNow.mockRejectedValueOnce(new Error('not_a_guard_at_this_estate'));
+    await act(async () => {
+      await shift.sync();
+    });
+
+    await waitFor(() => expect(clearPool).toHaveBeenCalled());
+    await waitFor(() => expect(shift.post).toBeNull());
+  });
+
+  it('...but an ordinary failed sync (no signal) leaves the post and the pool alone', async () => {
+    const { syncNow } = jest.requireMock('@/lib/sync') as { syncNow: jest.Mock };
+    mount();
+    await waitFor(() => expect(shift.post).toEqual(ACACIA));
+
+    mockServer.memberships = NO_POST; // would clear everything, IF it were asked
+    syncNow.mockRejectedValueOnce(new Error('TypeError: Network request failed'));
+    await act(async () => {
+      await shift.sync();
+    });
+
+    expect(clearPool).not.toHaveBeenCalled();
+    expect(shift.post).toEqual(ACACIA);
+  });
+
   // A refresh token revoked by an admin ends the session without endShift.
   it('clears the pool on a SIGNED_OUT that did not come from endShift', async () => {
     mockLocal.cached = cachedFor('u-1');

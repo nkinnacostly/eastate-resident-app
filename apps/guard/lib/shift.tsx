@@ -317,10 +317,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setSyncing(true);
     try {
       await syncNow(post.estate_id, post.membership_id);
-    } catch {
+    } catch (e) {
       // Deliberately swallowed. A failed sync is the NORMAL state at a gate with
       // no signal; the banner already tells the guard the pool is stale. Throwing
       // here would surface an error dialog every 45 seconds during an outage.
+      //
+      // Except the one failure that is an answer rather than an outage: the
+      // server saying this person is no longer a guard here. Re-resolving the
+      // post finds no active membership and clears the codes off the phone
+      // within one sync interval of the removal, instead of at the next token
+      // refresh up to an hour later.
+      if ((e as Error)?.message?.includes('not_a_guard_at_this_estate')) setRecheck((n) => n + 1);
     } finally {
       setSyncing(false);
       await refresh();
