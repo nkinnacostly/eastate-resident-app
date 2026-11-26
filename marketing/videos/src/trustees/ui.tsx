@@ -1,40 +1,76 @@
 /**
- * Layouts for the trustees' walkthrough film (16:9, 1920x1080).
+ * Layouts for the trustees' walkthrough film, in two shapes from one script:
+ * 16:9 (1920x1080) for laptops and boardrooms, and 9:16 (1080x1920) for
+ * Reels and TikTok.
  *
  * The film is captions and visuals with music, no voice: every scene carries
  * one headline a trustee can read in two seconds and at most two short lines
- * under it, and the visual does the explaining.
+ * under it, and the visual does the explaining. At 16:9 the copy sits left of
+ * the visual; at 9:16 above it, inside the platforms' safe zones (clear of the
+ * top bar, the caption and buttons along the bottom, and the action column on
+ * the right).
  */
 import type { CSSProperties, ReactNode } from 'react';
-import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 
 import { Body, C, IconTile, Kicker, Title, rise, useIn } from '../kit';
 
-export const W = 1920;
-export const H = 1080;
 export const PAD = { top: 150, left: 96, right: 96, bottom: 96 };
+const PAD_VERTICAL = { top: 290, left: 80, right: 110, bottom: 400 };
+
+/** Which shape this render is, and where content may sit in it. */
+export function useLayout() {
+  const { width, height } = useVideoConfig();
+  const vertical = height / width > 1.5;
+  const pad = vertical ? PAD_VERTICAL : PAD;
+  return { vertical, pad, innerW: width - pad.left - pad.right, innerH: height - pad.top - pad.bottom };
+}
 
 /** Dark scene background, so transitions never flash. */
 export function Scene({ children, light = false }: { children: ReactNode; light?: boolean }) {
   return <AbsoluteFill style={{ backgroundColor: light ? C.canvas : C.ink }}>{children}</AbsoluteFill>;
 }
 
-/** Copy on the left, the visual on the right. */
+/**
+ * Copy beside the visual (16:9) or above it (9:16). `vZoom` scales the
+ * visual in the portrait cut only, where it shares the height with the copy.
+ */
 export function Split({
-  kicker, title, body, visual, highlight = [], copyW = 640, size = 64, bullets,
+  kicker, title, body, visual, highlight = [], copyW = 640, size = 64, bullets, vZoom = 1, head, compact = false,
 }: {
   kicker?: string; title: string; body?: ReactNode; visual: ReactNode; highlight?: string[];
-  copyW?: number; size?: number; bullets?: string[];
+  copyW?: number; size?: number; bullets?: string[]; vZoom?: number; head?: ReactNode;
+  /** Onboarding steps: slightly smaller copy, which carries more words. */
+  compact?: boolean;
 }) {
+  const { vertical, pad } = useLayout();
+  const copy = (
+    <>
+      {head}
+      {kicker ? <Kicker delay={2}>{kicker}</Kicker> : null}
+      <Title text={title} size={vertical ? Math.min(size, 60) : size} delay={6} highlight={highlight} style={{ marginTop: kicker || head ? (vertical ? 14 : 18) : 0 }} />
+      {body ? <Body delay={22} size={vertical || compact ? 29 : 31} style={{ marginTop: vertical ? 18 : compact ? 22 : 26 }}>{body}</Body> : null}
+      {bullets ? <Bullets items={bullets} delay={30} size={vertical || compact ? 26 : 28} step={compact ? 12 : 14} /> : null}
+    </>
+  );
+  if (vertical) {
+    return (
+      <Scene>
+        {/* Copy and visual as one group, centred in the safe area: pinning the
+            copy to the top left a dead band above the platform's caption. */}
+        <div style={{ position: 'absolute', ...pad, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 44 }}>
+          <div>{copy}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ zoom: vZoom }}>{visual}</div>
+          </div>
+        </div>
+      </Scene>
+    );
+  }
   return (
     <Scene>
-      <div style={{ position: 'absolute', ...PAD, display: 'flex', alignItems: 'center', gap: 72 }}>
-        <div style={{ width: copyW, flexShrink: 0 }}>
-          {kicker ? <Kicker delay={2}>{kicker}</Kicker> : null}
-          <Title text={title} size={size} delay={6} highlight={highlight} style={{ marginTop: kicker ? 18 : 0 }} />
-          {body ? <Body delay={22} size={31} style={{ marginTop: 26 }}>{body}</Body> : null}
-          {bullets ? <Bullets items={bullets} delay={30} /> : null}
-        </div>
+      <div style={{ position: 'absolute', ...pad, display: 'flex', alignItems: 'center', gap: 72 }}>
+        <div style={{ width: copyW, flexShrink: 0 }}>{copy}</div>
         <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {visual}
         </div>
@@ -46,7 +82,7 @@ export function Split({
 /** Lime-dot bullets that arrive one after another. */
 export function Bullets({ items, delay = 0, step = 14, size = 28, light = false }: { items: string[]; delay?: number; step?: number; size?: number; light?: boolean }) {
   return (
-    <div style={{ marginTop: 26, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((t, i) => (
         <Bullet key={i} delay={delay + i * step} size={size} light={light}>{t}</Bullet>
       ))}
@@ -67,16 +103,20 @@ function Bullet({ children, delay, size, light }: { children: ReactNode; delay: 
 /** A chapter's opening card: big number, title, and what it covers. */
 export function Chapter({ n, title, sub, items }: { n: number; title: string; sub: string; items?: string[] }) {
   const p = useIn(0, 14);
+  const { vertical, pad } = useLayout();
+  const num = (
+    <div style={{ fontSize: vertical ? 240 : 300, fontWeight: 800, letterSpacing: '-0.06em', color: C.lime, lineHeight: 0.85, width: vertical ? undefined : 380, textAlign: vertical ? 'left' : 'right', ...rise(p, 60) }}>
+      {String(n).padStart(2, '0')}
+    </div>
+  );
   return (
     <Scene>
-      <div style={{ position: 'absolute', ...PAD, display: 'flex', alignItems: 'center', gap: 90 }}>
-        <div style={{ fontSize: 300, fontWeight: 800, letterSpacing: '-0.06em', color: C.lime, lineHeight: 0.85, width: 380, textAlign: 'right', ...rise(p, 60) }}>
-          {String(n).padStart(2, '0')}
-        </div>
-        <div style={{ flex: 1 }}>
+      <div style={{ position: 'absolute', ...pad, display: 'flex', flexDirection: vertical ? 'column' : 'row', alignItems: vertical ? 'flex-start' : 'center', justifyContent: 'center', gap: vertical ? 40 : 90 }}>
+        {num}
+        <div style={{ flex: vertical ? undefined : 1 }}>
           <Kicker delay={6}>{`Chapter ${n}`}</Kicker>
-          <Title text={title} size={92} delay={10} style={{ marginTop: 16 }} />
-          <Body delay={30} size={34} style={{ marginTop: 24, maxWidth: 1050 }}>{sub}</Body>
+          <Title text={title} size={vertical ? 80 : 92} delay={10} style={{ marginTop: 16 }} />
+          <Body delay={30} size={vertical ? 32 : 34} style={{ marginTop: 24, maxWidth: 1050 }}>{sub}</Body>
           {items ? <Bullets items={items} delay={44} step={8} size={26} /> : null}
         </div>
       </div>
@@ -86,27 +126,29 @@ export function Chapter({ n, title, sub, items }: { n: number; title: string; su
 
 /** One big statement, centred. */
 export function Statement({ kicker, text, sub, highlight = [] }: { kicker?: string; text: string; sub?: string; highlight?: string[] }) {
+  const { vertical, pad } = useLayout();
   return (
     <Scene>
-      <div style={{ position: 'absolute', ...PAD, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', ...pad, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {kicker ? <Kicker delay={2}>{kicker}</Kicker> : null}
-        <Title text={text} size={96} delay={8} highlight={highlight} style={{ marginTop: 22, maxWidth: 1550 }} />
-        {sub ? <Body delay={34} size={36} style={{ marginTop: 32, maxWidth: 1350 }}>{sub}</Body> : null}
+        <Title text={text} size={vertical ? 82 : 96} delay={8} highlight={highlight} style={{ marginTop: 22, maxWidth: 1550 }} />
+        {sub ? <Body delay={34} size={vertical ? 32 : 36} style={{ marginTop: 32, maxWidth: 1350 }}>{sub}</Body> : null}
       </div>
     </Scene>
   );
 }
 
-/** A grid of icon cards, for "what you get" style summaries. */
+/** A grid of icon cards (16:9), or a stacked list of them (9:16). */
 export function Tiles({ kicker, title, tiles, cols = 3 }: { kicker?: string; title: string; tiles: { icon: string; title: string; text: string }[]; cols?: number }) {
+  const { vertical, pad } = useLayout();
   return (
     <Scene>
-      <div style={{ position: 'absolute', ...PAD, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', ...pad, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {kicker ? <Kicker delay={2}>{kicker}</Kicker> : null}
-        <Title text={title} size={68} delay={6} style={{ marginTop: 14 }} />
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 28, marginTop: 48 }}>
+        <Title text={title} size={vertical ? 58 : 68} delay={6} style={{ marginTop: 14 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: vertical ? '1fr' : `repeat(${cols}, 1fr)`, gap: vertical ? 18 : 28, marginTop: vertical ? 36 : 48 }}>
           {tiles.map((t, i) => (
-            <TileCard key={i} {...t} delay={20 + i * 7} />
+            <TileCard key={i} {...t} delay={20 + i * 7} row={vertical} />
           ))}
         </div>
       </div>
@@ -114,8 +156,19 @@ export function Tiles({ kicker, title, tiles, cols = 3 }: { kicker?: string; tit
   );
 }
 
-function TileCard({ icon, title, text, delay }: { icon: string; title: string; text: string; delay: number }) {
+function TileCard({ icon, title, text, delay, row }: { icon: string; title: string; text: string; delay: number; row: boolean }) {
   const p = useIn(delay, 17);
+  if (row) {
+    return (
+      <div style={{ background: C.ink2, borderRadius: 28, padding: '26px 28px', display: 'flex', gap: 22, alignItems: 'flex-start', ...rise(p, 30) }}>
+        <IconTile name={icon} size={64} delay={delay + 2} />
+        <div>
+          <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.12 }}>{title}</div>
+          <div style={{ fontSize: 25, lineHeight: 1.4, color: 'rgba(255,255,255,0.76)', fontWeight: 500, marginTop: 8 }}>{text}</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ background: C.ink2, borderRadius: 32, padding: '36px 38px', ...rise(p, 36) }}>
       <IconTile name={icon} size={76} delay={delay + 2} />
@@ -127,10 +180,11 @@ function TileCard({ icon, title, text, delay }: { icon: string; title: string; t
 
 /** Rows of label / detail, revealed in turn. */
 export function Rows({ rows, delay = 0, step = 10, keyW = 300, size = 27 }: { rows: [string, string][]; delay?: number; step?: number; keyW?: number; size?: number }) {
+  const { vertical } = useLayout();
   return (
-    <div>
+    <div style={{ width: vertical ? '100%' : undefined }}>
       {rows.map(([k, v], i) => (
-        <RowItem key={i} k={k} v={v} delay={delay + i * step} keyW={keyW} size={size} />
+        <RowItem key={i} k={k} v={v} delay={delay + i * step} keyW={vertical ? Math.min(keyW, 270) : keyW} size={vertical ? Math.min(size, 26) : size} />
       ))}
     </div>
   );
@@ -139,7 +193,7 @@ export function Rows({ rows, delay = 0, step = 10, keyW = 300, size = 27 }: { ro
 function RowItem({ k, v, delay, keyW, size }: { k: string; v: string; delay: number; keyW: number; size: number }) {
   const p = useIn(delay, 18);
   return (
-    <div style={{ display: 'flex', gap: 28, padding: '18px 0', borderTop: `1px solid ${C.ink3}`, ...rise(p, 16) }}>
+    <div style={{ display: 'flex', gap: 24, padding: '16px 0', borderTop: `1px solid ${C.ink3}`, ...rise(p, 16) }}>
       <div style={{ width: keyW, flexShrink: 0, fontSize: size, fontWeight: 800, color: C.lime }}>{k}</div>
       <div style={{ flex: 1, fontSize: size, lineHeight: 1.38, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{v}</div>
     </div>
@@ -157,32 +211,22 @@ export function WhoTag({ who, delay = 0 }: { who: string; delay?: number }) {
   );
 }
 
-/** Onboarding step header: "Step 3 of 10" + who does it. */
+/** Onboarding step header: "Step 3 of 13" + who does it. */
 export function StepHead({ n, of, who }: { n: number; of: number; who: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 6, flexWrap: 'wrap' }}>
       <Kicker delay={2}>{`Onboarding · step ${n} of ${of}`}</Kicker>
       <WhoTag who={who} delay={6} />
     </div>
   );
 }
 
-/** Onboarding step scene: step header, title and body left, visual right. */
-export function Step({ n, of, who, title, body, bullets, visual, copyW = 660, size = 60 }: {
-  n: number; of: number; who: string; title: string; body?: ReactNode; bullets?: string[]; visual: ReactNode; copyW?: number; size?: number;
+/** Onboarding step scene: step header and copy beside (or above) the visual. */
+export function Step({ n, of, who, title, body, bullets, visual, copyW = 660, size = 60, vZoom = 1 }: {
+  n: number; of: number; who: string; title: string; body?: ReactNode; bullets?: string[]; visual: ReactNode; copyW?: number; size?: number; vZoom?: number;
 }) {
   return (
-    <Scene>
-      <div style={{ position: 'absolute', ...PAD, display: 'flex', alignItems: 'center', gap: 64 }}>
-        <div style={{ width: copyW, flexShrink: 0 }}>
-          <StepHead n={n} of={of} who={who} />
-          <Title text={title} size={size} delay={8} style={{ marginTop: 16 }} />
-          {body ? <Body delay={24} size={29} style={{ marginTop: 22 }}>{body}</Body> : null}
-          {bullets ? <Bullets items={bullets} delay={32} size={26} step={12} /> : null}
-        </div>
-        <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>{visual}</div>
-      </div>
-    </Scene>
+    <Split compact head={<StepHead n={n} of={of} who={who} />} title={title} body={body} bullets={bullets} visual={visual} copyW={copyW} size={size} vZoom={vZoom} />
   );
 }
 
@@ -204,8 +248,9 @@ export function Caption({ children, delay = 0, style }: { children: ReactNode; d
 
 /** Two visuals side by side with captions. */
 export function Pair({ left, right, leftCap, rightCap, gap = 80 }: { left: ReactNode; right: ReactNode; leftCap?: string; rightCap?: string; gap?: number }) {
+  const { vertical } = useLayout();
   return (
-    <div style={{ display: 'flex', gap, alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', gap: vertical ? Math.min(gap, 44) : gap, alignItems: 'flex-start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {left}
         {leftCap ? <Caption delay={20}>{leftCap}</Caption> : null}

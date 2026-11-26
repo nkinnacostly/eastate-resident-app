@@ -25,6 +25,7 @@ export function Root() {
     <>
       {/* The trustees' walkthrough: 16:9, under ten minutes, captions and music. */}
       <Composition id="Trustees" component={Film} durationInFrames={filmFrames()} fps={FPS} width={1920} height={1080} />
+      <Composition id="Trustees-9x16" component={Film} durationInFrames={filmFrames()} fps={FPS} width={1080} height={1920} />
       {VIDEOS.flatMap((v) =>
         Object.entries(FORMATS).map(([format, size]) => {
           const id = format === '9x16' ? v.id : `${v.id}-${format}`;
