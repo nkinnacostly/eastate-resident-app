@@ -7,13 +7,20 @@
  * visitor QR", "CHECKED ON THIS PHONE", "Admit anyway and flag it", ...).
  * Names, codes and amounts are examples for a South African estate.
  */
-import type { CSSProperties, ReactNode } from 'react';
+import { createContext, useContext, type CSSProperties, type ReactNode } from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 
 import { C, Icon, KeyGlyph, pop, rise, useIn } from '../kit';
 import { CHARSET } from '../phone';
 
 export const ESTATE = 'Silver Oaks Estate';
+
+/**
+ * The estate name the screens show. The film keeps the example estate; the
+ * brochure renders its stills inside a provider naming the estate it is for.
+ */
+export const EstateName = createContext(ESTATE);
+export const useEstate = () => useContext(EstateName);
 export const CODE = 'K7Q2MX';
 export const ESTATE_CODE = 'HXR4TQ7M';
 export const HOUSE_CODE = 'K2P9';
@@ -158,7 +165,7 @@ export function Waiting() {
 export function Home({ live = 1, pressAt }: { live?: number; pressAt?: number }) {
   return (
     <div style={pad(78)}>
-      <div style={eyebrow}>{ESTATE.toUpperCase()}</div>
+      <div style={eyebrow}>{useEstate().toUpperCase()}</div>
       <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.03em', marginTop: 4 }}>Good evening, Thandi</div>
       <div style={{ marginTop: 24, background: C.white, borderRadius: 28, padding: 24 }}>
         <div style={eyebrow}>LIVE CODES</div>
@@ -211,7 +218,7 @@ export function Pass({ delivery = true, until = 'Valid until 21:42 tonight', lan
     <div style={pad(64)}>
       <div style={{ fontSize: 18, fontWeight: 800 }}>Your code</div>
       <div style={{ marginTop: 12, background: C.lime, borderRadius: 30, padding: '20px 18px 18px', textAlign: 'center', ...pop(p) }}>
-        <div style={{ fontSize: 16, fontWeight: 800 }}>{ESTATE}</div>
+        <div style={{ fontSize: 16, fontWeight: 800 }}>{useEstate()}</div>
         <div style={{ marginTop: 12, display: 'inline-block', borderRadius: 14, overflow: 'hidden' }}><QrCode size={164} /></div>
         <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: '0.08em', marginTop: 8 }}>{CODE}</div>
         <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.7 }}>{until}</div>
@@ -246,7 +253,7 @@ export function SendSheet({ at = 0, pick = 'qr' }: { at?: number; pick?: 'qr' | 
         <div style={{ fontSize: 13, color: C.muted, fontWeight: 600, marginTop: 8, lineHeight: 1.35 }}>The card above as an image. The guard scans it, even with no signal at the gate.</div>
         <div style={{ ...eyebrow, fontSize: 12, marginTop: 14 }}>OR SEND AS TEXT</div>
         <div style={{ marginTop: 8, background: C.field, borderRadius: 16, padding: '10px 12px', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
-          Your code for {ESTATE} is {CODE}. Valid until 21:42 tonight.
+          Your code for {useEstate()} is {CODE}. Valid until 21:42 tonight.
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
           {[['WhatsApp', '#25d366'], ['SMS', '#34c759'], ['Email', '#3b82f6'], ['More', C.muted2]].map(([n, col]) => (
@@ -276,7 +283,7 @@ export function VisitorChat({ at = 0 }: { at?: number }) {
       <div style={{ padding: '20px 16px' }}>
         <div style={{ background: C.white, borderRadius: '18px 18px 18px 4px', padding: 8, width: 250, ...pop(p) }}>
           <div style={{ background: C.lime, borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 800 }}>{ESTATE}</div>
+            <div style={{ fontSize: 12, fontWeight: 800 }}>{useEstate()}</div>
             <div style={{ marginTop: 8, display: 'inline-block', borderRadius: 8, overflow: 'hidden' }}><QrCode size={120} /></div>
             <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '0.08em' }}>{CODE}</div>
             <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>Valid until 21:42 tonight</div>
@@ -363,7 +370,7 @@ export function YouTab() {
       <div style={{ fontSize: 34, fontWeight: 800 }}>You</div>
       <div style={{ ...eyebrow, marginTop: 16 }}>YOUR ESTATES</div>
       <div style={{ marginTop: 8, background: C.white, borderRadius: 20, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 18, fontWeight: 800 }}>
-        {ESTATE}<span style={{ padding: '5px 12px', borderRadius: 999, background: C.limeSoft, color: C.limeInk, fontSize: 13 }}>Current</span>
+        {useEstate()}<span style={{ padding: '5px 12px', borderRadius: 999, background: C.limeSoft, color: C.limeInk, fontSize: 13 }}>Current</span>
       </div>
       <div style={{ ...eyebrow, marginTop: 18 }}>SOMEONE ELSE IN YOUR HOUSE?</div>
       <div style={{ marginTop: 8, background: C.white, borderRadius: 20, padding: '16px 18px' }}>
@@ -416,7 +423,7 @@ export function Keypad({ code = CODE, from = 0, to = 40, offline = false, pool =
   const last = n > 0 ? code[n - 1] : '';
   return (
     <div style={gpad(74)}>
-      <div style={{ ...eyebrow, color: C.muted2 }}>{ESTATE.toUpperCase()}</div>
+      <div style={{ ...eyebrow, color: C.muted2 }}>{useEstate().toUpperCase()}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
         <div style={{ fontSize: 30, fontWeight: 800 }}>Check a code</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, background: offline ? '#3a2d14' : C.ink3, fontSize: 13, fontWeight: 800, color: offline ? '#ffcf6b' : C.lime }}>

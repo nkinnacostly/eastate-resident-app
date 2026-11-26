@@ -1,6 +1,8 @@
 import { Composition } from 'remotion';
 
 import { FORMATS, FPS, INTRO_TOTAL, TOTAL } from './kit';
+import { ART, BROCHURE_ESTATE, FRAME } from './trustees/BrochureArt';
+import { EstateName } from './trustees/screens';
 import { Film, filmFrames } from './trustees/Film';
 import { Intro } from './videos/Intro';
 import { What } from './videos/What';
@@ -26,6 +28,10 @@ export function Root() {
       {/* The trustees' walkthrough: 16:9, under ten minutes, captions and music. */}
       <Composition id="Trustees" component={Film} durationInFrames={filmFrames()} fps={FPS} width={1920} height={1080} />
       <Composition id="Trustees-9x16" component={Film} durationInFrames={filmFrames()} fps={FPS} width={1080} height={1920} />
+      {/* Stills for the image-led brochure: transparent PNGs, rendered at FRAME. */}
+      {ART.map((a) => (
+        <Composition key={a.id} id={`Art-${a.id}`} component={() => <EstateName.Provider value={BROCHURE_ESTATE}>{a.el}</EstateName.Provider>} durationInFrames={FRAME + 1} fps={FPS} width={a.width} height={a.height} />
+      ))}
       {VIDEOS.flatMap((v) =>
         Object.entries(FORMATS).map(([format, size]) => {
           const id = format === '9x16' ? v.id : `${v.id}-${format}`;

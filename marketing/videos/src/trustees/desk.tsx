@@ -8,7 +8,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 
 import { C, FONT, Icon, KeyGlyph, rise, useIn } from '../kit';
-import { CODE, ESTATE, ESTATE_CODE, GUARD, HOUSE, HOUSE_CODE, RESIDENT } from './screens';
+import { CODE, ESTATE_CODE, GUARD, HOUSE, HOUSE_CODE, RESIDENT, useEstate } from './screens';
 
 const NAV = ['Today at the gate', 'Houses', 'Residents', 'Flagged entries', 'Guards', 'Codes', 'Dues', 'Payments', 'Audit log', 'Settings'];
 
@@ -136,7 +136,7 @@ export function OverviewPage({ delay = 0 }: { delay?: number }) {
   ];
   return (
     <Desk active="Today at the gate">
-      <H1 sub={ESTATE}>Welcome back, Jaco</H1>
+      <H1 sub={useEstate()}>Welcome back, Jaco</H1>
       <div style={{ display: 'flex', gap: 12 }}>
         <Stat label="ADMITTED TODAY" value="46" delay={delay + 6} />
         <Stat label="REFUSED TODAY" value="3" bad delay={delay + 10} />
@@ -403,7 +403,7 @@ export function GuardProfilePage({ pressAt = 50 }: { pressAt?: number }) {
       </div>
       {frame > pressAt && !removed ? (
         <div style={{ position: 'absolute', left: 60, right: 60, top: 150, background: C.white, borderRadius: 18, padding: 20, boxShadow: '0 30px 60px rgba(0,0,0,0.3)', fontSize: 15, fontWeight: 600, lineHeight: 1.5 }}>
-          <b>Remove {GUARD} from {ESTATE}?</b><br />They can no longer check codes here, and their phone clears its codes the next time it checks in. Their shifts and every check they made stay on record.
+          <b>Remove {GUARD} from {useEstate()}?</b><br />They can no longer check codes here, and their phone clears its codes the next time it checks in. Their shifts and every check they made stay on record.
         </div>
       ) : null}
     </Desk>
@@ -452,7 +452,7 @@ export const MailBtn = ({ children }: { children: ReactNode }) => (
 
 export function HouseCodeEmail({ delay = 0 }: { delay?: number }) {
   return (
-    <Email subject={`House ${HOUSE} at ${ESTATE} — your house code`} to="owner1021@example.com" delay={delay}>
+    <Email subject={`House ${HOUSE} at ${useEstate()} — your house code`} to="owner1021@example.com" delay={delay}>
       Your house code is <b style={{ fontSize: 26, letterSpacing: '0.1em' }}>{HOUSE_CODE}</b>. Give it to the people living in the house: with the estate code, it lets them ask to join in the My Estate Access app.
     </Email>
   );
