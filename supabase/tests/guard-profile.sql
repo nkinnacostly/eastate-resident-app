@@ -208,3 +208,45 @@ select pg_temp.check('removal is callable by signed-in users only', (
 select pg_temp.check('it keeps definer rights and an empty search_path', (
   select p.prosecdef and 'search_path=""' = any (p.proconfig)
     from pg_proc p where p.oid = 'public.deactivate_membership(uuid)'::regprocedure));
+
+-- ─── Deleting an account keeps the records it touched (20261126130000) ───────
+--
+-- Resident Seven pays a levy billed to a house, then deletes their account.
+-- delete_my_account deletes their memberships; the payment must survive with
+-- its pointer to them cleared, rather than block the deletion.
+
+insert into public.houses (id, estate_id, house_code, house_number) values
+  ('f7000000-0000-4000-8000-000000000001', 'e7000000-0000-4000-8000-000000000001', 'GP01', '12');
+insert into public.dues_charges (id, estate_id, period, house_id, amount_minor, currency, due_on)
+values ('d7000000-0000-4000-8000-000000000001', 'e7000000-0000-4000-8000-000000000001',
+        date_trunc('month', current_date)::date, 'f7000000-0000-4000-8000-000000000001',
+        185000, 'ZAR', current_date + 7);
+insert into public.dues_payments (charge_id, tx_ref, amount_minor, currency, initiated_by_membership_id, payer_email)
+values ('d7000000-0000-4000-8000-000000000001', 'dues-gp-7', 185000, 'ZAR',
+        'a7000000-0000-4000-8000-000000000003', 'resident7@example.com');
+insert into public.dues_reminders (charge_id, kind, sent_to, recipient, sent_by_membership_id)
+values ('d7000000-0000-4000-8000-000000000001', 'manual', 'owner12@example.com', 'landlord',
+        'a7000000-0000-4000-8000-00000000000a');
+
+-- What delete_my_account does to the caller's memberships.
+delete from public.memberships where user_id = 'c7000000-0000-4000-8000-000000000003';
+
+select pg_temp.check('a resident who paid a house''s levy can be deleted; the payment stays, unattributed', (
+  select count(*) = 1 and bool_and(initiated_by_membership_id is null)
+    from public.dues_payments where tx_ref = 'dues-gp-7')
+  and not exists (select 1 from public.memberships where user_id = 'c7000000-0000-4000-8000-000000000003'));
+
+-- An admin who sent a reminder (and so is named on it) can be removed too.
+delete from public.memberships where id = 'a7000000-0000-4000-8000-00000000000a';
+select pg_temp.check('...and so can an admin who sent a reminder; the reminder stays', (
+  select count(*) = 1 and bool_and(sent_by_membership_id is null)
+    from public.dues_reminders where charge_id = 'd7000000-0000-4000-8000-000000000001'));
+
+select pg_temp.check('every attribution key to memberships, bar the gate log''s, now sets null on delete', (
+  select bool_and(c.confdeltype = 'n')
+    from pg_constraint c
+   where c.contype = 'f' and c.confrelid = 'public.memberships'::regclass
+     and c.conname in ('dues_payments_initiated_by_membership_id_fkey', 'access_codes_revoked_by_membership_id_fkey',
+                       'access_codes_verified_by_membership_id_fkey', 'dues_charges_waived_by_membership_id_fkey',
+                       'dues_reminders_sent_by_membership_id_fkey',
+                       'estate_settlement_changes_changed_by_membership_id_fkey')));

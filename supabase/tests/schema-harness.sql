@@ -182,6 +182,8 @@ create table public.access_codes (
   revoked_at    timestamptz,
   -- Real-schema columns deactivate_membership writes (20261126120000).
   revoked_by_membership_id uuid references public.memberships (id),
+  -- Real-schema column whose delete rule 20261126130000 changes.
+  verified_by_membership_id uuid references public.memberships (id),
   revoked_reason           public.revoked_reason
 );
 
