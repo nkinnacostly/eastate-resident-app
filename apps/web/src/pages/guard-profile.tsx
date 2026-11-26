@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { Avatar, Card, Chip, Empty, HeadActions, Stat } from '../components/ui';
+import { Avatar, Button, Card, Chip, Empty, HeadActions, Stat } from '../components/ui';
 import {
+  deactivateMembership,
   getGuardProfile,
   isFlagged,
   listEvents,
@@ -44,6 +45,11 @@ export function GuardProfile() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  // Bumped after a removal so the effect below reloads the profile, its
+  // shifts and its activity together -- the shift the removal closed included.
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!activeEstateId || !membershipId) return;
@@ -70,7 +76,40 @@ export function GuardProfile() {
     return () => {
       live = false;
     };
-  }, [activeEstateId, membershipId]);
+  }, [activeEstateId, membershipId, version]);
+
+  /**
+   * Take a guard off this estate's gate: a guard who has left, or was moved
+   * by their security company. deactivate_membership is the same call as a
+   * resident's Suspend; for a guard it also closes an open shift
+   * (20261126120000), so nobody removed goes on showing as "On duty".
+   *
+   * Said before the click, because it is what an admin needs to know about a
+   * phone still in the gatehouse: the server refuses this guard at once, and
+   * their phone clears its codes the next time it checks in. Their record --
+   * shifts, checks and judgement calls -- stays, as the audit trail must.
+   */
+  const remove = useCallback(async () => {
+    if (!profile) return;
+    if (
+      !window.confirm(
+        `Remove ${profile.full_name ?? 'this guard'} from ${activeEstate?.estate_name ?? 'this estate'}?\n\n` +
+          'They can no longer check codes here, and their phone clears its codes the next time it ' +
+          'checks in. Their shifts and every check they made stay on record.',
+      )
+    )
+      return;
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      await deactivateMembership(profile.membership_id);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      setRemoveError((e as Error).message);
+    } finally {
+      setRemoving(false);
+    }
+  }, [profile, activeEstate?.estate_name]);
 
   const back = (
     <Link to=".." relative="path" className="text-[12.5px] font-bold text-muted hover:text-ink">
@@ -129,8 +168,19 @@ export function GuardProfile() {
             <Chip tone="good">On duty · since {dayTime(p.on_duty_since)}</Chip>
           ) : null}
           {p.is_active ? <Chip tone="good">Active</Chip> : <Chip>Removed</Chip>}
+          {p.is_active ? (
+            <Button variant="quiet" onClick={() => void remove()} disabled={removing}>
+              {removing ? 'Removing…' : 'Remove from the gate'}
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {removeError ? (
+        <div className="mt-4 rounded-[14px] bg-coral-soft px-4 py-3 text-[13px] font-semibold text-coral-ink">
+          {removeError}
+        </div>
+      ) : null}
 
       <div className="mt-6 grid grid-cols-6 gap-3">
         <Stat label="VERIFIED · 30D" value={count(p.verifications_30d)} />

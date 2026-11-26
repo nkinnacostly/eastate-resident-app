@@ -154,3 +154,57 @@ reset test.uid;
 select pg_temp.check('anon cannot execute either RPC', (
   not has_function_privilege('anon', 'public.estate_guard_profile(uuid,uuid)', 'execute')
   and not has_function_privilege('anon', 'public.estate_guard_shifts(uuid,uuid,integer)', 'execute')));
+
+-- ─── Removing a guard (20261126120000) ───────────────────────────────────────
+--
+-- The dashboard's "Remove from the gate" is deactivate_membership. Gary is on
+-- duty now (the open shift seeded above), so removing him must close that
+-- shift -- not as a handover -- and leave his history on record.
+
+set test.uid = 'c7000000-0000-4000-8000-000000000001';
+select pg_temp.raises('a guard cannot remove themselves',
+  $$select public.deactivate_membership('a7000000-0000-4000-8000-000000000001')$$,
+  'not_an_admin_at_this_estate');
+
+set test.uid = 'c7000000-0000-4000-8000-00000000000b';
+select pg_temp.raises('another estate''s admin cannot remove this estate''s guard',
+  $$select public.deactivate_membership('a7000000-0000-4000-8000-000000000001')$$,
+  'not_an_admin_at_this_estate');
+select pg_temp.check('...and the refused call changed nothing', (
+  select is_active from public.memberships where id = 'a7000000-0000-4000-8000-000000000001')
+  and exists (select 1 from public.guard_shifts
+               where membership_id = 'a7000000-0000-4000-8000-000000000001' and ended_at is null));
+
+set test.uid = 'c7000000-0000-4000-8000-00000000000a';
+select public.deactivate_membership('a7000000-0000-4000-8000-000000000001');
+
+select pg_temp.check('the removed guard''s membership is inactive, with the time recorded', (
+  select not is_active and deactivated_at is not null
+    from public.memberships where id = 'a7000000-0000-4000-8000-000000000001'));
+select pg_temp.check('their open shift is closed, and not as a handover', (
+  select count(*) filter (where ended_at is null) = 0
+     and bool_and(ended_at <= now())
+     and (select not ended_by_handover from public.guard_shifts
+           where membership_id = 'a7000000-0000-4000-8000-000000000001'
+           order by started_at desc limit 1)
+    from public.guard_shifts where membership_id = 'a7000000-0000-4000-8000-000000000001'));
+select pg_temp.check('nobody is left on duty at the estate', not exists (
+  select 1 from public.guard_shifts
+   where estate_id = 'e7000000-0000-4000-8000-000000000001' and ended_at is null));
+select pg_temp.check('another estate''s shifts are untouched', (
+  select count(*) = 1 from public.guard_shifts
+   where estate_id = 'e7000000-0000-4000-8000-000000000002'));
+
+-- Read directly rather than through \gset, which unsets a variable for NULL.
+select pg_temp.check('the profile shows them removed and off duty, history kept', (
+  select not g.is_active and g.on_duty_since is null and g.shifts_30d = 3 and g.verifications_30d = 3
+    from public.estate_guard_profile('e7000000-0000-4000-8000-000000000001',
+                                     'a7000000-0000-4000-8000-000000000001') g));
+
+reset test.uid;
+select pg_temp.check('removal is callable by signed-in users only', (
+  has_function_privilege('authenticated', 'public.deactivate_membership(uuid)', 'execute')
+  and not has_function_privilege('anon', 'public.deactivate_membership(uuid)', 'execute')));
+select pg_temp.check('it keeps definer rights and an empty search_path', (
+  select p.prosecdef and 'search_path=""' = any (p.proconfig)
+    from pg_proc p where p.oid = 'public.deactivate_membership(uuid)'::regprocedure));

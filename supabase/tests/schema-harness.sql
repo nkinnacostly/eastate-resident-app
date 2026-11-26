@@ -56,6 +56,7 @@ create type public.event_source   as enum ('online', 'offline_replay');
 create type public.event_outcome  as enum ('pending', 'admitted', 'rejected', 'collision');
 create type public.reject_reason  as enum ('unknown_code', 'expired', 'already_used', 'revoked');
 create type public.membership_role as enum ('resident', 'guard', 'admin');
+create type public.revoked_reason as enum ('membership_deactivated', 'admin_revoked', 'resident_cancelled');
 
 create table public.estates (
   id           uuid primary key default gen_random_uuid(),
@@ -118,6 +119,7 @@ create table public.memberships (
   unit       text,
   is_active  boolean not null default true,
   created_at timestamptz not null default now(),
+  deactivated_at timestamptz,
 
   -- Mirrors the real schema: one row per person per role per estate, which is
   -- what place_officer_at_estate's ON CONFLICT depends on.
@@ -177,7 +179,10 @@ create table public.access_codes (
   delivery_note text,
   -- Real-schema columns the detail views read (20261001150000).
   used_at       timestamptz,
-  revoked_at    timestamptz
+  revoked_at    timestamptz,
+  -- Real-schema columns deactivate_membership writes (20261126120000).
+  revoked_by_membership_id uuid references public.memberships (id),
+  revoked_reason           public.revoked_reason
 );
 
 create unique index access_codes_live_code_key
