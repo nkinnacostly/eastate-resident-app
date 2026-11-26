@@ -191,6 +191,8 @@ export default function Dues() {
                 phone={blocking.landlord_phone}
                 email={blocking.landlord_email}
                 estateName={estateName}
+                currency={currency}
+                codesPaused={dues.blocked}
               />
             ) : null}
 
@@ -239,7 +241,7 @@ export default function Dues() {
         {loading && !summary ? <ActivityIndicator className="mt-8" /> : null}
 
         <Text className="mt-6 px-1 font-jk text-micro leading-[17px] text-muted">
-          Payments are handled by Flutterwave. We never see or store your card details.
+          Payments are handled by Flutterwave. We never see or store your full card number.
         </Text>
       </ScrollView>
     </Screen>

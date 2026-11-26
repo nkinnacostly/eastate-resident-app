@@ -14,16 +14,42 @@ import { Card, Eyebrow } from './ui';
  * visitor waiting; a phone number they have to memorise and retype is a
  * different product from one they can call.
  */
+/**
+ * A number WhatsApp can open. wa.me takes the full international number with
+ * no "+" and no leading 0, and a house's landlord number is usually typed the
+ * local way ("082 000 0001"), which made a link to nobody. The estate's
+ * country comes from what it bills in.
+ */
+export function whatsappNumber(phone: string, currency: string | null): string {
+  const digits = phone.replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) return digits.slice(1);
+  if (digits.startsWith('00')) return digits.slice(2);
+  const country = currency === 'ZAR' ? '27' : currency === 'NGN' ? '234' : null;
+  if (country && digits.startsWith('0')) return country + digits.slice(1);
+  return digits;
+}
+
 export function LandlordCard({
   name,
   phone,
   email,
   estateName,
+  currency,
+  codesPaused,
 }: {
   name: string | null;
   phone: string | null;
   email: string | null;
   estateName: string;
+  /** What the estate bills in, which says which country a local number is in. */
+  currency: string | null;
+  /**
+   * Whether this estate actually pauses codes for the overdue bill. The card
+   * used to say "your codes come back straight away" (and draft "I cannot
+   * generate visitor codes") for every overdue house, including in estates
+   * that never pause codes at all.
+   */
+  codesPaused: boolean;
 }) {
   const hasContact = Boolean(phone || email);
 
@@ -49,8 +75,9 @@ export function LandlordCard({
       <Eyebrow className="text-muted">WHO TO CONTACT</Eyebrow>
       <Text className="mt-2 font-jk-b text-body text-ink">{name ?? 'Your landlord'}</Text>
       <Text className="mt-1 font-jk text-sub leading-[20px] text-muted">
-        These dues are billed to the owner of your house, not to you. Ask them to settle it and
-        your codes come back straight away.
+        {codesPaused
+          ? 'These dues are billed to the owner of your house, not to you. Ask them to settle it and your codes come back straight away.'
+          : 'These dues are billed to the owner of your house, not to you. Ask them to settle it.'}
       </Text>
 
       <View className="mt-4 gap-2">
@@ -60,10 +87,8 @@ export function LandlordCard({
             <Action
               label="WhatsApp"
               onPress={() => {
-                // wa.me wants the number without a leading +, and it is the app
-                // most landlords here actually answer on.
-                const wa = digits.replace(/^\+/, '');
-                void Linking.openURL(`https://wa.me/${wa}`);
+                // It is the app most landlords actually answer on.
+                void Linking.openURL(`https://wa.me/${whatsappNumber(phone, currency)}`);
               }}
             />
             {/* iOS and Android disagree on the separator before the body. */}
@@ -72,7 +97,7 @@ export function LandlordCard({
               onPress={() =>
                 void Linking.openURL(
                   `sms:${digits}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(
-                    `Hello${name ? ` ${name}` : ''}, the estate dues for our house at ${estateName} are outstanding. Could you settle them? I cannot generate visitor codes until they are paid.`,
+                    `Hello${name ? ` ${name}` : ''}, the estate dues for our house at ${estateName} are outstanding. Could you settle them?${codesPaused ? ' I cannot generate visitor codes until they are paid.' : ''}`,
                   )}`,
                 )
               }
